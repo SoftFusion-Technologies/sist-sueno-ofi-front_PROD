@@ -286,11 +286,11 @@ export default function ComprobanteFiscalFormModal({
                 <div>
                   <h3
                     id={titleId}
-                    className="text-xl sm:text-2xl font-bold tracking-tight text-white"
+                    className="titulo uppercase text-xl sm:text-2xl font-bold tracking-tight text-white"
                   >
                     {isEdit
                       ? 'Editar Comprobante Fiscal'
-                      : 'Nuevo Comprobante Fiscal (Manual / Testing)'}
+                      : 'Nuevo Comprobante Fiscal'}
                   </h3>
                   <p className="mt-1 text-xs text-gray-300/80">
                     Uso manual / import. En producción, los comprobantes se

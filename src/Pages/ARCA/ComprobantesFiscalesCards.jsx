@@ -217,58 +217,113 @@ export default function ComprobantesFiscalesCards() {
     setConfirmOpen(true);
   };
 
-  const onRetryFacturacion = async (item) => {
-    if (!item?.venta_id) {
-      return showWarnSwal({
-        title: 'Sin venta asociada',
-        text: 'Este comprobante no tiene una venta asociada para reintentar la facturación.'
-      });
-    }
+const pickErrorInfo = (err) => {
+  const status =
+    err?.status || err?.response?.status || err?.httpStatus || null;
+  const body = err?.body || err?.data || err?.response?.data || null;
 
-    const res = await showConfirmSwal({
-      title: `¿Reintentar facturación?`,
-      text: `Se reintentará la facturación de la venta #${item.venta_id}.`,
-      confirmText: 'Sí, reintentar'
+  const correlationId =
+    body?.correlationId ||
+    err?.correlationId ||
+    body?.meta?.correlationId ||
+    null;
+
+  const mensajeError =
+    body?.mensajeError ||
+    body?.message ||
+    err?.mensajeError ||
+    err?.message ||
+    `Error inesperado${status ? ` (HTTP ${status})` : ''}.`;
+
+  const tips =
+    body?.tips ||
+    err?.tips ||
+    (status === 401 || status === 403
+      ? [
+          'El request no estaría enviando el token.',
+          'Revisá permisos del usuario.'
+        ]
+      : status >= 500
+      ? [
+          'Revisá logs del backend (stacktrace).',
+          'Verificá PV/empresa/token y numeración.'
+        ]
+      : null);
+
+  const debug = body
+    ? JSON.stringify(body, null, 2).slice(0, 1500)
+    : (err?.stack || '').slice(0, 1500);
+
+  return { status, mensajeError, tips, correlationId, debug };
+};
+
+const onRetryFacturacion = async (item) => {
+  if (!item?.venta_id) {
+    return showWarnSwal({
+      title: 'Sin venta asociada',
+      text: 'Este comprobante no tiene una venta asociada para reintentar la facturación.'
     });
+  }
 
-    if (!res.isConfirmed) return;
+  const res = await showConfirmSwal({
+    title: `¿Reintentar facturación?`,
+    text: `Se reintentará la facturación de la venta #${item.venta_id}.`,
+    confirmText: 'Sí, reintentar'
+  });
 
-    try {
-      const data = await reintentarFacturacionVenta(item.venta_id);
 
-      const estado = data?.estado || data?.comprobante?.estado || 'desconocido';
-      const cae = data?.comprobante?.cae || '—';
-      const numero = data?.comprobante?.numero_comprobante ?? '—';
+  try {
+    const data = await reintentarFacturacionVenta(item.venta_id);
 
-      if (estado === 'aprobado') {
-        await showSuccessSwal({
-          title: 'Facturación aprobada',
-          text: `Estado: ${estado.toUpperCase()}\nComprobante #${numero}\nCAE: ${cae}`
-        });
-      } else {
-        await showWarnSwal({
-          title: 'Reintento procesado',
-          text: `Estado: ${estado.toUpperCase()}\nRevisá el detalle en el comprobante.`,
-          tips: [
-            'Verificá los datos fiscales del cliente y la empresa.',
-            'Revisá el log de ARCA si implementaste bitácora.'
-          ]
-        });
-      }
+    const estado = data?.estado || data?.comprobante?.estado || 'desconocido';
+    const cae = data?.cae || data?.comprobante?.cae || '—';
+    const numero =
+      data?.numero ??
+      data?.comprobante?.numero_comprobante ??
+      data?.comprobante?.numero ??
+      '—';
 
-      // refrescamos la grilla para ver los cambios (CAE, estado, etc.)
-      await fetchData();
-    } catch (err) {
-      const { mensajeError, tips } = err || {};
-      await showErrorSwal({
-        title: 'No se pudo reintentar',
-        text:
-          mensajeError ||
-          'Ocurrió un error al intentar reintentar la facturación.',
-        tips
+    if (estado === 'aprobado') {
+      await showSuccessSwal({
+        title: 'Facturación aprobada',
+        text: `Estado: ${String(
+          estado
+        ).toUpperCase()}\nComprobante #${numero}\nCAE: ${cae}`
+      });
+    } else {
+      await showWarnSwal({
+        title: 'Reintento procesado',
+        text: `Estado: ${String(
+          estado
+        ).toUpperCase()}\nComprobante #${numero}\nRevisá el detalle.`,
+        tips: [
+          'Si quedó PENDIENTE, revisá el log WSFE/WSAA y reintentá luego.',
+          'Si quedó RECHAZADO, revisá motivo_rechazo y los datos fiscales.'
+        ]
       });
     }
-  };
+
+    await fetchData();
+  } catch (err) {
+    console.error('[UI][RETRY] error', err);
+    const { mensajeError, tips, correlationId, status, debug } =
+      pickErrorInfo(err);
+
+    await showErrorSwal({
+      title: 'No se pudo reintentar',
+      text: [
+        mensajeError,
+        status ? `HTTP: ${status}` : null,
+        correlationId ? `CorrelationId: ${correlationId}` : null,
+        debug ? `Detalle: ${debug}` : null
+      ]
+        .filter(Boolean)
+        .join('\n'),
+      tips
+    });
+  }
+};
+
 
   const onConfirmDelete = async () => {
     const item = toDelete;
@@ -283,7 +338,6 @@ export default function ComprobantesFiscalesCards() {
       }. Solo es posible si está pendiente y sin CAE.`,
       confirmText: 'Sí, eliminar'
     });
-    if (!res.isConfirmed) return;
 
     try {
       await deleteComprobanteFiscal(item.id);

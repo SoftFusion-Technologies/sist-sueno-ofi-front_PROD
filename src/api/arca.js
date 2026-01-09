@@ -189,4 +189,4 @@ export const deleteComprobanteFiscal = async (id) => {
 };
 
 export const reintentarFacturacionVenta = (ventaId) =>
-  client.post(`/ventas/${ventaId}/reintentar-facturacion`).then((res) => res.data);
+  arcaClient.post(`/ventas/${ventaId}/reintentar-facturacion`).then((res) => res.data);
