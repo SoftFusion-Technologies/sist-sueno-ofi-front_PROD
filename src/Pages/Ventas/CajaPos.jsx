@@ -193,7 +193,7 @@ export default function CajaPOS() {
         const res = await axios.get(`http://localhost:8080/caja`);
         const abierta = res.data.find(
           (c) =>
-            c.usuario_id == userId &&
+            // c.usuario_id == userId && misma caja
             c.local_id == userLocalId &&
             c.fecha_cierre === null
         );
@@ -212,7 +212,7 @@ export default function CajaPOS() {
       setCargando(false);
     };
     fetchCaja();
-  }, [userId, userLocalId]);
+  }, [ userLocalId]);
 
   // Cargar historial
   const cargarHistorial = async () => {

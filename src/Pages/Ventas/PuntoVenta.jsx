@@ -76,7 +76,6 @@ const swalLoading = (title = 'Procesando...') =>
     didOpen: () => Swal.showLoading()
   });
 
-
 const toNum = (v, d = 0) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : d;
@@ -755,7 +754,7 @@ export default function PuntoVenta() {
 
     //  carrito está en modo "stock": cada item tiene stock_id, precio, precio_con_descuento, etc.
     const productosRequest = carrito.map((item) => {
-      const precioOriginal = Number(item.precio ?? 0); // ya no dependas de item.producto?.precio
+      const precioOriginal = Number(item.precio ?? 0);
       const precioFinal = Number(item.precio_con_descuento ?? item.precio ?? 0);
       const descuento = Math.max(0, precioOriginal - precioFinal);
       const descuentoPorcentaje =
@@ -771,7 +770,6 @@ export default function PuntoVenta() {
       };
     });
 
-    // 🔢 Orígenes de descuento
     const origenes_descuento = [];
 
     // 1) Por producto (snapshot guardado en cada línea)
@@ -855,6 +853,102 @@ export default function PuntoVenta() {
       recargo_monto_cuotas: totalCalculado?.recargo_monto_cuotas ?? 0
     };
 
+    // NUEVO: helpers locales (sin dependencias)
+    const safeJson = async (r) => {
+      try {
+        return await r.json();
+      } catch {
+        return {};
+      }
+    };
+
+    const isNumeracionEnProceso = (payload, status) => {
+      const msg = String(
+        payload?.mensajeError || payload?.message || ''
+      ).toUpperCase();
+      const code = String(
+        payload?.errorCode || payload?.facturacion?.errorCode || ''
+      ).toUpperCase();
+      return (
+        status === 409 &&
+        (msg.includes('NUMERACION_EN_PROCESO') ||
+          msg.includes('FACTURACIÓN EN CURSO') ||
+          code === 'NUMERACION_EN_PROCESO' ||
+          code === 'FACTURACION_EN_PROCESO')
+      );
+    };
+
+    // NUEVO: auto-reintento con backoff
+    const autoRetryFacturacion = async (ventaId, opts = {}) => {
+      const {
+        maxTries = 5,
+        delaysMs = [1500, 2500, 4000, 6500, 10000] // backoff suave
+      } = opts;
+
+      for (let i = 0; i < maxTries; i++) {
+        await new Promise((res) =>
+          setTimeout(res, delaysMs[Math.min(i, delaysMs.length - 1)])
+        );
+
+        try {
+          const r = await fetch(
+            `http://localhost:8080/ventas/${ventaId}/reintentar-facturacion`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({}) // reintento REAL lo decide backend
+            }
+          );
+
+          const d = await safeJson(r);
+
+          const estado =
+            d?.estado ||
+            d?.comprobante?.estado ||
+            d?.comprobante?.estado ||
+            d?.facturacion?.estado ||
+            'desconocido';
+
+          if (String(estado).toLowerCase() === 'aprobado') {
+            const cae = d?.comprobante?.cae || '—';
+            const numero = d?.comprobante?.numero_comprobante ?? '—';
+
+            // refrescar venta para UI
+            const ventaCompleta = await fetch(
+              `http://localhost:8080/ventas/${ventaId}`
+            ).then((rr) => rr.json());
+            setVentaFinalizada(ventaCompleta);
+
+            await swalSuccess(
+              'Facturación aprobada',
+              `Estado: APROBADO\nComprobante #${numero}\nCAE: ${cae}`
+            );
+            return { ok: true, estado: 'aprobado' };
+          }
+
+          // si sigue "en proceso", seguimos esperando (no spamear alerts)
+          const msg = String(d?.mensajeError || d?.message || '').toUpperCase();
+          const code = String(d?.errorCode || '').toUpperCase();
+          const sigueEnProceso =
+            r.status === 409 ||
+            msg.includes('NUMERACION_EN_PROCESO') ||
+            msg.includes('FACTURACION_EN_PROCESO') ||
+            code === 'NUMERACION_EN_PROCESO' ||
+            code === 'FACTURACION_EN_PROCESO';
+
+          if (sigueEnProceso) continue;
+
+          // cualquier otro estado: cortamos (pendiente/rechazado/omitido)
+          return { ok: false, estado };
+        } catch (e) {
+          // error de red: intentamos el próximo ciclo
+          continue;
+        }
+      }
+
+      return { ok: false, estado: 'pendiente' };
+    };
+
     try {
       const response = await fetch('http://localhost:8080/ventas/pos', {
         method: 'POST',
@@ -862,9 +956,43 @@ export default function PuntoVenta() {
         body: JSON.stringify(ventaRequest)
       });
 
+      const payload = await safeJson(response);
+
+      // NUEVO: caja abierta (mantenemos tu lógica)
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        const msg = error.mensajeError || 'Error al registrar la venta';
+        const msg = payload.mensajeError || 'Error al registrar la venta';
+
+        // NUEVO: si el backend te devuelve 409 por numeración en curso PERO la venta quedó creada,
+        // lo tratamos como "venta registrada + facturación pendiente".
+        const ventaId =
+          payload.venta_id || payload?.venta?.id || payload?.data?.venta_id;
+
+        if (isNumeracionEnProceso(payload, response.status) && ventaId) {
+          // 🧹 limpiar UI igual (la venta ya existe)
+          setCarrito([]);
+          setBusqueda('');
+          setDescuentoPersonalizado('');
+          setAplicarDescuento(false);
+          setClienteSeleccionado(null);
+          setBusquedaCliente('');
+
+          // traer venta para mostrar ticket/detalle aunque sea con comprobante pendiente
+          const ventaCompleta = await fetch(
+            `http://localhost:8080/ventas/${ventaId}`
+          ).then((r) => r.json());
+          setVentaFinalizada(ventaCompleta);
+
+          await swalWarn(
+            'Venta registrada',
+            'La venta se registró, pero la facturación quedó en proceso por numeración ocupada. Se reintentará automáticamente.'
+          );
+
+          // auto-reintento en background (del lado del front)
+          await autoRetryFacturacion(ventaId);
+
+          return;
+        }
+
         if (msg.toLowerCase().includes('caja abierta')) {
           setMensajeCaja(msg);
           setMostrarModalCaja(true);
@@ -874,33 +1002,50 @@ export default function PuntoVenta() {
         return;
       }
 
-      // 🧹 limpiar UI
+      // NUEVO: si el backend devuelve 200 pero con “estado pendiente/omitido” dentro del payload,
+      // también lo tratamos como venta OK + facturación pendiente.
+      const ventaId = payload.venta_id;
+      const factEstado =
+        payload?.facturacion?.estado ||
+        payload?.arca?.estado ||
+        payload?.estado_facturacion ||
+        payload?.estado ||
+        null;
+
+      // 🧹 limpiar UI (tu lógica)
       setCarrito([]);
       setBusqueda('');
       setDescuentoPersonalizado('');
       setAplicarDescuento(false);
 
-      //  refrescar resultados de búsqueda SIN agrupar
       if (busqueda.trim() !== '') {
         const res2 = await fetch(
           `http://localhost:8080/buscar-productos-detallado?query=${encodeURIComponent(
             busqueda
           )}`
         );
-        const data2 = await res2.json().catch(() => []);
+        await res2.json().catch(() => []);
       }
-
-      const data = await response.json();
-      const ventaId = data.venta_id;
 
       const ventaCompleta = await fetch(
         `http://localhost:8080/ventas/${ventaId}`
       ).then((r) => r.json());
       setVentaFinalizada(ventaCompleta);
-      await swalSuccess(
-        'Venta registrada',
-        'La venta se registró correctamente.'
-      );
+
+      // NUEVO: Mensaje distinto si quedó pendiente/omitido
+      const estadoLower = String(factEstado || '').toLowerCase();
+      if (estadoLower === 'pendiente' || estadoLower === 'omitido') {
+        await swalWarn(
+          'Venta registrada',
+          'La venta se registró. La facturación quedó pendiente y se reintentará automáticamente.'
+        );
+        await autoRetryFacturacion(ventaId);
+      } else {
+        await swalSuccess(
+          'Venta registrada',
+          'La venta se registró correctamente.'
+        );
+      }
 
       setCarrito([]);
       setClienteSeleccionado(null);
