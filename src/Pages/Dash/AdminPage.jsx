@@ -32,7 +32,7 @@ import {
   FaFileInvoiceDollar, // <-- ARCA / Facturación
   FaUserFriends
 } from 'react-icons/fa';
-
+import RoleGate from '../../Components/auth/RoleGate';
 // --------- Tile genérico de módulo ----------
 const DashboardTile = ({ title, description, to, icon: Icon, delay = 0 }) => {
   return (
@@ -146,21 +146,25 @@ const AdminPage = () => {
 
             {/* GRID DE MÓDULOS */}
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              <DashboardTile
-                title="Stock"
-                description="Control de stock en tiempo real por local, estado y ubicación."
-                to="/dashboard/stock"
-                icon={FaBoxes}
-                delay={0.1}
-              />
+              {userLevel != 'vendedor' && (
+                <DashboardTile
+                  title="Stock"
+                  description="Control de stock en tiempo real por local, estado y ubicación."
+                  to="/dashboard/stock"
+                  icon={FaBoxes}
+                  delay={0.1}
+                />
+              )}
 
-              <DashboardTile
-                title="Compras"
-                description="Gestión de órdenes de compra, recepción y cuentas por pagar."
-                to="/dashboard/compras"
-                icon={FaShoppingBag}
-                delay={0.12}
-              />
+              {userLevel != 'vendedor' && (
+                <DashboardTile
+                  title="Compras"
+                  description="Gestión de órdenes de compra, recepción y cuentas por pagar."
+                  to="/dashboard/compras"
+                  icon={FaShoppingBag}
+                  delay={0.12}
+                />
+              )}
 
               <DashboardTile
                 title="Ventas"
@@ -170,29 +174,35 @@ const AdminPage = () => {
                 delay={0.14}
               />
 
-              <DashboardTile
-                title="ARCA / Facturación"
-                description="Empresas, puntos de venta y comprobantes fiscales electrónicos."
-                to="/dashboard/arca"
-                icon={FaFileInvoiceDollar}
-                delay={0.16}
-              />
+              <RoleGate allow={['administrativo', 'socio', 'contador']}>
+                <DashboardTile
+                  title="ARCA / Facturación"
+                  description="Empresas, puntos de venta y comprobantes fiscales electrónicos."
+                  to="/dashboard/arca"
+                  icon={FaFileInvoiceDollar}
+                  delay={0.16}
+                />
+              </RoleGate>
 
-              <DashboardTile
-                title="Proveedores"
-                description="Altas, bajas y administración de proveedores comerciales."
-                to="/dashboard/proveedores/proveedores"
-                icon={FaUsers}
-                delay={0.18}
-              />
+              {userLevel != 'vendedor' && (
+                <DashboardTile
+                  title="Proveedores"
+                  description="Altas, bajas y administración de proveedores comerciales."
+                  to="/dashboard/proveedores/proveedores"
+                  icon={FaUsers}
+                  delay={0.18}
+                />
+              )}
 
-              <DashboardTile
-                title="Pedidos de stock"
-                description="Pedidos internos entre sucursales y logística de reposición."
-                to="/dashboard/stock/pedidos"
-                icon={FaTruckMoving}
-                delay={0.2}
-              />
+              {userLevel != 'vendedor' && (
+                <DashboardTile
+                  title="Pedidos de stock"
+                  description="Pedidos internos entre sucursales y logística de reposición."
+                  to="/dashboard/stock/pedidos"
+                  icon={FaTruckMoving}
+                  delay={0.2}
+                />
+              )}
 
               <DashboardTile
                 title="Vendedores"
@@ -202,36 +212,43 @@ const AdminPage = () => {
                 delay={0.22}
               />
 
-              <DashboardTile
-                title="Bancos"
-                description="Cuentas bancarias, movimientos y conciliación financiera."
-                to="/dashboard/bancos"
-                icon={FaUniversity}
-                delay={0.24}
-              />
+              <RoleGate allow={['administrativo', 'socio', 'contador']}>
+                <DashboardTile
+                  title="Bancos"
+                  description="Cuentas bancarias, movimientos y conciliación financiera."
+                  to="/dashboard/bancos"
+                  icon={FaUniversity}
+                  delay={0.24}
+                />
+              </RoleGate>
 
-              <DashboardTile
-                title="Cheques"
-                description="Cheques recibidos y emitidos, historial de usos y estados."
-                to="/dashboard/cheques"
-                icon={FaMoneyCheckAlt}
-                delay={0.26}
-              />
-
-              <DashboardTile
-                title="Tesorería"
-                description="Flujo de fondos, caja central y visión global de tesorería."
-                to="/dashboard/tesoreria"
-                icon={FaPiggyBank}
-                delay={0.28}
-              />
-              <DashboardTile
-                title="Clientes"
-                description="ABM de clientes, Fisicos y Jurídicos, ver ultimas compras."
-                to="/dashboard/clientes"
-                icon={FaUserFriends}
-                delay={0.28}
-              />
+              {userLevel != 'vendedor' && (
+                <DashboardTile
+                  title="Cheques"
+                  description="Cheques recibidos y emitidos, historial de usos y estados."
+                  to="/dashboard/cheques"
+                  icon={FaMoneyCheckAlt}
+                  delay={0.26}
+                />
+              )}
+              {userLevel != 'vendedor' && (
+                <DashboardTile
+                  title="Tesorería"
+                  description="Flujo de fondos, caja central y visión global de tesorería."
+                  to="/dashboard/tesoreria"
+                  icon={FaPiggyBank}
+                  delay={0.28}
+                />
+              )}
+              {userLevel != 'vendedor' && (
+                <DashboardTile
+                  title="Clientes"
+                  description="ABM de clientes, Fisicos y Jurídicos, ver ultimas compras."
+                  to="/dashboard/clientes"
+                  icon={FaUserFriends}
+                  delay={0.28}
+                />
+              )}
             </div>
           </div>
         </div>

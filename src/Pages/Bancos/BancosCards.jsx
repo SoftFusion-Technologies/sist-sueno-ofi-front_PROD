@@ -26,6 +26,8 @@ import {
   showConfirmSwal
 } from '../../ui/swal';
 
+import RoleGate from '../../Components/auth/RoleGate';
+
 const useDebounce = (value, ms = 400) => {
   const [deb, setDeb] = useState(value);
   useEffect(() => {
@@ -320,12 +322,14 @@ export default function BancosCards() {
                   <option value="inactivos">Inactivos</option>
                 </select>
 
-                <button
-                  onClick={onNew}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-600 text-white font-semibold hover:bg-teal-700"
-                >
-                  <FaPlus /> Nuevo Banco
-                </button>
+                <RoleGate allow={['socio', 'administrativo']}>
+                  <button
+                    onClick={onNew}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-600 text-white font-semibold hover:bg-teal-700"
+                  >
+                    <FaPlus /> Nuevo Banco
+                  </button>
+                </RoleGate>
               </div>
             </div>
           </div>

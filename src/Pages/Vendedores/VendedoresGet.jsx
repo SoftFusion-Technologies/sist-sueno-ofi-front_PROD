@@ -15,6 +15,9 @@ import ButtonBack from '../../Components/ButtonBack';
 import VendedorModal from '../../Components/VendedorModal';
 import { useAuth } from '../../AuthContext';
 import { useLocation } from 'react-router-dom';
+import axiosWithAuth from '../../utils/axiosWithAuth';
+
+import RoleGate from '../../Components/auth/RoleGate'; 
 
 const VendedoresGet = () => {
   const [vendedores, setVendedores] = useState([]);
@@ -22,17 +25,19 @@ const VendedoresGet = () => {
   const [modalData, setModalData] = useState(null);
   const { userLevel } = useAuth();
 
-    const location = useLocation();
-  
-    useEffect(() => {
-      if (location.state?.abrirModal) {
-        abrirModal(); // Abre el modal automáticamente
-      }
-    }, [location.state]);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.abrirModal) {
+      abrirModal(); // Abre el modal automáticamente
+    }
+  }, [location.state]);
   // Listar vendedores
   const fetchVendedores = async () => {
+    const client = axiosWithAuth();
+
     try {
-      const res = await axios.get('http://localhost:8080/usuarios');
+      const res = await client.get('http://localhost:8080/usuarios');
       setVendedores(res.data.filter((u) => u.rol === 'vendedor'));
     } catch (err) {
       console.error('Error al obtener vendedores:', err);
@@ -76,12 +81,14 @@ const VendedoresGet = () => {
           <h1 className="titulo text-4xl font-extrabold text-center drop-shadow-md uppercase">
             <FaUserTie className="inline-block mr-2" /> Vendedores
           </h1>
-          <button
-            onClick={() => abrirModal()}
-            className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-full shadow-lg transition"
-          >
-            <FaPlusCircle /> Nuevo Vendedor
-          </button>
+          <RoleGate allow={['socio', 'administrativo']}>
+            <button
+              onClick={() => abrirModal()}
+              className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-full shadow-lg transition"
+            >
+              <FaPlusCircle /> Nuevo Vendedor
+            </button>
+          </RoleGate>
         </div>
 
         <div className="flex justify-center mb-8">

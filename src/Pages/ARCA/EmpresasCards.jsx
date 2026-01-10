@@ -27,6 +27,8 @@ import {
   showConfirmSwal
 } from '../../ui/swal';
 
+import RoleGate from '../../Components/auth/RoleGate';
+
 const useDebounce = (value, ms = 400) => {
   const [deb, setDeb] = useState(value);
   useEffect(() => {
@@ -329,12 +331,14 @@ export default function EmpresasCards() {
                   <option value="inactivas">Inactivas</option>
                 </select>
 
-                <button
-                  onClick={onNew}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700"
-                >
-                  <FaPlus /> Nueva empresa
-                </button>
+                <RoleGate allow={['socio', 'administrativo']}>
+                  <button
+                    onClick={onNew}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700"
+                  >
+                    <FaPlus /> Nueva empresa
+                  </button>
+                </RoleGate>
               </div>
             </div>
           </div>

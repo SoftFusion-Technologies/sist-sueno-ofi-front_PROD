@@ -23,8 +23,6 @@ import {
 
 import {
   showSuccessSwal,
-  showWarnSwal,
-  showErrorSwal,
   showConfirmSwal,
   showApiErrorSwal
 } from '../../ui/swal';
@@ -36,6 +34,8 @@ import ConfirmDialog from '../../Components/Common/ConfirmDialog';
 
 import AccountKPICards from '../../Components/Bancos/AccountKPICards';
 import AccountSummaryChart from '../../Components/Bancos/AccountSummaryChart';
+
+import RoleGate from '../../Components/auth/RoleGate';
 
 const useDebounce = (value, ms = 400) => {
   const [deb, setDeb] = useState(value);
@@ -248,7 +248,7 @@ export default function MovimientosCards() {
       }
     }
   };
-  
+
   const onConfirmDelete = async () => {
     try {
       await deleteBancoMovimiento(toDelete.id);
@@ -520,13 +520,14 @@ export default function MovimientosCards() {
 
                 {/* Acciones (9) */}
                 <div className="flex flex-wrap items-center gap-2 lg:col-span-9">
-                  <button
-                    onClick={() => setModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-4 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-lime-500 text-emerald-50 font-semibold shadow-[0_6px_20px_-5px_rgba(16,185,129,0.45)] hover:from-emerald-700 hover:to-lime-600 focus:outline-none focus:ring-2 focus:ring-lime-400"
-                  >
-                    <FaPlus /> Nuevo Movimiento
-                  </button>
-
+                  <RoleGate allow={['socio', 'administrativo']}>
+                    <button
+                      onClick={() => setModalOpen(true)}
+                      className="inline-flex items-center gap-2 px-4 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-lime-500 text-emerald-50 font-semibold shadow-[0_6px_20px_-5px_rgba(16,185,129,0.45)] hover:from-emerald-700 hover:to-lime-600 focus:outline-none focus:ring-2 focus:ring-lime-400"
+                    >
+                      <FaPlus /> Nuevo Movimiento
+                    </button>
+                  </RoleGate>
                   {(q ||
                     bancoId ||
                     cuentaId ||

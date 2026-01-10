@@ -8,6 +8,7 @@ import ParticlesBackground from '../../Components/ParticlesBackground.jsx';
 import BulkUploadButton from '../../Components/BulkUploadButton.jsx';
 import AdminActions from '../../Components/AdminActions';
 import { getUserId } from '../../utils/authUtils';
+import RoleGate from '../../Components/auth/RoleGate';
 
 Modal.setAppElement('#root');
 
@@ -150,15 +151,20 @@ const CategoriasGet = () => {
           <h1 className="text-3xl font-bold text-blue-400 flex items-center gap-2 uppercase">
             <FaFolderOpen /> Categorías
           </h1>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <BulkUploadButton tabla="categorias" onSuccess={fetchCategorias} />
-            <button
-              onClick={() => openModal()}
-              className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
-            >
-              <FaPlus /> Nueva Categoría
-            </button>
-          </div>
+          <RoleGate allow={['socio', 'administrativo']}>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <BulkUploadButton
+                tabla="categorias"
+                onSuccess={fetchCategorias}
+              />
+              <button
+                onClick={() => openModal()}
+                className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+              >
+                <FaPlus /> Nueva Categoría
+              </button>
+            </div>
+          </RoleGate>
         </div>
 
         {/* Filtros */}

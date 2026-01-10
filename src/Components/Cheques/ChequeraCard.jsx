@@ -9,7 +9,7 @@ import {
   FaEye,
   FaRegFolderOpen
 } from 'react-icons/fa';
-
+import RoleGate from '../auth/RoleGate';
 /**
  * ChequeraCard — Microprint/Security v2 (10x)
  * ------------------------------------------------------------------
@@ -316,20 +316,22 @@ export default function ChequeraCard({
             <FaRegFolderOpen className="opacity-90" />{' '}
             <span className="hidden sm:inline">Abrir</span>
           </button>
-          <button
-            onClick={() => onEdit?.(item)}
-            className="group inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold text-zinc-800 dark:text-zinc-100 bg-white hover:bg-zinc-100 active:scale-[0.99] ring-1 ring-zinc-200/70 dark:bg-zinc-800/60 dark:hover:bg-zinc-800 dark:ring-white/10"
-          >
-            <FaEdit className="opacity-90" />{' '}
-            <span className="hidden sm:inline">Editar</span>
-          </button>
-          <button
-            onClick={() => onDelete?.(item)}
-            className="group inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold text-zinc-50 bg-rose-600 hover:bg-rose-700 active:scale-[0.99] ring-1 ring-rose-500/40"
-          >
-            <FaTrash className="opacity-90" />{' '}
-            <span className="hidden sm:inline">Eliminar</span>
-          </button>
+          <RoleGate allow={['socio', 'administrativo']}>
+            <button
+              onClick={() => onEdit?.(item)}
+              className="group inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold text-zinc-800 dark:text-zinc-100 bg-white hover:bg-zinc-100 active:scale-[0.99] ring-1 ring-zinc-200/70 dark:bg-zinc-800/60 dark:hover:bg-zinc-800 dark:ring-white/10"
+            >
+              <FaEdit className="opacity-90" />{' '}
+              <span className="hidden sm:inline">Editar</span>
+            </button>
+            <button
+              onClick={() => onDelete?.(item)}
+              className="group inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold text-zinc-50 bg-rose-600 hover:bg-rose-700 active:scale-[0.99] ring-1 ring-rose-500/40"
+            >
+              <FaTrash className="opacity-90" />{' '}
+              <span className="hidden sm:inline">Eliminar</span>
+            </button>
+          </RoleGate>
         </div>
       </div>
     </motion.div>

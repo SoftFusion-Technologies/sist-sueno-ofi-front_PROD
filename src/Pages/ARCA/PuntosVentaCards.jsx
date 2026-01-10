@@ -28,6 +28,8 @@ import {
   showConfirmSwal
 } from '../../ui/swal';
 
+import RoleGate from '../../Components/auth/RoleGate';
+
 const useDebounce = (value, ms = 400) => {
   const [deb, setDeb] = useState(value);
   useEffect(() => {
@@ -320,13 +322,14 @@ export default function PuntosVentaCards() {
                     className="w-full pl-10 pr-3 py-2 rounded-xl border border-white/20 bg-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-
-                <button
-                  onClick={onNew}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 self-end md:self-auto"
-                >
-                  <FaPlus /> Nuevo punto de venta
-                </button>
+                <RoleGate allow={['socio', 'administrativo']}>
+                  <button
+                    onClick={onNew}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 self-end md:self-auto"
+                  >
+                    <FaPlus /> Nuevo punto de venta
+                  </button>
+                </RoleGate>
               </div>
 
               {/* Fila 2: filtros */}

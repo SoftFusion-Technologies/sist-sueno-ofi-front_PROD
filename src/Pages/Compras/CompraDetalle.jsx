@@ -29,7 +29,7 @@ import axios from 'axios';
 import SearchableSelect from '../../Components/Common/SearchableSelect';
 import { useAuth } from '../../AuthContext';
 import ScrollToTop from '../../Components/ScrollToTop';
-
+import RoleGate from '../../Components/auth/RoleGate';
 // ===== Utils =====
 const pad = (n, width) => (n != null ? String(n).padStart(width, '0') : '');
 const fmtComprobante = (r) => {
@@ -886,18 +886,20 @@ export default function CompraDetalle() {
                         placeholder="Seleccionar estado…"
                       />
                     </div>
-                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={posting}
-                        onClick={confirmar}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
-                        title="Confirmar (c)"
-                      >
-                        <FaCheck className="text-sm" />
-                        <span>Confirmar y generar stock</span>
-                      </button>
-                    </div>
+                    <RoleGate allow={['socio', 'administrativo']}>
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={posting}
+                          onClick={confirmar}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+                          title="Confirmar (c)"
+                        >
+                          <FaCheck className="text-sm" />
+                          <span>Confirmar y generar stock</span>
+                        </button>
+                      </div>
+                    </RoleGate>
                   </div>
                 </div>
               )}
@@ -952,39 +954,41 @@ export default function CompraDetalle() {
         {/* Sticky Actions bottom */}
         <div className="sticky bottom-3 z-20 mt-8">
           <div className="mx-auto max-w-6xl">
-            <div className="flex flex-wrap items-center gap-2 justify-end">
-              {row.estado === 'confirmada' && (
-                <button
-                  disabled={posting}
-                  onClick={anular}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60 shadow-lg"
-                  title="Anular (x)"
-                >
-                  <FaTimes /> Anular
-                </button>
-              )}
-
-              {row.estado === 'borrador' && (
-                <>
+            <RoleGate allow={['socio', 'administrativo']}>
+              <div className="flex flex-wrap items-center gap-2 justify-end">
+                {row.estado === 'confirmada' && (
                   <button
                     disabled={posting}
-                    onClick={confirmar}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 shadow-lg"
-                    title="Confirmar (c)"
+                    onClick={anular}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60 shadow-lg"
+                    title="Anular (x)"
                   >
-                    <FaCheck /> Confirmar
+                    <FaTimes /> Anular
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => openEdit(row.id)}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/90 text-gray-900 ring-1 ring-white/40 hover:-translate-y-0.5 hover:shadow transition"
-                    title="Editar (e)"
-                  >
-                    <FaEdit /> Editar
-                  </button>
-                </>
-              )}
-            </div>
+                )}
+
+                {row.estado === 'borrador' && (
+                  <>
+                    <button
+                      disabled={posting}
+                      onClick={confirmar}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 shadow-lg"
+                      title="Confirmar (c)"
+                    >
+                      <FaCheck /> Confirmar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEdit(row.id)}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/90 text-gray-900 ring-1 ring-white/40 hover:-translate-y-0.5 hover:shadow transition"
+                      title="Editar (e)"
+                    >
+                      <FaEdit /> Editar
+                    </button>
+                  </>
+                )}
+              </div>
+            </RoleGate>
           </div>
         </div>
       </div>

@@ -30,9 +30,6 @@ import ButtonBack from '../../Components/ButtonBack';
 import { formatearPeso } from '../../utils/formatearPeso';
 import {
   X,
-  ChevronRight,
-  CheckCircle2,
-  Wand2,
   CalendarClock,
   Hash,
   ClipboardCopy,
@@ -42,7 +39,7 @@ import {
 import {
   fetchLocales,
   fetchUsuarios,
-  getNombreLocal,
+  // getNombreLocal,
   getInfoLocal,
   getNombreUsuario
 } from '../../utils/utils.js';
@@ -123,7 +120,7 @@ const esVenta = (m) => m.descripcion?.toLowerCase().includes('venta #');
 const copiar = (txt) => navigator.clipboard.writeText(String(txt ?? ''));
 
 export default function CajaPOS() {
-  const { userId, userLocalId } = useAuth();
+  const { userId, userLocalId, userLevel } = useAuth();
 
   const [cajaActual, setCajaActual] = useState(null);
   const [movimientos, setMovimientos] = useState([]);
@@ -194,8 +191,7 @@ export default function CajaPOS() {
         const abierta = res.data.find(
           (c) =>
             // c.usuario_id == userId && misma caja
-            c.local_id == userLocalId &&
-            c.fecha_cierre === null
+            c.local_id == userLocalId && c.fecha_cierre === null
         );
         setCajaActual(abierta || null);
 
@@ -212,7 +208,7 @@ export default function CajaPOS() {
       setCargando(false);
     };
     fetchCaja();
-  }, [ userLocalId]);
+  }, [userLocalId]);
 
   // Cargar historial
   const cargarHistorial = async () => {
@@ -733,64 +729,69 @@ export default function CajaPOS() {
                 </div>
               </div>
               {/* Registrar movimiento manual */}
-              <div className="mt-8">
-                <h3 className="font-bold mb-3 flex gap-2 items-center text-lg text-white">
-                  <FaPlus /> Registrar movimiento manual
-                </h3>
-                <div className="flex flex-wrap gap-2 items-center">
-                  <select
-                    value={nuevoMovimiento.tipo}
-                    onChange={(e) =>
-                      setNuevoMovimiento({
-                        ...nuevoMovimiento,
-                        tipo: e.target.value
-                      })
-                    }
-                    className="rounded-lg p-2 bg-[#232323] text-white border border-emerald-500 focus:ring-emerald-500"
-                  >
-                    <option value="ingreso">Ingreso</option>
-                    <option value="egreso">Egreso</option>
-                  </select>
-                  <input
-                    type="number"
-                    min={0}
-                    value={nuevoMovimiento.monto}
-                    onChange={(e) =>
-                      setNuevoMovimiento({
-                        ...nuevoMovimiento,
-                        monto: e.target.value
-                      })
-                    }
-                    placeholder="Monto"
-                    className="rounded-lg p-2 bg-[#232323] text-white border border-emerald-500 focus:ring-emerald-500"
-                  />
-                  <input
-                    type="text"
-                    value={nuevoMovimiento.descripcion}
-                    onChange={(e) =>
-                      setNuevoMovimiento({
-                        ...nuevoMovimiento,
-                        descripcion: e.target.value
-                      })
-                    }
-                    placeholder="Descripción"
-                    className="rounded-lg p-2 bg-[#232323] text-white border border-emerald-500 focus:ring-emerald-500"
-                    maxLength={70}
-                  />
-                  <button
-                    onClick={registrarMovimiento}
-                    className="bg-emerald-600 px-4 py-2 rounded-lg hover:bg-emerald-700 font-bold shadow-lg transition"
-                  >
-                    <FaPlus />
-                  </button>
+              {userLevel !== 'contador' && (
+                <div className="mt-8">
+                  <h3 className="font-bold mb-3 flex gap-2 items-center text-lg text-white">
+                    <FaPlus /> Registrar movimiento manual
+                  </h3>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <select
+                      value={nuevoMovimiento.tipo}
+                      onChange={(e) =>
+                        setNuevoMovimiento({
+                          ...nuevoMovimiento,
+                          tipo: e.target.value
+                        })
+                      }
+                      className="rounded-lg p-2 bg-[#232323] text-white border border-emerald-500 focus:ring-emerald-500"
+                    >
+                      <option value="ingreso">Ingreso</option>
+                      <option value="egreso">Egreso</option>
+                    </select>
+                    <input
+                      type="number"
+                      min={0}
+                      value={nuevoMovimiento.monto}
+                      onChange={(e) =>
+                        setNuevoMovimiento({
+                          ...nuevoMovimiento,
+                          monto: e.target.value
+                        })
+                      }
+                      placeholder="Monto"
+                      className="rounded-lg p-2 bg-[#232323] text-white border border-emerald-500 focus:ring-emerald-500"
+                    />
+                    <input
+                      type="text"
+                      value={nuevoMovimiento.descripcion}
+                      onChange={(e) =>
+                        setNuevoMovimiento({
+                          ...nuevoMovimiento,
+                          descripcion: e.target.value
+                        })
+                      }
+                      placeholder="Descripción"
+                      className="rounded-lg p-2 bg-[#232323] text-white border border-emerald-500 focus:ring-emerald-500"
+                      maxLength={70}
+                    />
+                    <button
+                      onClick={registrarMovimiento}
+                      className="bg-emerald-600 px-4 py-2 rounded-lg hover:bg-emerald-700 font-bold shadow-lg transition"
+                    >
+                      <FaPlus />
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <button
-                onClick={cerrarCaja}
-                className="w-full mt-8 py-3 rounded-xl font-bold transition bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-700 hover:to-green-800 text-white text-lg flex items-center gap-2 justify-center shadow-2xl"
-              >
-                <FaStop /> Cerrar caja
-              </button>
+              )}
+
+              {userLevel !== 'contador' && (
+                <button
+                  onClick={cerrarCaja}
+                  className="w-full mt-8 py-3 rounded-xl font-bold transition bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-700 hover:to-green-800 text-white text-lg flex items-center gap-2 justify-center shadow-2xl"
+                >
+                  <FaStop /> Cerrar caja
+                </button>
+              )}
             </>
           ) : (
             // No hay caja abierta

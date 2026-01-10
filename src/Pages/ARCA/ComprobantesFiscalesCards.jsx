@@ -29,6 +29,8 @@ import {
   showConfirmSwal
 } from '../../ui/swal';
 
+import RoleGate from '../../Components/auth/RoleGate';
+
 const useDebounce = (value, ms = 400) => {
   const [deb, setDeb] = useState(value);
   useEffect(() => {
@@ -217,113 +219,111 @@ export default function ComprobantesFiscalesCards() {
     setConfirmOpen(true);
   };
 
-const pickErrorInfo = (err) => {
-  const status =
-    err?.status || err?.response?.status || err?.httpStatus || null;
-  const body = err?.body || err?.data || err?.response?.data || null;
+  const pickErrorInfo = (err) => {
+    const status =
+      err?.status || err?.response?.status || err?.httpStatus || null;
+    const body = err?.body || err?.data || err?.response?.data || null;
 
-  const correlationId =
-    body?.correlationId ||
-    err?.correlationId ||
-    body?.meta?.correlationId ||
-    null;
+    const correlationId =
+      body?.correlationId ||
+      err?.correlationId ||
+      body?.meta?.correlationId ||
+      null;
 
-  const mensajeError =
-    body?.mensajeError ||
-    body?.message ||
-    err?.mensajeError ||
-    err?.message ||
-    `Error inesperado${status ? ` (HTTP ${status})` : ''}.`;
+    const mensajeError =
+      body?.mensajeError ||
+      body?.message ||
+      err?.mensajeError ||
+      err?.message ||
+      `Error inesperado${status ? ` (HTTP ${status})` : ''}.`;
 
-  const tips =
-    body?.tips ||
-    err?.tips ||
-    (status === 401 || status === 403
-      ? [
-          'El request no estaría enviando el token.',
-          'Revisá permisos del usuario.'
-        ]
-      : status >= 500
-      ? [
-          'Revisá logs del backend (stacktrace).',
-          'Verificá PV/empresa/token y numeración.'
-        ]
-      : null);
+    const tips =
+      body?.tips ||
+      err?.tips ||
+      (status === 401 || status === 403
+        ? [
+            'El request no estaría enviando el token.',
+            'Revisá permisos del usuario.'
+          ]
+        : status >= 500
+        ? [
+            'Revisá logs del backend (stacktrace).',
+            'Verificá PV/empresa/token y numeración.'
+          ]
+        : null);
 
-  const debug = body
-    ? JSON.stringify(body, null, 2).slice(0, 1500)
-    : (err?.stack || '').slice(0, 1500);
+    const debug = body
+      ? JSON.stringify(body, null, 2).slice(0, 1500)
+      : (err?.stack || '').slice(0, 1500);
 
-  return { status, mensajeError, tips, correlationId, debug };
-};
+    return { status, mensajeError, tips, correlationId, debug };
+  };
 
-const onRetryFacturacion = async (item) => {
-  if (!item?.venta_id) {
-    return showWarnSwal({
-      title: 'Sin venta asociada',
-      text: 'Este comprobante no tiene una venta asociada para reintentar la facturación.'
-    });
-  }
-
-  const res = await showConfirmSwal({
-    title: `¿Reintentar facturación?`,
-    text: `Se reintentará la facturación de la venta #${item.venta_id}.`,
-    confirmText: 'Sí, reintentar'
-  });
-
-
-  try {
-    const data = await reintentarFacturacionVenta(item.venta_id);
-
-    const estado = data?.estado || data?.comprobante?.estado || 'desconocido';
-    const cae = data?.cae || data?.comprobante?.cae || '—';
-    const numero =
-      data?.numero ??
-      data?.comprobante?.numero_comprobante ??
-      data?.comprobante?.numero ??
-      '—';
-
-    if (estado === 'aprobado') {
-      await showSuccessSwal({
-        title: 'Facturación aprobada',
-        text: `Estado: ${String(
-          estado
-        ).toUpperCase()}\nComprobante #${numero}\nCAE: ${cae}`
-      });
-    } else {
-      await showWarnSwal({
-        title: 'Reintento procesado',
-        text: `Estado: ${String(
-          estado
-        ).toUpperCase()}\nComprobante #${numero}\nRevisá el detalle.`,
-        tips: [
-          'Si quedó PENDIENTE, revisá el log WSFE/WSAA y reintentá luego.',
-          'Si quedó RECHAZADO, revisá motivo_rechazo y los datos fiscales.'
-        ]
+  const onRetryFacturacion = async (item) => {
+    if (!item?.venta_id) {
+      return showWarnSwal({
+        title: 'Sin venta asociada',
+        text: 'Este comprobante no tiene una venta asociada para reintentar la facturación.'
       });
     }
 
-    await fetchData();
-  } catch (err) {
-    console.error('[UI][RETRY] error', err);
-    const { mensajeError, tips, correlationId, status, debug } =
-      pickErrorInfo(err);
-
-    await showErrorSwal({
-      title: 'No se pudo reintentar',
-      text: [
-        mensajeError,
-        status ? `HTTP: ${status}` : null,
-        correlationId ? `CorrelationId: ${correlationId}` : null,
-        debug ? `Detalle: ${debug}` : null
-      ]
-        .filter(Boolean)
-        .join('\n'),
-      tips
+    const res = await showConfirmSwal({
+      title: `¿Reintentar facturación?`,
+      text: `Se reintentará la facturación de la venta #${item.venta_id}.`,
+      confirmText: 'Sí, reintentar'
     });
-  }
-};
 
+    try {
+      const data = await reintentarFacturacionVenta(item.venta_id);
+
+      const estado = data?.estado || data?.comprobante?.estado || 'desconocido';
+      const cae = data?.cae || data?.comprobante?.cae || '—';
+      const numero =
+        data?.numero ??
+        data?.comprobante?.numero_comprobante ??
+        data?.comprobante?.numero ??
+        '—';
+
+      if (estado === 'aprobado') {
+        await showSuccessSwal({
+          title: 'Facturación aprobada',
+          text: `Estado: ${String(
+            estado
+          ).toUpperCase()}\nComprobante #${numero}\nCAE: ${cae}`
+        });
+      } else {
+        await showWarnSwal({
+          title: 'Reintento procesado',
+          text: `Estado: ${String(
+            estado
+          ).toUpperCase()}\nComprobante #${numero}\nRevisá el detalle.`,
+          tips: [
+            'Si quedó PENDIENTE, revisá el log WSFE/WSAA y reintentá luego.',
+            'Si quedó RECHAZADO, revisá motivo_rechazo y los datos fiscales.'
+          ]
+        });
+      }
+
+      await fetchData();
+    } catch (err) {
+      console.error('[UI][RETRY] error', err);
+      const { mensajeError, tips, correlationId, status, debug } =
+        pickErrorInfo(err);
+
+      await showErrorSwal({
+        title: 'No se pudo reintentar',
+        text: [
+          mensajeError,
+          status ? `HTTP: ${status}` : null,
+          correlationId ? `CorrelationId: ${correlationId}` : null,
+          debug ? `Detalle: ${debug}` : null
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        tips
+      });
+    }
+  };
 
   const onConfirmDelete = async () => {
     const item = toDelete;
@@ -407,15 +407,16 @@ const onRetryFacturacion = async (item) => {
                     />
                   </div>
                 </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={onNew}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 text-sm shadow-lg"
-                  >
-                    <FaPlus /> Nuevo (Manual)
-                  </button>
-                </div>
+                {/* <RoleGate allow={['socio', 'administrativo']}>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={onNew}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 text-sm shadow-lg"
+                    >
+                      <FaPlus /> Nuevo (Manual)
+                    </button>
+                  </div>
+                </RoleGate> */}
               </div>
 
               {/* Filtros avanzados */}
@@ -452,7 +453,7 @@ const onRetryFacturacion = async (item) => {
                   </select>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 ml-10">
                   <select
                     value={estadoFiltro}
                     onChange={(e) => setEstadoFiltro(e.target.value)}

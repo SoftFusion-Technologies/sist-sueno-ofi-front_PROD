@@ -21,6 +21,7 @@ import { getUserId } from '../../utils/authUtils';
 import ProductoSetupWizard from './Components/ProductoSetupWizard.jsx';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
+import RoleGate from '../../Components/auth/RoleGate';
 
 Modal.setAppElement('#root');
 const BASE_URL = 'http://localhost:8080';
@@ -586,36 +587,38 @@ const ProductosGet = () => {
             </h1>
 
             {/* Botones */}
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              {userLevel === 'socio' && (
+            <RoleGate allow={['socio', 'administrativo']}>
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                {userLevel === 'socio' && (
+                  <button
+                    onClick={() => setShowAjustePrecios(true)}
+                    className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2 text-white"
+                  >
+                    <FaPercentage /> Ajustar Precios
+                  </button>
+                )}
+
+                <BulkUploadButton
+                  tabla="productos"
+                  onSuccess={() => fetchData()} // refrescar lista si lo necesitas
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
+                />
+
                 <button
-                  onClick={() => setShowAjustePrecios(true)}
-                  className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2 text-white"
+                  onClick={() => exportarProductosAExcel(rows)}
+                  className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2 text-white"
                 >
-                  <FaPercentage /> Ajustar Precios
+                  <FaDownload /> Exportar Excel
                 </button>
-              )}
 
-              <BulkUploadButton
-                tabla="productos"
-                onSuccess={() => fetchData()} // refrescar lista si lo necesitas
-                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
-              />
-
-              <button
-                onClick={() => exportarProductosAExcel(rows)}
-                className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2 text-white"
-              >
-                <FaDownload /> Exportar Excel
-              </button>
-
-              <button
-                onClick={() => openModal()}
-                className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 transition px-5 py-2 rounded-xl font-semibold flex items-center gap-2 shadow-lg"
-              >
-                <FaPlus /> Nuevo Producto
-              </button>
-            </div>
+                <button
+                  onClick={() => openModal()}
+                  className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 transition px-5 py-2 rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <FaPlus /> Nuevo Producto
+                </button>
+              </div>
+            </RoleGate>
           </div>
         </div>
 
@@ -954,24 +957,26 @@ const ProductosGet = () => {
                   })}
                 </p>
 
-                <div className="flex items-center gap-2">
-                  {/* Botón duplicar a la izquierda */}
-                  <button
-                    type="button"
-                    onClick={() => handleDuplicarProducto(p)}
-                    className="inline-flex items-center px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-[0.7rem] font-semibold text-white shadow-sm transition"
-                    title="Duplicar producto"
-                  >
-                    <span className="mr-1">⧉</span>
-                    Duplicar
-                  </button>
+                <RoleGate allow={['socio', 'administrativo']}>
+                  <div className="flex items-center gap-2">
+                    {/* Botón duplicar a la izquierda */}
+                    <button
+                      type="button"
+                      onClick={() => handleDuplicarProducto(p)}
+                      className="inline-flex items-center px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-[0.7rem] font-semibold text-white shadow-sm transition"
+                      title="Duplicar producto"
+                    >
+                      <span className="mr-1">⧉</span>
+                      Duplicar
+                    </button>
 
-                  {/* Botones globales (Editar / Eliminar) a la derecha */}
-                  <AdminActions
-                    onEdit={() => openModal(p)}
-                    onDelete={() => handleDelete(p.id)}
-                  />
-                </div>
+                    {/* Botones globales (Editar / Eliminar) a la derecha */}
+                    <AdminActions
+                      onEdit={() => openModal(p)}
+                      onDelete={() => handleDelete(p.id)}
+                    />
+                  </div>
+                </RoleGate>
               </div>
             </motion.div>
           ))}

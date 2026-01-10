@@ -12,6 +12,8 @@ import {
   FaEye
 } from 'react-icons/fa';
 
+import RoleGate from '../auth/RoleGate';
+
 /**
  * BankAccountCard (v3 • "HoloCard")
  * ------------------------------------------------------------------
@@ -115,22 +117,21 @@ export default function BankAccountCard({
     delete: `${buttonBase} from-rose-500/70 to-rose-700/90 hover:from-rose-400 hover:to-rose-700 focus:ring-rose-300`
   };
 
-    const inactive = !item?.activo; // 👈 flag
+  const inactive = !item?.activo; // flag
 
-    // variantes “apagadas” para acciones
-    const buttonDisabledBase =
-      'inline-flex w-full items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border border-white/10 bg-white/20 text-zinc-400 shadow-none pointer-events-none';
-    const buttonVariantsInactive = {
-      view: buttonDisabledBase,
-      edit: buttonDisabledBase,
-      delete: buttonDisabledBase,
-      // 👈 mantener Activar en teal aunque esté inactiva
-      toggle:
-        'inline-flex w-full items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-400'
-    };
+  // variantes “apagadas” para acciones
+  const buttonDisabledBase =
+    'inline-flex w-full items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border border-white/10 bg-white/20 text-zinc-400 shadow-none pointer-events-none';
+  const buttonVariantsInactive = {
+    view: buttonDisabledBase,
+    edit: buttonDisabledBase,
+    delete: buttonDisabledBase,
+    // mantener Activar en teal aunque esté inactiva
+    toggle:
+      'inline-flex w-full items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-400'
+  };
 
-    const bv = inactive ? buttonVariantsInactive : buttonVariants;
-
+  const bv = inactive ? buttonVariantsInactive : buttonVariants;
 
   return (
     <motion.div
@@ -299,31 +300,33 @@ export default function BankAccountCard({
                 <span className="hidden md:inline">Ver</span>
               </button>
 
-              <button
-                onClick={() => onEdit?.(item)}
-                className={buttonVariants.edit}
-              >
-                <FaEdit className="text-sm" />
-                <span className="hidden md:inline">Editar</span>
-              </button>
+              <RoleGate allow={['socio', 'administrativo']}>
+                <button
+                  onClick={() => onEdit?.(item)}
+                  className={buttonVariants.edit}
+                >
+                  <FaEdit className="text-sm" />
+                  <span className="hidden md:inline">Editar</span>
+                </button>
 
-              <button
-                onClick={() => onToggleActivo?.(item)}
-                className={buttonVariants.toggle}
-              >
-                <FaEdit className="text-sm" />
-                <span className="hidden md:inline">
-                  {item?.activo ? 'Desact.' : 'Activar'}
-                </span>
-              </button>
+                <button
+                  onClick={() => onToggleActivo?.(item)}
+                  className={buttonVariants.toggle}
+                >
+                  <FaEdit className="text-sm" />
+                  <span className="hidden md:inline">
+                    {item?.activo ? 'Desact.' : 'Activar'}
+                  </span>
+                </button>
 
-              <button
-                onClick={() => onDelete?.(item)}
-                className={buttonVariants.delete}
-              >
-                <FaTrash className="text-sm" />
-                <span className="hidden md:inline">Eliminar</span>
-              </button>
+                <button
+                  onClick={() => onDelete?.(item)}
+                  className={buttonVariants.delete}
+                >
+                  <FaTrash className="text-sm" />
+                  <span className="hidden md:inline">Eliminar</span>
+                </button>
+              </RoleGate>
             </div>
           </div>
         </div>

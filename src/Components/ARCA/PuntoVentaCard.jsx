@@ -9,6 +9,8 @@ import {
   FaTrash
 } from 'react-icons/fa';
 
+import RoleGate from '../auth/RoleGate';
+
 const StatusPill = ({ activo }) => (
   <span
     className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border transition-colors
@@ -163,30 +165,31 @@ export default function PuntoVentaCard({
             </Field>
             <Field label="Descripción">{item?.descripcion}</Field>
           </div>
-
-          <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-2">
-            <button onClick={() => onEdit?.(item)} className={BTN.edit}>
-              <FaEdit className="text-sm" />
-              <span className="hidden md:inline">Editar</span>
-            </button>
-            <button onClick={() => onDelete?.(item)} className={BTN.del}>
-              <FaTrash className="text-sm" />
-              <span className="hidden md:inline">Eliminar</span>
-            </button>
-            <button
-              onClick={() => onToggleActivo?.(item)}
-              className={BTN.toggle}
-            >
-              {activo ? (
-                <FaTimesCircle className="text-sm" />
-              ) : (
-                <FaCheckCircle className="text-sm" />
-              )}
-              <span className="hidden md:inline">
-                {activo ? 'Desactivar' : 'Activar'}
-              </span>
-            </button>
-          </div>
+          <RoleGate allow={['socio', 'administrativo']}>
+            <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-2">
+              <button onClick={() => onEdit?.(item)} className={BTN.edit}>
+                <FaEdit className="text-sm" />
+                <span className="hidden md:inline">Editar</span>
+              </button>
+              <button onClick={() => onDelete?.(item)} className={BTN.del}>
+                <FaTrash className="text-sm" />
+                <span className="hidden md:inline">Eliminar</span>
+              </button>
+              <button
+                onClick={() => onToggleActivo?.(item)}
+                className={BTN.toggle}
+              >
+                {activo ? (
+                  <FaTimesCircle className="text-sm" />
+                ) : (
+                  <FaCheckCircle className="text-sm" />
+                )}
+                <span className="hidden md:inline">
+                  {activo ? 'Desactivar' : 'Activar'}
+                </span>
+              </button>
+            </div>
+          </RoleGate>
         </div>
       </div>
     </motion.div>

@@ -24,6 +24,7 @@ import {
 
 import { useAuth } from '../../AuthContext';
 
+import RoleGate from '../../Components/auth/RoleGate.jsx';
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
 function buildParams(filters, page, pageSize) {
@@ -51,7 +52,7 @@ function buildParams(filters, page, pageSize) {
 }
 
 export default function MovimientosStock() {
- const { userLevel, userLocalId } = useAuth();
+  const { userLevel, userLocalId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, pageSize: 20 });
@@ -229,15 +230,17 @@ export default function MovimientosStock() {
                 Actualizar
               </button>
 
-              <button
-                onClick={() => setCreateOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl
+              <RoleGate allow={['socio', 'administrativo']}>
+                <button
+                  onClick={() => setCreateOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl
                            bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold
                            hover:brightness-110 transition"
-              >
-                <Plus className="h-4 w-4" />
-                Nuevo movimiento
-              </button>
+                >
+                  <Plus className="h-4 w-4" />
+                  Nuevo movimiento
+                </button>
+              </RoleGate>
             </div>
           </div>
 

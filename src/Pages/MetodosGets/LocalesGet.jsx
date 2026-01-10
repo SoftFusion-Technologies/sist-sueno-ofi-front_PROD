@@ -17,6 +17,7 @@ import Modal from 'react-modal';
 import ParticlesBackground from '../../Components/ParticlesBackground';
 import ButtonBack from '../../Components/ButtonBack';
 import { getUserId } from '../../utils/authUtils';
+import { useAuth } from '../../AuthContext';
 
 Modal.setAppElement('#root');
 
@@ -37,10 +38,19 @@ const defaultFormValues = {
   horario_cierre: '18:00',
   printer_nombre: '',
   estado: 'activo',
-  ticket_config_id: '' // 👈 nuevo campo en el form
+  ticket_config_id: '' // nuevo campo en el form
 };
 
 const LocalesGet = () => {
+  const { userLevel } = useAuth();
+  // Roles que pueden gestionar (ver botón, editar, borrar)
+  const manageRoles = useMemo(() => ['socio', 'administrativo'], []);
+  const canManageUsers = useMemo(() => {
+    return Array.isArray(userLevel)
+      ? userLevel.some((r) => manageRoles.includes(r))
+      : manageRoles.includes(userLevel);
+  }, [userLevel, manageRoles]);
+
   const [data, setData] = useState([]);
   const [meta, setMeta] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -58,7 +68,7 @@ const LocalesGet = () => {
 
   const debouncedQ = useMemo(() => search.trim(), [search]);
 
-  // 👇 ticket configs para el selector
+  // ticket configs para el selector
   const [ticketConfigs, setTicketConfigs] = useState([]);
   const [loadingTickets, setLoadingTickets] = useState(false);
 
@@ -133,6 +143,7 @@ const LocalesGet = () => {
   };
 
   const handleDelete = async (id) => {
+    if (!canManageUsers) return;
     await axios.delete(`${API}/${id}`, { data: { usuario_log_id: usuarioId } });
     if (meta && data.length === 1 && page > 1) {
       setPage((p) => p - 1);
@@ -143,7 +154,7 @@ const LocalesGet = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    if (!canManageUsers) return;
     const payload = {
       ...formValues,
       ticket_config_id: formValues.ticket_config_id
@@ -203,12 +214,14 @@ const LocalesGet = () => {
               corresponde a cada una.
             </p>
           </div>
-          <button
-            onClick={() => openModal()}
-            className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 transition-all px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-emerald-500/30 flex items-center gap-2 text-sm"
-          >
-            <FaPlus /> Nuevo Local
-          </button>
+          {canManageUsers && (
+            <button
+              onClick={() => openModal()}
+              className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 transition-all px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-emerald-500/30 flex items-center gap-2 text-sm"
+            >
+              <FaPlus /> Nuevo Local
+            </button>
+          )}
         </div>
 
         {/* Filtros superiores */}
@@ -463,22 +476,24 @@ const LocalesGet = () => {
                       </div>
 
                       {/* Acciones */}
-                      <div className="mt-4 flex justify-end gap-2">
-                        <button
-                          onClick={() => openModal(local)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-400/40 hover:bg-amber-400/20 flex items-center gap-1"
-                        >
-                          <FaEdit />
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => handleDelete(local.id)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-400/40 hover:bg-rose-400/20 flex items-center gap-1"
-                        >
-                          <FaTrash />
-                          Eliminar
-                        </button>
-                      </div>
+                      {canManageUsers && (
+                        <div className="mt-4 flex justify-end gap-2">
+                          <button
+                            onClick={() => openModal(local)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-400/40 hover:bg-amber-400/20 flex items-center gap-1"
+                          >
+                            <FaEdit />
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDelete(local.id)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-400/40 hover:bg-rose-400/20 flex items-center gap-1"
+                          >
+                            <FaTrash />
+                            Eliminar
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 );

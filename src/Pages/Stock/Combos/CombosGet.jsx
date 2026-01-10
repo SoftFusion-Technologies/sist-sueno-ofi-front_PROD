@@ -16,6 +16,7 @@ import AdminActions from '../../../Components/AdminActions';
 import { formatearPeso } from '../../../utils/formatearPeso';
 import { Link } from 'react-router-dom';
 import { getUserId } from '../../../utils/authUtils';
+import RoleGate from '../../../Components/auth/RoleGate';
 
 Modal.setAppElement('#root');
 
@@ -202,12 +203,14 @@ const CombosGet = () => {
           <h1 className="text-3xl font-bold text-purple-400 flex items-center gap-2 uppercase">
             <FaGift /> Combos
           </h1>
-          <button
-            onClick={() => openModal()}
-            className="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
-          >
-            <FaPlus /> Nuevo Combo
-          </button>
+          <RoleGate allow={['socio', 'administrativo']}>
+            <button
+              onClick={() => openModal()}
+              className="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+            >
+              <FaPlus /> Nuevo Combo
+            </button>
+          </RoleGate>
         </div>
 
         <input
@@ -387,12 +390,14 @@ const CombosGet = () => {
                 onEdit={() => openModal(combo)}
                 onDelete={() => handleDelete(combo.id)}
               />
-              <Link
-                to={`/dashboard/stock/combos/${combo.id}/permitidos`}
-                className="text-sm  inline-block text-purple-300 hover:text-purple-500 font-semibold"
-              >
-                Editar productos permitidos
-              </Link>
+              <RoleGate allow={['socio', 'administrativo']}>
+                <Link
+                  to={`/dashboard/stock/combos/${combo.id}/permitidos`}
+                  className="text-sm  inline-block text-purple-300 hover:text-purple-500 font-semibold"
+                >
+                  Editar productos permitidos
+                </Link>
+              </RoleGate>
             </motion.div>
           ))}
         </motion.div>

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../../AuthContext';
 import ParticlesBackground from '../../Components/ParticlesBackground';
 import ButtonBack from '../../Components/ButtonBack';
+import RoleGate from '../../Components/auth/RoleGate';
 
 export default function DevolucionesPage() {
   const [devoluciones, setDevoluciones] = useState([]);
@@ -174,12 +175,14 @@ export default function DevolucionesPage() {
               onChange={(e) => setFechaFiltro(e.target.value)}
               className="bg-[#2a254b] text-white border border-violet-500 rounded-xl px-4 py-2 w-full md:w-1/3 focus:outline-none focus:ring-2 focus:ring-cyan-400"
             />
-            <button
-              onClick={() => setModalOpen(true)}
-              className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-600 hover:to-violet-700 text-white font-bold px-6 py-2 rounded-xl shadow-xl transition-transform hover:scale-105"
-            >
-              + Nueva Devolución
-            </button>
+            <RoleGate allow={['socio', 'administrativo']}>
+              <button
+                onClick={() => setModalOpen(true)}
+                className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-600 hover:to-violet-700 text-white font-bold px-6 py-2 rounded-xl shadow-xl transition-transform hover:scale-105"
+              >
+                + Nueva Devolución
+              </button>
+            </RoleGate>
           </div>
         </div>
 

@@ -42,7 +42,7 @@ import { useAuth } from '../../AuthContext';
 import NavbarStaff from '../Dash/NavbarStaff';
 import ParticlesBackground from '../../Components/ParticlesBackground';
 import ButtonBack from '../../Components/ButtonBack';
-
+import RoleGate from '../../Components/auth/RoleGate';
 // ================== CONFIG ==================
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -474,28 +474,30 @@ function QuickActions({ estado, onChangeEstado, onCancelar }) {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-      <div className="mb-2 text-[11px] uppercase tracking-wide text-slate-500">
-        Acciones rápidas
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {options.map((opt) => (
-          <button
-            key={opt}
-            onClick={() => onChangeEstado(opt)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 hover:bg-slate-50"
-          >
-            Marcar {ESTADO_CONFIG[opt]?.label || opt}
-          </button>
-        ))}
-        {!['entregado', 'cancelado'].includes(estado) && (
-          <button
-            onClick={onCancelar}
-            className="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50"
-          >
-            Cancelar pedido
-          </button>
-        )}
-      </div>
+      <RoleGate allow={['socio', 'administrativo']}>
+        <div className="mb-2 text-[11px] uppercase tracking-wide text-slate-500">
+          Acciones rápidas
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => onChangeEstado(opt)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 hover:bg-slate-50"
+            >
+              Marcar {ESTADO_CONFIG[opt]?.label || opt}
+            </button>
+          ))}
+          {!['entregado', 'cancelado'].includes(estado) && (
+            <button
+              onClick={onCancelar}
+              className="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50"
+            >
+              Cancelar pedido
+            </button>
+          )}
+        </div>
+      </RoleGate>
     </div>
   );
 }
@@ -826,22 +828,25 @@ function PedidoCard({
             <FaEye className="text-[10px]" />
             Ver
           </button>
-          <button
-            onClick={onEditarCantidades}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-800 hover:bg-slate-50"
-          >
-            <FaEdit className="text-[10px]" />
-            Cantidades
-          </button>
-          <button
-            onClick={onCancelar}
-            disabled={['entregado', 'cancelado'].includes(row.estado)}
-            className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-[11px] text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <FaTrash className="text-[10px]" />
-            Cancelar
-          </button>
-          <EstadoMenu row={row} onChangeEstado={onCambiarEstado} />
+          <RoleGate allow={['socio', 'administrativo']}>
+            <button
+              onClick={onEditarCantidades}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-800 hover:bg-slate-50"
+            >
+              <FaEdit className="text-[10px]" />
+              Cantidades
+            </button>
+            <button
+              onClick={onCancelar}
+              disabled={['entregado', 'cancelado'].includes(row.estado)}
+              className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-[11px] text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <FaTrash className="text-[10px]" />
+              Cancelar
+            </button>
+
+            <EstadoMenu row={row} onChangeEstado={onCambiarEstado} />
+          </RoleGate>
         </div>
       </div>
     </motion.article>
@@ -1579,20 +1584,21 @@ export default function PedidosStockPanel() {
               Pedidos entre sucursales
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              Gestioná las transferencias de productos entre locales con una
-              vista clara y liviana.
+              Gestioná las transferencias de productos entre locales.
             </p>
           </div>
-          <motion.button
-            type="button"
-            onClick={openCreateModal}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
-          >
-            <FaPlus className="text-xs" />
-            Nuevo pedido
-          </motion.button>
+          <RoleGate allow={['socio', 'administrativo']}>
+            <motion.button
+              type="button"
+              onClick={openCreateModal}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+            >
+              <FaPlus className="text-xs" />
+              Nuevo pedido
+            </motion.button>
+          </RoleGate>
         </div>
 
         {/* FILTROS */}
@@ -1921,14 +1927,16 @@ export default function PedidosStockPanel() {
                   <Stat label="Enviada" value={detailItem.cantidad_enviada} />
                   <Stat label="Recibida" value={detailItem.cantidad_recibida} />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => openQtyModal(detailItem)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 hover:bg-slate-50"
-                >
-                  <FaEdit className="text-[10px]" />
-                  Editar cantidades
-                </button>
+                <RoleGate allow={['socio', 'administrativo']}>
+                  <button
+                    type="button"
+                    onClick={() => openQtyModal(detailItem)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 hover:bg-slate-50"
+                  >
+                    <FaEdit className="text-[10px]" />
+                    Editar cantidades
+                  </button>
+                </RoleGate>
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">

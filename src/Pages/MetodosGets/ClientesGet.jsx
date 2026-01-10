@@ -46,6 +46,7 @@ import {
   getNombreLocal
 } from '../../utils/utils.js';
 import Swal from 'sweetalert2';
+import RoleGate from '../../Components/auth/RoleGate.jsx';
 
 Modal.setAppElement('#root');
 
@@ -458,14 +459,15 @@ export default function ClientesGet() {
             <FaUserFriends className="text-emerald-300 drop-shadow-lg" />
             Gestión de Clientes
           </motion.h1>
-
-          <motion.button
-            onClick={() => openModal()}
-            className="text-white bg-emerald-500 hover:bg-emerald-600 px-6 py-3 rounded-2xl font-semibold flex items-center gap-2 shadow-lg transition-colors active:scale-95"
-            whileHover={{ scale: 1.02 }}
-          >
-            <FaPlus /> Nuevo Cliente
-          </motion.button>
+          <RoleGate allow={['socio', 'administrativo']}>
+            <motion.button
+              onClick={() => openModal()}
+              className="text-white bg-emerald-500 hover:bg-emerald-600 px-6 py-3 rounded-2xl font-semibold flex items-center gap-2 shadow-lg transition-colors active:scale-95"
+              whileHover={{ scale: 1.02 }}
+            >
+              <FaPlus /> Nuevo Cliente
+            </motion.button>
+          </RoleGate>
         </div>
 
         {/* KPIs */}

@@ -24,10 +24,11 @@ import ChequeraChequesModal from '../../Components/Cheques/ChequeraChequesModal'
 import {
   showApiErrorSwal,
   showErrorSwal,
-  showWarnSwal,
   showSuccessSwal,
   showConfirmSwal
 } from '../../ui/swal';
+
+import RoleGate from '../../Components/auth/RoleGate';
 
 const useDebounce = (value, ms = 400) => {
   const [deb, setDeb] = useState(value);
@@ -392,14 +393,16 @@ export default function ChequerasCards() {
                 <option value="anulada">anulada</option>
               </select>
 
-              <div className="flex items-center gap-2 lg:col-span-2">
-                <button
-                  onClick={onNew}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 w-full"
-                >
-                  <FaPlus /> Nueva
-                </button>
-              </div>
+              <RoleGate allow={['socio', 'administrativo']}>
+                <div className="flex items-center gap-2 lg:col-span-2">
+                  <button
+                    onClick={onNew}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 w-full"
+                  >
+                    <FaPlus /> Nueva
+                  </button>
+                </div>
+              </RoleGate>
             </div>
           </div>
 

@@ -6,6 +6,7 @@ import { FaMapMarkerAlt, FaPlus } from 'react-icons/fa';
 import ButtonBack from '../../Components/ButtonBack';
 import ParticlesBackground from '../../Components/ParticlesBackground';
 import AdminActions from '../../Components/AdminActions';
+import RoleGate from '../../Components/auth/RoleGate';
 
 Modal.setAppElement('#root');
 
@@ -176,13 +177,14 @@ const LugaresGet = () => {
                 className="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
-
-            <button
-              onClick={() => openModal()}
-              className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
-            >
-              <FaPlus /> Nuevo Lugar
-            </button>
+            <RoleGate allow={['socio', 'administrativo']}>
+              <button
+                onClick={() => openModal()}
+                className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
+              >
+                <FaPlus /> Nuevo Lugar
+              </button>
+            </RoleGate>
           </div>
         </div>
 

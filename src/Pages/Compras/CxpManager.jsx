@@ -32,6 +32,7 @@ import NavbarStaff from '../Dash/NavbarStaff';
 import ButtonBack from '../../Components/ButtonBack';
 import ParticlesBackground from '../../Components/ParticlesBackground';
 
+import RoleGate from '../../Components/auth/RoleGate';
 // ===============================
 // UI tokens
 // ===============================
@@ -441,7 +442,7 @@ export default function CxpManager() {
                             Saldo <ArrowUpDown className="h-3.5 w-3.5" />
                           </button>
                         </th>
-                        <th className="px-4 py-3">Estado / Acciones</th>
+                          <th className="px-4 py-3">Estado / Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/50 dark:divide-slate-800/60 text-slate-800 dark:text-slate-100">

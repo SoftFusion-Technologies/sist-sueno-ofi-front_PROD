@@ -12,25 +12,25 @@ const linksDef = [
     id: 1,
     href: 'dashboard',
     title: 'Dashboard',
-    roles: ['socio', 'empleado']
+    roles: ['socio', 'administrativo', 'empleado', 'contador']
   },
   {
     id: 2,
     href: 'dashboard/usuarios',
     title: 'Usuarios',
-    roles: ['socio', 'administrador']
+    roles: ['socio', 'contador']
   },
   {
     id: 3,
     href: 'dashboard/locales',
     title: 'Locales',
-    roles: ['socio', 'administrador']
+    roles: ['socio', 'contador', 'administrativo']
   },
   {
     id: 4,
     href: 'dashboard/logs',
     title: 'Log de Detalle',
-    roles: ['socio', 'administrador']
+    roles: ['socio', 'contador']
   }
 ];
 
@@ -217,7 +217,7 @@ const NavbarStaff = () => {
                         {displayUserName || 'Usuario'}
                       </p>
                       <p className="text-[11px] text-white/40 capitalize">
-                        Rol: {userLevel || '—'}
+                        Rol actual: {userLevel || '—'}
                       </p>
                     </div>
                     <div className="my-2 h-px bg-white/10" />

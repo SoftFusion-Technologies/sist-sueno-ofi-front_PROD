@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import NavbarStaff from '../Dash/NavbarStaff';
 import '../../Styles/staff/dashboard.css';
@@ -12,7 +12,7 @@ import {
   FaChartBar,
   FaPlusCircle,
   FaListAlt,
-  FaMedal
+  FaLock
 } from 'react-icons/fa';
 
 const vendedoresLinks = [
@@ -27,12 +27,15 @@ const vendedoresLinks = [
     icon: <FaChartBar />
   },
   {
+    // “Agregar” abre modal en listado
     to: {
       pathname: '/dashboard/vendedores/listado',
       state: { abrirModal: true }
     },
     label: 'Agregar Vendedor',
-    icon: <FaPlusCircle />
+    icon: <FaPlusCircle />,
+    disableFor: ['contador'],
+    disabledText: 'Bloqueado'
   },
   {
     to: '/dashboard/vendedores/estadisticas',
@@ -43,6 +46,11 @@ const vendedoresLinks = [
 
 const AdminPageVendedores = () => {
   const { userLevel } = useAuth();
+
+  const roles = useMemo(
+    () => (Array.isArray(userLevel) ? userLevel : [userLevel]),
+    [userLevel]
+  );
 
   return (
     <>
@@ -64,24 +72,62 @@ const AdminPageVendedores = () => {
 
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 justify-center">
-              {vendedoresLinks.map(({ to, label, icon }, index) => (
-                <Link
-                  to={typeof to === 'string' ? to : to.pathname}
-                  state={to.state || {}}
-                  key={label}
-                  className="flex justify-center"
-                >
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.4, delay: index * 0.1 }}
-                    className="bg-white/90 backdrop-blur-xl shadow-lg hover:shadow-purple-400 transition-all duration-300 text-gray-800 font-semibold text-lg rounded-2xl w-full max-w-xs p-6 flex flex-col items-center justify-center border border-white/20 hover:scale-[1.03] gap-3"
-                  >
-                    <span className="text-4xl text-purple-600">{icon}</span>
-                    <span className="text-center">{label}</span>
-                  </motion.div>
-                </Link>
-              ))}
+              {vendedoresLinks.map(
+                ({ to, label, icon, disableFor, disabledText }, index) => {
+                  const isDisabled =
+                    Array.isArray(disableFor) &&
+                    disableFor.some((r) => roles.includes(r));
+
+                  const Card = (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.4, delay: index * 0.1 }}
+                      className={[
+                        'relative bg-white/90 backdrop-blur-xl shadow-lg transition-all duration-300 text-gray-800 font-semibold text-lg rounded-2xl w-full max-w-xs p-6 flex flex-col items-center justify-center border border-white/20 gap-3',
+                        isDisabled
+                          ? 'opacity-55 cursor-not-allowed'
+                          : 'hover:shadow-purple-400 hover:scale-[1.03]'
+                      ].join(' ')}
+                      aria-disabled={isDisabled}
+                      title={isDisabled ? disabledText || 'Bloqueado' : ''}
+                    >
+                      <span
+                        className={[
+                          'text-4xl',
+                          isDisabled ? 'text-gray-400' : 'text-purple-600'
+                        ].join(' ')}
+                      >
+                        {icon}
+                      </span>
+
+                      <span className="text-center">{label}</span>
+
+                      {isDisabled && (
+                        <div className="absolute top-3 right-3 inline-flex items-center gap-2 rounded-full bg-black/10 px-3 py-1 text-xs font-extrabold text-gray-700">
+                          <FaLock />
+                          {disabledText || 'Bloqueado'}
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+
+                  // Si está deshabilitado, no navegamos
+                  if (isDisabled) return <div key={label}>{Card}</div>;
+
+                  // Navegación normal (string o pathname + state)
+                  return (
+                    <Link
+                      to={typeof to === 'string' ? to : to.pathname}
+                      state={typeof to === 'string' ? {} : to.state || {}}
+                      key={label}
+                      className="flex justify-center"
+                    >
+                      {Card}
+                    </Link>
+                  );
+                }
+              )}
             </div>
           </div>
         </div>

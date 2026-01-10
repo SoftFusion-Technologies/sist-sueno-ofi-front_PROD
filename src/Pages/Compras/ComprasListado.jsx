@@ -37,6 +37,7 @@ import NavbarStaff from '../Dash/NavbarStaff';
 import ButtonBack from '../../Components/ButtonBack';
 import ParticlesBackground from '../../Components/ParticlesBackground';
 
+import RoleGate from '../../Components/auth/RoleGate';
 // ===== Constantes =====
 const ESTADOS = [
   { value: '', label: 'Todos' },
@@ -561,22 +562,24 @@ export default function ComprasListado() {
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => exportCSV()}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/90 text-gray-900 font-semibold shadow-sm ring-1 ring-white/40 hover:shadow-md hover:-translate-y-0.5 transition"
-                >
-                  <FaDownload className="text-emerald-600" /> Exportar CSV
-                </motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setOpen(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white text-gray-900 font-semibold shadow-sm ring-1 ring-white/40 hover:shadow-md hover:-translate-y-0.5 transition"
-                >
-                  <FaPlusCircle className="text-emerald-600" /> Nueva Compra
-                </motion.button>
-              </div>
+              <RoleGate allow={['socio', 'administrativo']}>
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => exportCSV()}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/90 text-gray-900 font-semibold shadow-sm ring-1 ring-white/40 hover:shadow-md hover:-translate-y-0.5 transition"
+                  >
+                    <FaDownload className="text-emerald-600" /> Exportar CSV
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white text-gray-900 font-semibold shadow-sm ring-1 ring-white/40 hover:shadow-md hover:-translate-y-0.5 transition"
+                  >
+                    <FaPlusCircle className="text-emerald-600" /> Nueva Compra
+                  </motion.button>
+                </div>
+              </RoleGate>
             </div>
 
             {/* KPIs cinta quick */}
@@ -857,14 +860,20 @@ export default function ComprasListado() {
                                       >
                                         <FaEye /> Ver
                                       </Link>
-                                      {r.estado === 'borrador' && (
-                                        <button
-                                          onClick={() => onDeleteBorrador(r.id)}
-                                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-rose-300 text-rose-700 hover:bg-rose-50"
-                                        >
-                                          <FaTrash /> Eliminar
-                                        </button>
-                                      )}
+                                      <RoleGate
+                                        allow={['socio', 'administrativo']}
+                                      >
+                                        {r.estado === 'borrador' && (
+                                          <button
+                                            onClick={() =>
+                                              onDeleteBorrador(r.id)
+                                            }
+                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-rose-300 text-rose-700 hover:bg-rose-50"
+                                          >
+                                            <FaTrash /> Eliminar
+                                          </button>
+                                        )}
+                                      </RoleGate>
                                     </div>
                                   </td>
                                 </motion.tr>
@@ -934,14 +943,16 @@ export default function ComprasListado() {
                                 >
                                   <FaEye /> Ver
                                 </Link>
-                                {r.estado === 'borrador' && (
-                                  <button
-                                    onClick={() => onDeleteBorrador(r.id)}
-                                    className="text-rose-600 hover:text-rose-800 inline-flex items-center gap-1"
-                                  >
-                                    <FaTrash /> Eliminar
-                                  </button>
-                                )}
+                                <RoleGate allow={['socio', 'administrativo']}>
+                                  {r.estado === 'borrador' && (
+                                    <button
+                                      onClick={() => onDeleteBorrador(r.id)}
+                                      className="text-rose-600 hover:text-rose-800 inline-flex items-center gap-1"
+                                    >
+                                      <FaTrash /> Eliminar
+                                    </button>
+                                  )}
+                                </RoleGate>
                               </div>
                             </motion.div>
                           ))}

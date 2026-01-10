@@ -6,6 +6,7 @@ import { FaFlag, FaPlus } from 'react-icons/fa';
 import ButtonBack from '../../Components/ButtonBack';
 import ParticlesBackground from '../../Components/ParticlesBackground';
 import AdminActions from '../../Components/AdminActions';
+import RoleGate from '../../Components/auth/RoleGate';
 
 Modal.setAppElement('#root');
 
@@ -170,13 +171,14 @@ const EstadosGet = () => {
                 className="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
               />
             </div>
-
-            <button
-              onClick={() => openModal()}
-              className="bg-pink-500 hover:bg-pink-600 px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
-            >
-              <FaPlus /> Nuevo Estado
-            </button>
+            <RoleGate allow={['socio', 'administrativo']}>
+              <button
+                onClick={() => openModal()}
+                className="bg-pink-500 hover:bg-pink-600 px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
+              >
+                <FaPlus /> Nuevo Estado
+              </button>
+            </RoleGate>
           </div>
         </div>
 

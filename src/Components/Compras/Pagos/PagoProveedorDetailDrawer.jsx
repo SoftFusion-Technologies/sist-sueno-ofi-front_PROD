@@ -32,6 +32,7 @@ import {
   fieldV
 } from '../../../ui/animHelpers';
 
+import RoleGate from '../../auth/RoleGate';
 const glass = 'bg-white/10 backdrop-blur-xl';
 const ring = 'ring-1 ring-white/10';
 
@@ -376,23 +377,24 @@ export default function PagoProveedorDetailDrawer({
                 </div>
 
                 {/* Acciones header */}
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => setOpenAplicar(true)}
-                    disabled={loading || disponible <= 0 || isAnulado}
-                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl
+                <RoleGate allow={['socio', 'administrativo']}>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => setOpenAplicar(true)}
+                      disabled={loading || disponible <= 0 || isAnulado}
+                      className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl
                                 ${glass} ${ring} text-white hover:bg-white/20 transition
                                 disabled:opacity-50 disabled:cursor-not-allowed`}
-                    title={
-                      disponible <= 0
-                        ? 'Sin saldo disponible para aplicar'
-                        : 'Agregar aplicaciones'
-                    }
-                  >
-                    <Plus className="h-4 w-4" /> Agregar aplicaciones
-                  </button>
+                      title={
+                        disponible <= 0
+                          ? 'Sin saldo disponible para aplicar'
+                          : 'Agregar aplicaciones'
+                      }
+                    >
+                      <Plus className="h-4 w-4" /> Agregar aplicaciones
+                    </button>
 
-                  {/* <button
+                    {/* <button
                     onClick={onDeletePago}
                     disabled={
                       loading || (aplicaciones?.length || 0) > 0 || isAnulado
@@ -409,29 +411,31 @@ export default function PagoProveedorDetailDrawer({
                     <Trash2 className="h-4 w-4" /> Eliminar
                   </button> */}
 
-                  <button
-                    onClick={onAnularPago}
-                    disabled={loading || (aplicaciones?.length || 0) > 0}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl
+                    <button
+                      onClick={onAnularPago}
+                      disabled={loading || (aplicaciones?.length || 0) > 0}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl
              border border-rose-300/50 text-rose-200 hover:bg-rose-500/10 transition
              disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={
-                      (aplicaciones?.length || 0) > 0
-                        ? 'No se puede anular con aplicaciones, primero quitá todas'
-                        : 'Anular pago y revertir caja'
-                    }
-                  >
-                    <Trash2 className="h-4 w-4" /> Anular pago
-                  </button>
+                      title={
+                        (aplicaciones?.length || 0) > 0
+                          ? 'No se puede anular con aplicaciones, primero quitá todas'
+                          : 'Anular pago y revertir caja'
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" /> Anular pago
+                    </button>
 
-                  <button
-                    onClick={refreshSelf}
-                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl ${glass} ${ring} text-white hover:bg-white/20`}
-                    title="Refrescar"
-                  >
-                    <Loader2 className="h-4 w-4 animate-spin-slow" /> Refrescar
-                  </button>
-                </div>
+                    <button
+                      onClick={refreshSelf}
+                      className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl ${glass} ${ring} text-white hover:bg-white/20`}
+                      title="Refrescar"
+                    >
+                      <Loader2 className="h-4 w-4 animate-spin-slow" />{' '}
+                      Refrescar
+                    </button>
+                  </div>
+                </RoleGate>
               </div>
 
               {/* Body scrollable */}
@@ -510,7 +514,9 @@ export default function PagoProveedorDetailDrawer({
                             <th className="px-3 py-2 text-left">CxP</th>
                             <th className="px-3 py-2 text-left">Vencimiento</th>
                             <th className="px-3 py-2 text-left">Aplicado</th>
-                            <th className="px-3 py-2 text-left">Acciones</th>
+                            <RoleGate allow={['socio', 'administrativo']}>
+                              <th className="px-3 py-2 text-left">Acciones</th>
+                            </RoleGate>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/10">
@@ -533,17 +539,19 @@ export default function PagoProveedorDetailDrawer({
                               <td className="px-3 py-2 font-semibold">
                                 {moneyAR(a.monto_aplicado || a.monto)}
                               </td>
-                              <td className="px-3 py-2">
-                                <button
-                                  onClick={() => onDesaplicar(pago.id, a.id)} // 👈 pago.id y a.id
-                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-white/10 hover:bg-white/10 transition"
-                                  title="Desaplicar"
-                                  disabled={isAnulado}
-                                >
-                                  <ArrowRight className="h-4 w-4 rotate-180" />
-                                  Quitar
-                                </button>
-                              </td>
+                              <RoleGate allow={['socio', 'administrativo']}>
+                                <td className="px-3 py-2">
+                                  <button
+                                    onClick={() => onDesaplicar(pago.id, a.id)} // 👈 pago.id y a.id
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-white/10 hover:bg-white/10 transition"
+                                    title="Desaplicar"
+                                    disabled={isAnulado}
+                                  >
+                                    <ArrowRight className="h-4 w-4 rotate-180" />
+                                    Quitar
+                                  </button>
+                                </td>
+                              </RoleGate>
                             </tr>
                           ))}
                         </tbody>

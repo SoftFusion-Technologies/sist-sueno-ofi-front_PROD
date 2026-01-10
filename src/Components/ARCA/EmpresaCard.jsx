@@ -8,7 +8,7 @@ import {
   FaEdit,
   FaTrash
 } from 'react-icons/fa';
-
+import RoleGate from '../auth/RoleGate';
 const StatusPill = ({ estado }) => {
   const active = estado === 'activa';
   return (
@@ -155,31 +155,33 @@ export default function EmpresaCard({
             <Field label="Teléfono">{item?.telefono}</Field>
           </div>
 
-          <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-2">
-            <button onClick={() => onEdit?.(item)} className={BTN.edit}>
-              <FaEdit className="text-sm" />
-              <span className="hidden md:inline">Editar</span>
-            </button>
-            <button onClick={() => onDelete?.(item)} className={BTN.del}>
-              <FaTrash className="text-sm" />
-              <span className="hidden md:inline">Eliminar</span>
-            </button>
-            <button
-              onClick={() => onToggleEstado?.(item)}
-              className={BTN.toggle}
-            >
-              {item?.estado === 'activa' ? (
-                <FaTimesCircle className="text-sm" />
-              ) : (
-                <FaCheckCircle className="text-sm" />
-              )}
-              <span className="hidden md:inline">
-                {item?.estado === 'activa'
-                  ? 'Marcar inactiva'
-                  : 'Marcar activa'}
-              </span>
-            </button>
-          </div>
+          <RoleGate allow={['socio', 'administrativo']}>
+            <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-2">
+              <button onClick={() => onEdit?.(item)} className={BTN.edit}>
+                <FaEdit className="text-sm" />
+                <span className="hidden md:inline">Editar</span>
+              </button>
+              <button onClick={() => onDelete?.(item)} className={BTN.del}>
+                <FaTrash className="text-sm" />
+                <span className="hidden md:inline">Eliminar</span>
+              </button>
+              <button
+                onClick={() => onToggleEstado?.(item)}
+                className={BTN.toggle}
+              >
+                {item?.estado === 'activa' ? (
+                  <FaTimesCircle className="text-sm" />
+                ) : (
+                  <FaCheckCircle className="text-sm" />
+                )}
+                <span className="hidden md:inline">
+                  {item?.estado === 'activa'
+                    ? 'Marcar inactiva'
+                    : 'Marcar activa'}
+                </span>
+              </button>
+            </div>
+          </RoleGate>
         </div>
       </div>
     </motion.div>

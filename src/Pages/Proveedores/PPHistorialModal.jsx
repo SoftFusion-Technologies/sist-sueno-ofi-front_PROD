@@ -9,7 +9,7 @@ import {
   Clock,
   ChevronDown
 } from 'lucide-react';
-import { useAuth } from '../../AuthContext';
+import RoleGate from '../../Components/auth/RoleGate';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -483,23 +483,25 @@ export default function PPHistorialModal({
                         }
                         className="h-4 w-4 rounded border-white/20 bg-black text-emerald-500 focus:ring-emerald-500"
                       />
-                      Aplicar estos valores al vínculo actual
-                      (producto_proveedor)
+                      Aplicar estos valores al vínculo actual (Producto
+                      Proveedor)
                     </label>
                   </div>
 
-                  <button
-                    onClick={handleCreate}
-                    disabled={!ppId || hLoading}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm bg-emerald-500/90 hover:bg-emerald-500 text-black disabled:opacity-50"
-                  >
-                    {hLoading ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Plus size={16} />
-                    )}
-                    Registrar historial
-                  </button>
+                  <RoleGate allow={['socio', 'administrativo']}>
+                    <button
+                      onClick={handleCreate}
+                      disabled={!ppId || hLoading}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm bg-emerald-500/90 hover:bg-emerald-500 text-black disabled:opacity-50"
+                    >
+                      {hLoading ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Plus size={16} />
+                      )}
+                      Registrar historial
+                    </button>
+                  </RoleGate>
                 </div>
               </div>
 
@@ -515,7 +517,9 @@ export default function PPHistorialModal({
                       <div className="px-3 py-2">Desc.</div>
                       <div className="px-3 py-2 hidden md:block">Motivo</div>
                       <div className="px-3 py-2 hidden md:block">Obs.</div>
-                      <div className="px-3 py-2 text-right">Acciones</div>
+                      <RoleGate allow={['socio', 'administrativo']}>
+                        <div className="px-3 py-2 text-right">Acciones</div>
+                      </RoleGate>
                     </div>
 
                     <div className="divide-y divide-white/10">
@@ -560,14 +564,16 @@ export default function PPHistorialModal({
                             <div className="px-3 py-2 hidden md:block text-gray-400 truncate">
                               {h.observaciones || '—'}
                             </div>
-                            <div className="px-3 py-2 text-right">
-                              <button
-                                onClick={() => handleDelete(h.id)}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs border border-red-400 text-red-200 hover:bg-red-600/10"
-                              >
-                                <Trash2 size={14} /> Eliminar
-                              </button>
-                            </div>
+                            <RoleGate allow={['socio', 'administrativo']}>
+                              <div className="px-3 py-2 text-right">
+                                <button
+                                  onClick={() => handleDelete(h.id)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs border border-red-400 text-red-200 hover:bg-red-600/10"
+                                >
+                                  <Trash2 size={14} /> Eliminar
+                                </button>
+                              </div>
+                            </RoleGate>
                           </div>
                         ))
                       )}

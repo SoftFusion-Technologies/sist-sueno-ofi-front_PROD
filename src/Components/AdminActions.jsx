@@ -6,7 +6,7 @@ import { FaEdit, FaTrash } from 'react-icons/fa';
 export default function AdminActions({ onEdit, onDelete }) {
   const { userLevel } = useAuth();
 
-  if (userLevel !== 'socio') return null;
+  if (userLevel !== 'socio' && userLevel !== 'administrativo') return null;
 
   return (
     <div className="flex items-center gap-2">

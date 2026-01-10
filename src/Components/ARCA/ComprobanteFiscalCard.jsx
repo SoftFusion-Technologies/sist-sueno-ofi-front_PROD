@@ -12,6 +12,8 @@ import {
   FaBuilding
 } from 'react-icons/fa';
 
+import RoleGate from '../auth/RoleGate';
+
 const estadoConfig = {
   pendiente: {
     label: 'Pendiente',
@@ -183,40 +185,42 @@ export default function ComprobanteFiscalCard({
               <span className="hidden md:inline">Ver</span>
             </button>
 
-            <button
-              onClick={() => onEdit?.(item)}
-              className={BTN.edit}
-              type="button"
-            >
-              <FaEdit className="text-sm" />
-              <span className="hidden md:inline">Editar</span>
-            </button>
+            <RoleGate allow={['socio', 'administrativo']}>
+              <button
+                onClick={() => onEdit?.(item)}
+                className={BTN.edit}
+                type="button"
+              >
+                <FaEdit className="text-sm" />
+                <span className="hidden md:inline">Editar</span>
+              </button>
 
-            <button
-              onClick={() => puedeReintentar && onRetryFacturacion?.(item)}
-              className={`${BTN.retry} ${
-                !puedeReintentar ? 'opacity-60 cursor-not-allowed' : ''
-              }`}
-              type="button"
-              disabled={!puedeReintentar}
-              title={
-                puedeReintentar
-                  ? 'Reintentar facturación de la venta asociada'
-                  : 'No hay venta asociada para reintentar facturación'
-              }
-            >
-              <FaRegClock className="text-sm" />
-              <span className="hidden md:inline">Reintentar facturación</span>
-            </button>
+              <button
+                onClick={() => puedeReintentar && onRetryFacturacion?.(item)}
+                className={`${BTN.retry} ${
+                  !puedeReintentar ? 'opacity-60 cursor-not-allowed' : ''
+                }`}
+                type="button"
+                disabled={!puedeReintentar}
+                title={
+                  puedeReintentar
+                    ? 'Reintentar facturación de la venta asociada'
+                    : 'No hay venta asociada para reintentar facturación'
+                }
+              >
+                <FaRegClock className="text-sm" />
+                <span className="hidden md:inline">Reintentar facturación</span>
+              </button>
 
-            <button
-              onClick={() => onDelete?.(item)}
-              className={BTN.del}
-              type="button"
-            >
-              <FaTrash className="text-sm" />
-              <span className="hidden md:inline">Eliminar</span>
-            </button>
+              <button
+                onClick={() => onDelete?.(item)}
+                className={BTN.del}
+                type="button"
+              >
+                <FaTrash className="text-sm" />
+                <span className="hidden md:inline">Eliminar</span>
+              </button>
+            </RoleGate>
           </div>
         </div>
       </div>

@@ -20,7 +20,6 @@ import { Link } from 'react-router-dom';
 import NavbarStaff from '../Dash/NavbarStaff';
 import '../../Styles/staff/dashboard.css';
 import '../../Styles/staff/background.css';
-import { useAuth } from '../../AuthContext';
 import ParticlesBackground from '../../Components/ParticlesBackground';
 import ButtonBack from '../../Components/ButtonBack';
 import { motion } from 'framer-motion';
@@ -45,8 +44,6 @@ const arcaLinks = [
 ];
 
 const AdminPageArca = () => {
-  const { userLevel } = useAuth(); // reservado por si luego aplicamos permisos
-
   return (
     <>
       <NavbarStaff />

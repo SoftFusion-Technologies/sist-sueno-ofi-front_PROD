@@ -629,6 +629,15 @@ function AppContent() {
             }
           />
           <Ruta
+            path="/dashboard/compras/impuestos"
+            element={
+              <ProtectedRoute>
+                {' '}
+                <ComprasImpuestosPage />{' '}
+              </ProtectedRoute>
+            }
+          />
+          <Ruta
             path="/dashboard/compras/impuestos-config"
             element={
               <ProtectedRoute>

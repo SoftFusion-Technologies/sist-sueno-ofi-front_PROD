@@ -10,6 +10,8 @@ import {
   FaHashtag
 } from 'react-icons/fa';
 
+import RoleGate from '../auth/RoleGate';
+
 const fmt = (n, currency = 'ARS') =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency }).format(
     Number(n || 0)
@@ -333,24 +335,26 @@ export default function BankMovementCard({
                       Ver
                     </span>
                   </button>
-                  <button
-                    onClick={() => onEdit?.(item)}
-                    className={buttonVariants.edit}
-                  >
-                    <FaEdit className="text-sm" />
-                    <span className="hidden md:inline whitespace-nowrap">
-                      Editar
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => onDelete?.(item)}
-                    className={buttonVariants.del}
-                  >
-                    <FaTrash className="text-sm" />
-                    <span className="hidden md:inline whitespace-nowrap">
-                      Eliminar
-                    </span>
-                  </button>
+                  <RoleGate allow={['socio', 'administrativo']}>
+                    <button
+                      onClick={() => onEdit?.(item)}
+                      className={buttonVariants.edit}
+                    >
+                      <FaEdit className="text-sm" />
+                      <span className="hidden md:inline whitespace-nowrap">
+                        Editar
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => onDelete?.(item)}
+                      className={buttonVariants.del}
+                    >
+                      <FaTrash className="text-sm" />
+                      <span className="hidden md:inline whitespace-nowrap">
+                        Eliminar
+                      </span>
+                    </button>
+                  </RoleGate>
                 </>
               )}
             </div>

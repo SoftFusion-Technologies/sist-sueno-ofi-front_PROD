@@ -8,7 +8,6 @@ import {
   Hash,
   DollarSign,
   Percent,
-  CheckCircle2,
   Loader2,
   Save,
   Trash2,
@@ -18,7 +17,7 @@ import {
   StarOff,
   ChevronDown
 } from 'lucide-react';
-
+import RoleGate from '../../Components/auth/RoleGate';
 /**
  * ProductoProveedorModal (JSX puro)
  * -----------------------------------------------------------
@@ -554,15 +553,15 @@ export default function ProductoProveedorModal({
                       className="w-full pl-8 pr-3 py-2 text-sm rounded-xl bg-white/5 border border-white/10 text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                     />
                   </div>
-
-                  <button
-                    onClick={startCreate}
-                    className="w-full sm:w-auto inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-emerald-500/90 hover:bg-emerald-500 text-black shadow"
-                    title="Nueva relación"
-                  >
-                    <Plus size={16} /> Nueva
-                  </button>
-
+                  <RoleGate allow={['socio', 'administrativo']}>
+                    <button
+                      onClick={startCreate}
+                      className="w-full sm:w-auto inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-emerald-500/90 hover:bg-emerald-500 text-black shadow"
+                      title="Nueva relación"
+                    >
+                      <Plus size={16} /> Nueva
+                    </button>
+                  </RoleGate>
                   <button
                     onClick={onClose}
                     className="w-full sm:w-auto p-2 rounded-lg text-white hover:bg-white/10"
@@ -641,16 +640,18 @@ export default function ProductoProveedorModal({
                             >
                               <Edit3 size={16} />
                             </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setConfirmId(r.id);
-                              }}
-                              className="p-2 rounded-md hover:bg-white/10 text-red-300"
-                              title="Eliminar"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            <RoleGate allow={['socio', 'administrativo']}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmId(r.id);
+                                }}
+                                className="p-2 rounded-md hover:bg-white/10 text-red-300"
+                                title="Eliminar"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </RoleGate>
                           </div>
                         </div>
                       </li>
@@ -683,31 +684,33 @@ export default function ProductoProveedorModal({
                         <span className="text-gray-500">#{selected.id}</span>
                       </span>
                     )}
-                    <div className="ml-auto flex items-center gap-2">
-                      {selected?.id && (
-                        <button
-                          onClick={() => setVigente(selected.id)}
-                          className={cx(
-                            'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border',
-                            selected.vigente
-                              ? 'text-emerald-300 border-emerald-900/50 bg-emerald-900/20'
-                              : 'text-gray-200 border-white/15 hover:bg-white/5'
-                          )}
-                          title={
-                            selected.vigente
-                              ? 'Ya es vigente'
-                              : 'Marcar como vigente'
-                          }
-                        >
-                          {selected.vigente ? (
-                            <Star size={14} />
-                          ) : (
-                            <StarOff size={14} />
-                          )}
-                          {selected.vigente ? 'Vigente' : 'Hacer vigente'}
-                        </button>
-                      )}
-                    </div>
+                    <RoleGate allow={['socio', 'administrativo']}>
+                      <div className="ml-auto flex items-center gap-2">
+                        {selected?.id && (
+                          <button
+                            onClick={() => setVigente(selected.id)}
+                            className={cx(
+                              'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border',
+                              selected.vigente
+                                ? 'text-emerald-300 border-emerald-900/50 bg-emerald-900/20'
+                                : 'text-gray-200 border-white/15 hover:bg-white/5'
+                            )}
+                            title={
+                              selected.vigente
+                                ? 'Ya es vigente'
+                                : 'Marcar como vigente'
+                            }
+                          >
+                            {selected.vigente ? (
+                              <Star size={14} />
+                            ) : (
+                              <StarOff size={14} />
+                            )}
+                            {selected.vigente ? 'Vigente' : 'Hacer vigente'}
+                          </button>
+                        )}
+                      </div>
+                    </RoleGate>
                   </div>
 
                   {/* Formulario */}
@@ -984,31 +987,32 @@ export default function ProductoProveedorModal({
 
                   {/* Acciones */}
                   <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3 sticky bottom-0 bg-[#0c1112]/80 backdrop-blur border-t border-white/10 px-4 md:px-6 py-3 rounded-b-2xl">
-                    <button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className={cx(
-                        'w-full sm:w-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm',
-                        'bg-emerald-500/90 hover:bg-emerald-500 text-black',
-                        saving && 'opacity-60 cursor-not-allowed'
-                      )}
-                    >
-                      <Save size={16} /> {editId ? 'Actualizar' : 'Guardar'}
-                    </button>
-
-                    {selected?.id && (
+                    <RoleGate allow={['socio', 'administrativo']}>
                       <button
-                        onClick={() => setConfirmId(selected.id)}
+                        onClick={handleSave}
                         disabled={saving}
                         className={cx(
-                          'w-full sm:w-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm border border-red-400 text-red-200 hover:bg-red-600/10',
+                          'w-full sm:w-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm',
+                          'bg-emerald-500/90 hover:bg-emerald-500 text-black',
                           saving && 'opacity-60 cursor-not-allowed'
                         )}
                       >
-                        <Trash2 size={16} /> Eliminar
+                        <Save size={16} /> {editId ? 'Actualizar' : 'Guardar'}
                       </button>
-                    )}
 
+                      {selected?.id && (
+                        <button
+                          onClick={() => setConfirmId(selected.id)}
+                          disabled={saving}
+                          className={cx(
+                            'w-full sm:w-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm border border-red-400 text-red-200 hover:bg-red-600/10',
+                            saving && 'opacity-60 cursor-not-allowed'
+                          )}
+                        >
+                          <Trash2 size={16} /> Eliminar
+                        </button>
+                      )}
+                    </RoleGate>
                     <div className="hidden sm:block ml-auto" />
 
                     <button

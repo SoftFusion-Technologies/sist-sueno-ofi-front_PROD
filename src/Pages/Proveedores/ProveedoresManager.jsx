@@ -15,8 +15,7 @@ import ProveedorContactosModal from './ProveedorContactosModal';
 import ProveedorCuentasModal from './ProveedorCuentasModal';
 import ProductoProveedorModal from './ProductoProveedorModal';
 import PPHistorialModal from './PPHistorialModal';
-import { FaBuilding, FaPlus, FaSearch, FaSyncAlt } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+import { FaPlus, FaSearch, FaSyncAlt } from 'react-icons/fa';
 import {
   X,
   CreditCard,
@@ -31,6 +30,8 @@ import {
 import ProveedorChequesModal from './ProveedorChequesModal';
 import ProveedorChequesKPIModal from './Components/ProveedorChequesKPIModal';
 import ProveedorPagosModal from './ProveedorPagosModal'; // nuevo modal - luego del modulo de compras, registramos los pagos realizados a proveedores
+
+import RoleGate from '../../Components/auth/RoleGate';
 
 const cleanCUIT = (v) => (typeof v === 'string' ? v.replace(/\D+/g, '') : v);
 
@@ -461,12 +462,14 @@ export default function ProveedoresManager() {
                     <FaSyncAlt /> Refrescar
                   </button>
 
-                  <button
-                    onClick={() => openModal(null)}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white focus:outline-none focus:ring-2 focus:ring-orange-400/60"
-                  >
-                    <FaPlus /> Nuevo
-                  </button>
+                  <RoleGate allow={['socio', 'administrativo']}>
+                    <button
+                      onClick={() => openModal(null)}
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white focus:outline-none focus:ring-2 focus:ring-orange-400/60"
+                    >
+                      <FaPlus /> Nuevo
+                    </button>
+                  </RoleGate>
                 </div>
               </div>
             </div>
@@ -610,36 +613,41 @@ export default function ProveedoresManager() {
                             </KeyVal>
                           </div>
                         </div>
-
                         {/* Footer acciones compactas */}
                         <div className="px-3 py-2 border-t border-white/10 bg-[#0f1213] flex items-center justify-between">
                           {/* Izquierda: CTA primarios */}
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => toggleEstado(p)}
-                              className="px-3 py-1.5 rounded-md text-sm border border-white/15 text-gray-100 hover:bg-white/5 transition"
-                              title="Cambiar estado"
-                            >
-                              {p.estado === 'activo' ? 'Desactivar' : 'Activar'}
-                            </button>
-                          </div>
-
+                          <RoleGate allow={['socio', 'administrativo']}>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => toggleEstado(p)}
+                                className="px-3 py-1.5 rounded-md text-sm border border-white/15 text-gray-100 hover:bg-white/5 transition"
+                                title="Cambiar estado"
+                              >
+                                {p.estado === 'activo'
+                                  ? 'Desactivar'
+                                  : 'Activar'}
+                              </button>
+                            </div>
+                          </RoleGate>
                           {/* Derecha: menú de acciones */}
                           <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => openModal(p.id)}
-                              className="px-3 py-1.5 rounded-md text-sm text-black bg-emerald-400/90 hover:bg-emerald-400 transition"
-                              title="Editar"
-                            >
-                              Editar
-                            </button>
-                            <button
-                              onClick={() => handleDelete(p.id)}
-                              className="px-3 py-1.5 rounded-md text-sm border border-red-400 text-red-200 hover:bg-red-600 transition"
-                              title="Eliminar"
-                            >
-                              Eliminar
-                            </button>
+                            <RoleGate allow={['socio', 'administrativo']}>
+                              <button
+                                onClick={() => openModal(p.id)}
+                                className="px-3 py-1.5 rounded-md text-sm text-black bg-emerald-400/90 hover:bg-emerald-400 transition"
+                                title="Editar"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                onClick={() => handleDelete(p.id)}
+                                className="px-3 py-1.5 rounded-md text-sm border border-red-400 text-red-200 hover:bg-red-600 transition"
+                                title="Eliminar"
+                              >
+                                Eliminar
+                              </button>
+                            </RoleGate>
+
                             {/* <button
                               onClick={() => abrirContactos(p)}
                               className="px-3 py-1.5 rounded-md text-sm text-black bg-amber-400/90 hover:bg-amber-400 transition"
@@ -1144,7 +1152,7 @@ export default function ProveedoresManager() {
         open={ppOpen}
         onClose={() => setPPOpen(false)}
         scope="proveedor"
-        proveedorId={proveedorSel.id} // ✅ solo esto
+        proveedorId={proveedorSel.id}
         proveedorNombre={proveedorSel.nombre}
         userId={userId}
       />

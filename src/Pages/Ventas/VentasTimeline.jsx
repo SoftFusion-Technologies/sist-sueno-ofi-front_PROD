@@ -15,7 +15,8 @@ import ParticlesBackground from '../../Components/ParticlesBackground';
 import { useAuth } from '../../AuthContext'; // Ajustá el path si es necesario
 import { es } from 'date-fns/locale'; // agregá solo esto, sin volver a declarar `format`
 import ModalDetalleCombo from '../../Components/ModalDetalleCombo'; // ajusta el path
-import { formatearPeso } from '../../utils/formatearPeso';
+import RoleGate from '../../Components/auth/RoleGate';
+
 export default function VentasTimeline() {
   const [ventas, setVentas] = useState([]);
   const [busqueda, setBusqueda] = useState('');
@@ -377,25 +378,26 @@ export default function VentasTimeline() {
                       ${Number(venta.total).toLocaleString('es-AR')}
                     </span>
                   </div>
-
-                  {estadoVisual === 'devuelta' ||
-                  estadoVisual === 'parcial' ||
-                  estadoVisual === 'anulada' ? (
-                    <button
-                      disabled
-                      className="w-full mt-4 py-2 rounded-lg bg-gray-600 text-white font-bold opacity-50 cursor-not-allowed"
-                      title="No se puede anular una venta que ya fue devuelta"
-                    >
-                      ANULAR
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => anularVenta(venta.venta_id)}
-                      className="w-full mt-2 py-2 rounded-lg bg-red-500 hover:bg-red-700 text-white font-bold transition"
-                    >
-                      ANULAR VENTA
-                    </button>
-                  )}
+                  <RoleGate allow={['socio', 'administrativo']}>
+                    {estadoVisual === 'devuelta' ||
+                    estadoVisual === 'parcial' ||
+                    estadoVisual === 'anulada' ? (
+                      <button
+                        disabled
+                        className="w-full mt-4 py-2 rounded-lg bg-gray-600 text-white font-bold opacity-50 cursor-not-allowed"
+                        title="No se puede anular una venta que ya fue devuelta"
+                      >
+                        ANULAR
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => anularVenta(venta.venta_id)}
+                        className="w-full mt-2 py-2 rounded-lg bg-red-500 hover:bg-red-700 text-white font-bold transition"
+                      >
+                        ANULAR VENTA
+                      </button>
+                    )}
+                  </RoleGate>
 
                   {venta.detalle_venta_combos?.map((comboVenta, idx) => (
                     <div
@@ -641,12 +643,14 @@ export default function VentasTimeline() {
                     Venta anulada
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setShowDevolucionModal(true)}
-                    className="w-full mt-4 py-2 rounded-lg bg-red-600 hover:bg-red-800 text-white font-bold transition"
-                  >
-                    DEVOLVER
-                  </button>
+                  <RoleGate allow={['socio', 'administrativo']}>
+                    <button
+                      onClick={() => setShowDevolucionModal(true)}
+                      className="w-full mt-4 py-2 rounded-lg bg-red-600 hover:bg-red-800 text-white font-bold transition"
+                    >
+                      DEVOLVER
+                    </button>
+                  </RoleGate>
                 )}
               </div>
             </div>

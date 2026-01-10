@@ -27,7 +27,7 @@ import 'sweetalert2/dist/sweetalert2.min.css';
 import http from '../../api/http';
 import { moneyAR } from '../../utils/money';
 import CxpFormModal, { CXP_MODE } from './CxpFormModal';
-
+import RoleGate from '../auth/RoleGate';
 /**
  * Props
  *  - open: boolean
@@ -224,7 +224,7 @@ export default function CxpDetailDrawer({
                   </div>
 
                   {/* Acciones principales */}
-                  {allowActions && (
+                  <RoleGate allow={['socio', 'administrativo']}>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={doRecalcular}
@@ -251,7 +251,7 @@ export default function CxpDetailDrawer({
                         <span className="hidden sm:inline">Fechas</span>
                       </button>
                     </div>
-                  )}
+                  </RoleGate>
                 </div>
               </div>
 

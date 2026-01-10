@@ -32,6 +32,7 @@ import { getUserId } from '../../utils/authUtils';
 import SearchableSelect from './Components/SearchableSelect.jsx';
 import LocalesCantidadPicker from './Components/LocalesCantidadPicker.jsx';
 import ModalAlertasStockBajo from './Components/ModalAlertasStockBajo.jsx';
+import RoleGate from '../../Components/auth/RoleGate';
 
 Modal.setAppElement('#root');
 
@@ -854,26 +855,28 @@ const StockGet = () => {
             <FaWarehouse /> Stock
           </h1>
 
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <BulkUploadButton
-              tabla="stock"
-              onSuccess={() => fetchAll()} // función para recargar stock después de importar
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
-            />
-            <button
-              onClick={() => exportarStockAExcel(filtered)}
-              className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 text-white"
-            >
-              <FaDownload /> Exportar Excel
-            </button>
+          <RoleGate allow={['socio', 'administrativo']}>
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <BulkUploadButton
+                tabla="stock"
+                onSuccess={() => fetchAll()} // función para recargar stock después de importar
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
+              />
+              <button
+                onClick={() => exportarStockAExcel(filtered)}
+                className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 text-white"
+              >
+                <FaDownload /> Exportar Excel
+              </button>
 
-            <button
-              onClick={() => openModal()}
-              className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
-            >
-              <FaPlus /> Nuevo
-            </button>
-          </div>
+              <button
+                onClick={() => openModal()}
+                className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+              >
+                <FaPlus /> Nuevo
+              </button>
+            </div>
+          </RoleGate>
         </div>
 
         <button
@@ -1255,7 +1258,7 @@ const StockGet = () => {
                     </span>
                   </p>
 
-                  {userLevel === 'socio' && (
+                  {userLevel === 'socio' || userLevel === 'administrativo' && (
                     <div className="flex items-center gap-2">
                       {/* Imprimir */}
                       <div className="relative group">
