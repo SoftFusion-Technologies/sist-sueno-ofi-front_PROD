@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../AuthContext';
 import {
@@ -148,6 +148,37 @@ export default function CajaPOS() {
   const [fHasta, setFHasta] = useState('');
   const [fTipo, setFTipo] = useState(''); // '', 'ingreso', 'egreso', 'venta'
   const [fQuery, setFQuery] = useState('');
+  const [fCanal, setFCanal] = useState('C1'); // default SIEMPRE C1
+
+  // ===============================
+  // MODO INTERNO: incluir C2 (F10)
+  // - Default: false => solo C1
+  // - true => C1 + C2
+  // ===============================
+  // ===============================
+  // Canal Caja (C1 default) + F10 Auditoría (C1 + C2)
+  // ===============================
+  const [includeC2, setIncludeC2] = useState(false); // false = C1 (default), true = C1+C2 (auditoría)
+
+  // Resumen de saldo calculado por backend (NO depender de la lista paginada)
+  const [saldoInfo, setSaldoInfo] = useState({
+    saldo_inicial: 0,
+    total_ingresos: 0,
+    total_egresos: 0,
+    saldo_actual: 0,
+    meta: { include_c2: false, canal: 'C1' }
+  });
+  const buildCanalParams = (forcedIncludeC2) => {
+    const params = new URLSearchParams();
+
+    const flag =
+      typeof forcedIncludeC2 === 'boolean' ? forcedIncludeC2 : includeC2;
+
+    if (flag) params.set('include_c2', '1');
+    else params.set('canal', 'C1');
+
+    return params;
+  };
 
   async function verMovimientosDeCaja(cajaId) {
     if (!cajaId) return;
@@ -161,6 +192,8 @@ export default function CajaPOS() {
       if (fHasta) params.append('hasta', fHasta); // YYYY-MM-DD
       if (fTipo) params.append('tipo', fTipo); // ingreso|egreso|venta
       if (fQuery) params.append('q', fQuery); // texto
+      if (fCanal === 'ALL') params.append('include_c2', '1');
+      else params.append('canal', fCanal); // C1 o C2
 
       const url = params.toString()
         ? `${BASE_URL}/movimientosv2/caja/${cajaId}?${params.toString()}`
@@ -195,11 +228,82 @@ export default function CajaPOS() {
     return abierta || null;
   };
 
-  const refreshMovimientosCaja = async (cajaId) => {
-    const mov = await axios.get(`${BASE_URL}/movimientos/caja/${cajaId}`);
-    setMovimientos(mov.data || []);
-    return mov.data || [];
+  const refreshMovimientosCaja = async (cajaId, opts = {}) => {
+    if (!cajaId) {
+      setMovimientos([]);
+      return [];
+    }
+
+    // Usamos V2 para soportar filtros y canal
+    const params = buildCanalParams(opts.forcedIncludeC2);
+
+    const url = `${BASE_URL}/movimientosv2/caja/${cajaId}?${params.toString()}`;
+
+    const res = await axios.get(url, {
+      headers: { 'X-User-Id': String(userId ?? '') }
+    });
+
+    const rows = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+    setMovimientos(rows);
+    return rows;
   };
+
+  const refreshSaldoCaja = async (cajaId, opts = {}) => {
+    if (!cajaId) {
+      setSaldoInfo({
+        saldo_inicial: 0,
+        total_ingresos: 0,
+        total_egresos: 0,
+        saldo_actual: 0,
+        meta: { include_c2: false, canal: 'C1' }
+      });
+      return null;
+    }
+
+    const params = buildCanalParams(opts.forcedIncludeC2);
+    const url = `${BASE_URL}/caja/${cajaId}/saldo-actual?${params.toString()}`;
+
+    const { data } = await axios.get(url, {
+      headers: { 'X-User-Id': String(userId ?? '') }
+    });
+
+    setSaldoInfo(data || null);
+    return data;
+  };
+
+  const refreshCajaUI = async (cajaId, opts = {}) => {
+    await Promise.all([
+      refreshMovimientosCaja(cajaId, opts),
+      refreshSaldoCaja(cajaId, opts)
+    ]);
+  };
+
+  useEffect(() => {
+    const onKeyDown = async (e) => {
+      if (e.key === 'F10' || e.keyCode === 121) {
+        e.preventDefault();
+
+        setIncludeC2((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, []);
+  useEffect(() => {
+    if (!cajaActual?.id) return;
+
+    // Cuando toggleás F10, refrescamos lista + saldo según canal
+    refreshCajaUI(cajaActual.id).catch(() => {});
+
+    // UX: indicador mínimo (sin decir “negro”)
+    try {
+      toast?.fire?.({
+        icon: includeC2 ? 'info' : 'success',
+        title: includeC2 ? 'Modo auditoría activado (F10)' : 'Modo normal (C1)'
+      });
+    } catch {}
+  }, [includeC2, cajaActual?.id]);
 
   /**
    * Verifica en backend si la caja del local sigue abierta.
@@ -236,7 +340,7 @@ export default function CajaPOS() {
 
       if (changed) {
         setCajaActual(abierta);
-        await refreshMovimientosCaja(abierta.id);
+        await refreshCajaUI(abierta.id);
 
         if (notify) {
           toast.fire({
@@ -250,7 +354,7 @@ export default function CajaPOS() {
 
       // Caso: coincide => opcional refrescar movimientos
       if (refreshMovs && cajaActual?.id) {
-        await refreshMovimientosCaja(cajaActual.id);
+        await refreshCajaUI(cajaActual.id);
       }
 
       return { ok: true, caja: abierta, changed: false };
@@ -280,11 +384,7 @@ export default function CajaPOS() {
         setCajaActual(abierta || null);
 
         if (abierta) {
-          // Ahora usa el endpoint RESTful, NO query params
-          const mov = await axios.get(
-            `http://localhost:8080/movimientos/caja/${abierta.id}`
-          );
-          setMovimientos(mov.data);
+          await refreshCajaUI(abierta.id);
         }
       } catch {
         setCajaActual(null);
@@ -293,7 +393,6 @@ export default function CajaPOS() {
     };
     fetchCaja();
   }, [userLocalId]);
-
   // Cargar historial
   const cargarHistorial = async () => {
     const res = await axios.get(
@@ -351,32 +450,92 @@ export default function CajaPOS() {
     if (!confirm.isConfirmed) return;
 
     // 2) Recalcular saldoFinal con movimientos ya refrescados
-    const totalIngresos = (movimientos || [])
-      .filter((m) => m.tipo === 'ingreso')
-      .reduce((sum, m) => sum + Number(m.monto), 0);
+    // Refrescar y usar el resultado inmediato (evita estado viejo)
+    // const movsActuales = await refreshMovimientosCaja(cajaId);
 
-    const totalEgresos = (movimientos || [])
-      .filter((m) => m.tipo === 'egreso')
-      .reduce((sum, m) => sum + Number(m.monto), 0);
+    // const totalIngresos = (movsActuales || [])
+    //   .filter((m) => m.tipo === 'ingreso')
+    //   .reduce((sum, m) => sum + Number(m.monto), 0);
 
-    const saldoFinal =
-      Number(verif.caja.saldo_inicial) + totalIngresos - totalEgresos;
+    // const totalEgresos = (movsActuales || [])
+    //   .filter((m) => m.tipo === 'egreso')
+    //   .reduce((sum, m) => sum + Number(m.monto), 0);
+
+    // const saldoFinal =
+    //   Number(verif.caja.saldo_inicial) + totalIngresos - totalEgresos;
+
+    // 2) Traer saldo real por canal (C1 / C2 / TOTAL) desde backend (eficiente, sin depender de lista paginada)
+    // Nota: acá NO usamos includeC2, porque al cerrar queremos persistir SIEMPRE:
+    // - saldo_final (C1 oficial)
+    // - saldo_final_c2 (C2 auditoría)
+    // - saldo_final_total (C1+C2 real)
+    let saldoFinalC1 = 0;
+    let saldoFinalC2 = 0;
+    let saldoFinalTotal = 0;
+
+    try {
+      const { data: bd } = await axios.get(
+        `${BASE_URL}/caja/${cajaId}/saldo-actual?breakdown=1`,
+        { headers: { 'X-User-Id': String(userId ?? '') } }
+      );
+
+      // Estructura esperada:
+      // {
+      //   saldo_inicial,
+      //   c1: { saldo_actual, ... },
+      //   c2: { saldo_actual, ... },     // OJO: base 0
+      //   total: { saldo_actual, ... }   // base saldo_inicial
+      // }
+      saldoFinalC1 = Number(bd?.c1?.saldo_actual ?? 0);
+      saldoFinalC2 = Number(bd?.c2?.saldo_actual ?? 0);
+      saldoFinalTotal = Number(bd?.total?.saldo_actual ?? 0);
+
+      // Fallback defensivo (por si el backend no devolvió breakdown completo)
+      if (!Number.isFinite(saldoFinalC1))
+        saldoFinalC1 = Number(verif.caja.saldo_inicial ?? 0);
+      if (!Number.isFinite(saldoFinalC2)) saldoFinalC2 = 0;
+      if (!Number.isFinite(saldoFinalTotal))
+        saldoFinalTotal = Number(verif.caja.saldo_inicial ?? 0);
+    } catch (e) {
+      // Si por alguna razón falla el breakdown, no cierres con valores inconsistentes
+      await swalError(
+        'No se pudo calcular el saldo de cierre',
+        e?.response?.data?.mensajeError ||
+          e?.message ||
+          'Error al consultar saldo-actual (breakdown).'
+      );
+      return;
+    }
 
     try {
       swalLoading('Cerrando caja...');
 
       await axios.put(`${BASE_URL}/caja/${cajaId}`, {
         fecha_cierre: new Date(),
-        saldo_final: saldoFinal
+
+        // C1 oficial (compatibilidad con lo existente)
+        saldo_final: saldoFinalC1,
+
+        // NUEVO: auditoría (C2) y total real (C1+C2)
+        saldo_final_c2: saldoFinalC2,
+        saldo_final_total: saldoFinalTotal
       });
 
       setCajaActual(null);
       setMovimientos([]);
 
       Swal.close();
+
+      // Mensaje final con los 3 importes (y evita confusiones operativas)
       await swalSuccess(
         'Caja cerrada',
-        `Saldo final: $${Number(saldoFinal).toLocaleString('es-AR')}`
+        [
+          `Saldo final (C1): $${Number(saldoFinalC1).toLocaleString('es-AR')}`,
+          `Saldo auditoría (C2): $${Number(saldoFinalC2).toLocaleString(
+            'es-AR'
+          )}`,
+          `Saldo total: $${Number(saldoFinalTotal).toLocaleString('es-AR')}`
+        ].join('\n')
       );
     } catch (err) {
       Swal.close();
@@ -419,11 +578,12 @@ export default function CajaPOS() {
         tipo: nuevoMovimiento.tipo,
         descripcion: nuevoMovimiento.descripcion,
         monto: Number(nuevoMovimiento.monto),
-        usuario_id: userId
+        usuario_id: userId,
+        canal: 'C1' // manual = oficial
       });
 
       // 3) Refrescar movimientos (y por ende saldo UI)
-      await refreshMovimientosCaja(cajaId);
+      await refreshCajaUI(cajaId);
 
       setNuevoMovimiento({ tipo: 'ingreso', monto: '', descripcion: '' });
 
@@ -441,12 +601,9 @@ export default function CajaPOS() {
     }
   };
 
-  const totalIngresos = movimientos
-    .filter((m) => m.tipo === 'ingreso')
-    .reduce((sum, m) => sum + Number(m.monto), 0);
-  const totalEgresos = movimientos
-    .filter((m) => m.tipo === 'egreso')
-    .reduce((sum, m) => sum + Number(m.monto), 0);
+  const totalIngresosUI = Number(saldoInfo?.total_ingresos ?? 0);
+  const totalEgresosUI = Number(saldoInfo?.total_egresos ?? 0);
+  const saldoActualUI = Number(saldoInfo?.saldo_actual ?? 0);
 
   // Estado para modal de detalle
   const [detalleVenta, setDetalleVenta] = useState(null);
@@ -519,6 +676,13 @@ export default function CajaPOS() {
     }
     return arr;
   }, [movimientosOrdenados, tipoMov, queryMovs]);
+
+  const saldoFinalC1 = Number(detalleCaja?.saldo_final ?? 0);
+  const saldoFinalC2 = Number(detalleCaja?.saldo_final_c2 ?? 0);
+  const saldoFinalTotal = Number(
+    detalleCaja?.saldo_final_total ?? saldoFinalC1 + saldoFinalC2
+  );
+
   // RESPONSIVE & GLASS
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#101016] via-[#181A23] to-[#11192b] px-2 py-8">
@@ -532,9 +696,16 @@ export default function CajaPOS() {
         transition={{ duration: 0.5 }}
       >
         <GlassCard className="shadow-2xl">
-          <h1 className="flex gap-3 items-center text-2xl md:text-3xl font-bold mb-6 text-emerald-400 tracking-wider">
-            <FaCashRegister className="text-emerald-400 text-3xl" /> CAJA
-          </h1>
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2.5 w-2.5 rounded-full ${
+                includeC2 ? 'bg-red-500' : 'bg-emerald-400'
+              }`}
+            />
+            <h1 className="flex gap-3 items-center text-2xl md:text-3xl font-bold text-emerald-400 tracking-wider">
+              <FaCashRegister className="text-emerald-400 text-3xl" /> CAJA
+            </h1>
+          </div>
 
           {cargando ? (
             <div className="flex justify-center items-center min-h-[140px]">
@@ -560,27 +731,36 @@ export default function CajaPOS() {
                     {formatearPeso(cajaActual.saldo_inicial)}
                   </span>
                 </div>
-                <div className="bg-black/30 rounded-lg px-4 py-2 flex flex-col items-center">
-                  <span className="text-xs text-gray-300">Ingresos</span>
 
-                  <span className="font-bold text-green-400 text-lg">
-                    +{formatearPeso(totalIngresos)}
-                  </span>
-                </div>
                 <div className="bg-black/30 rounded-lg px-4 py-2 flex flex-col items-center">
-                  <span className="text-xs text-gray-300">Egresos</span>
-                  <span className="font-bold text-red-400 text-lg">
-                    -{formatearPeso(totalEgresos)}
+                  <span className="text-xs text-gray-300">
+                    {includeC2 ? 'Ingresos (Total)' : 'Ingresos (C1)'}
+                  </span>
+                  <span className="font-bold text-green-400 text-lg">
+                    +{formatearPeso(totalIngresosUI)}
                   </span>
                 </div>
+
+                <div className="bg-black/30 rounded-lg px-4 py-2 flex flex-col items-center">
+                  <span className="text-xs text-gray-300">
+                    {includeC2 ? 'Egresos (Total)' : 'Egresos (C1)'}
+                  </span>
+                  <span className="font-bold text-red-400 text-lg">
+                    -{formatearPeso(totalEgresosUI)}
+                  </span>
+                </div>
+
                 <div className="bg-black/40 rounded-lg px-4 py-2 flex flex-col items-center border border-emerald-700 shadow-inner">
-                  <span className="text-xs text-gray-300">Saldo actual</span>
+                  <span className="text-xs text-gray-300">
+                    {includeC2 ? 'Saldo total (C1 + C2)' : 'Saldo actual (C1)'}
+                  </span>
                   <span className="font-bold text-emerald-400 text-xl">
-                    {formatearPeso(
-                      Number(cajaActual.saldo_inicial) +
-                        totalIngresos -
-                        totalEgresos
-                    )}
+                    {formatearPeso(saldoActualUI)}
+                  </span>
+
+                  {/* opcional: micro-indicador */}
+                  <span className="text-[10px] text-gray-400 mt-0.5">
+                    {includeC2 ? 'Auditoría (F10)' : 'Normal'}
                   </span>
                 </div>
               </div>
@@ -1304,6 +1484,7 @@ export default function CajaPOS() {
                 <h3 className="text-2xl font-black text-emerald-400 tracking-tight flex items-center gap-2 drop-shadow">
                   <FaMoneyBillWave /> Caja #{detalleCaja.id}
                 </h3>
+               
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5 text-[15px]">
@@ -1311,7 +1492,7 @@ export default function CajaPOS() {
                   <div className="flex gap-2 items-center">
                     <FaStore className="text-emerald-400" />
                     <span>
-                      <b>Local: </b>
+                      <b className="text-gray-200">Local: </b>
                       <span className="text-gray-400">{infoLocal.nombre}</span>
                     </span>
                   </div>
@@ -1321,7 +1502,7 @@ export default function CajaPOS() {
                   <div className="flex gap-2 items-center mt-2">
                     <FaUser className="text-emerald-400" />
                     <span>
-                      <b>Usuario:</b>{' '}
+                      <b className="text-gray-200">Usuario:</b>{' '}
                       <span className="text-gray-400">
                         {getNombreUsuario(detalleCaja.usuario_id, usuarios)}
                       </span>
@@ -1332,7 +1513,7 @@ export default function CajaPOS() {
                   <div className="flex gap-2 items-center">
                     <FaClock className="text-emerald-400" />
                     <span>
-                      <b>Apertura:</b>
+                      <b className="text-gray-200">Apertura:</b>
                       <br />
                       <span className="text-gray-100">
                         {new Date(detalleCaja.fecha_apertura).toLocaleString()}
@@ -1342,7 +1523,7 @@ export default function CajaPOS() {
                   <div className="flex gap-2 items-center">
                     <FaCalendarCheck className="text-emerald-400" />
                     <span>
-                      <b>Cierre:</b>
+                      <b className="text-gray-200">Cierre:</b>
                       <br />
                       {detalleCaja.fecha_cierre ? (
                         <span className="text-gray-100">
@@ -1355,30 +1536,31 @@ export default function CajaPOS() {
                   </div>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-6 mt-6 mb-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6 mb-3">
                 <div className="flex flex-col items-start">
                   <span className="flex gap-2 items-center text-lg font-bold text-emerald-400">
-                    <FaMoneyBillWave /> Saldo inicial:
+                    <FaMoneyBillWave /> Saldo final (C1):
                   </span>
-                  <span className="text-2xl font-black text-gray-100 tracking-wide">
-                    {formatearPeso(detalleCaja.saldo_inicial)}
+                  <span className="text-2xl font-black text-emerald-300 tracking-wide">
+                    {formatearPeso(saldoFinalC1)}
                   </span>
                 </div>
+
+                <div className="flex flex-col items-start">
+                  <span className="flex gap-2 items-center text-lg font-bold text-gray-300">
+                    <FaMoneyBillWave /> Saldo final (C2):
+                  </span>
+                  <span className="text-2xl font-black text-gray-100 tracking-wide">
+                    {formatearPeso(saldoFinalC2)}
+                  </span>
+                </div>
+
                 <div className="flex flex-col items-start">
                   <span className="flex gap-2 items-center text-lg font-bold text-emerald-400">
-                    <FaMoneyBillWave /> Saldo final:
+                    <FaMoneyBillWave /> Saldo final total:
                   </span>
-                  <span
-                    className={`text-2xl font-black tracking-wide ${
-                      detalleCaja.saldo_final
-                        ? 'text-emerald-300'
-                        : 'text-yellow-400'
-                    }`}
-                  >
-                    {detalleCaja.saldo_final
-                      ? formatearPeso(detalleCaja.saldo_final)
-                      : 'Sin cerrar'}
+                  <span className="text-2xl font-black text-emerald-400 tracking-wide">
+                    {formatearPeso(saldoFinalTotal)}
                   </span>
                 </div>
               </div>
@@ -1682,11 +1864,20 @@ export default function CajaPOS() {
                   value={fQuery}
                   onChange={(e) => setFQuery(e.target.value)}
                   placeholder="Buscar…"
-                  className="sm:col-span-2 bg-black/30 border border-white/10 rounded px-2 py-1 text-sm"
+                  className="sm:col-span-3 bg-black/30 border border-white/10 rounded px-2 py-1 text-sm"
                 />
+                <select
+                  value={fCanal}
+                  onChange={(e) => setFCanal(e.target.value)}
+                  className="bg-black/30 border border-white/10 rounded px-2 py-1 text-sm"
+                >
+                  <option value="C1">C1</option>
+                  <option value="C2">C2</option>
+                  <option value="ALL">C1 + C2</option>
+                </select>
                 <button
                   onClick={() => verMovimientosDeCaja(detalleCaja.id)}
-                  className="sm:col-span-5 mt-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm"
+                  className="sm:col-span-6 mt-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm"
                 >
                   Aplicar filtros
                 </button>
