@@ -3,6 +3,8 @@ import axios from 'axios';
 import { FaCashRegister, FaStore, FaUser, FaCalendarAlt } from 'react-icons/fa';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import Swal from 'sweetalert2';
+
 import ParticlesBackground from '../../Components/ParticlesBackground';
 import ButtonBack from '../../Components/ButtonBack';
 import { useAuth } from '../../AuthContext';
@@ -15,827 +17,607 @@ const money = (n) =>
     currency: 'ARS'
   });
 
-const formatearFecha = (fecha) => {
-  if (!fecha) return '---';
-  try {
-    return format(new Date(fecha), "dd 'de' MMMM yyyy, HH:mm", { locale: es });
-  } catch {
-    return '---';
-  }
-};
-
-function classNames(...arr) {
-  return arr.filter(Boolean).join(' ');
-}
-
-function Pill({ children, tone = 'emerald' }) {
-  const toneMap = {
-    emerald: 'bg-emerald-500/15 text-emerald-200 ring-emerald-400/20',
-    amber: 'bg-amber-500/15 text-amber-200 ring-amber-400/20',
-    rose: 'bg-rose-500/15 text-rose-200 ring-rose-400/20',
-    zinc: 'bg-white/10 text-white/70 ring-white/15'
+function Pill({ children, tone = 'neutral' }) {
+  const tones = {
+    neutral: 'bg-white/10 text-white/80 ring-white/10',
+    ok: 'bg-emerald-500/15 text-emerald-200 ring-emerald-400/20',
+    warn: 'bg-amber-500/15 text-amber-200 ring-amber-400/20',
+    danger: 'bg-rose-500/15 text-rose-200 ring-rose-400/20',
+    info: 'bg-sky-500/15 text-sky-200 ring-sky-400/20'
   };
   return (
     <span
-      className={classNames(
-        'inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-widest ring-1 backdrop-blur-md',
-        toneMap[tone] || toneMap.zinc
-      )}
+      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs ring-1 ${
+        tones[tone] || tones.neutral
+      }`}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
       {children}
     </span>
   );
 }
 
-function SkeletonCard() {
+function pickNombre(obj) {
+  return obj?.nombre || obj?.name || obj?.usuario || obj?.username || null;
+}
+
+function getLocalNombre(caja) {
+  const localObj =
+    caja?.local ||
+    caja?.Local ||
+    caja?.locales ||
+    caja?.Locales ||
+    caja?.LocalesModel ||
+    caja?.locale ||
+    null;
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-2xl shadow-[0_25px_70px_rgba(0,0,0,0.45)] p-5">
-      <div className="flex items-center justify-between">
-        <div className="h-6 w-40 rounded-xl bg-white/10 animate-pulse" />
-        <div className="h-6 w-20 rounded-full bg-white/10 animate-pulse" />
-      </div>
-      <div className="mt-5 space-y-3">
-        <div className="h-4 w-3/4 rounded-lg bg-white/10 animate-pulse" />
-        <div className="h-4 w-2/3 rounded-lg bg-white/10 animate-pulse" />
-        <div className="h-4 w-5/6 rounded-lg bg-white/10 animate-pulse" />
-        <div className="h-6 w-44 rounded-xl bg-white/10 animate-pulse mt-2" />
-        <div className="h-6 w-60 rounded-xl bg-white/10 animate-pulse" />
-        <div className="h-10 w-full rounded-2xl bg-white/10 animate-pulse mt-3" />
-      </div>
-    </div>
+    pickNombre(localObj) ||
+    (caja?.local_id != null ? `Local #${caja.local_id}` : '—')
   );
 }
 
-function Toast({ toast, onClose }) {
-  useEffect(() => {
-    if (!toast?.open) return;
-    const t = setTimeout(onClose, 2800);
-    return () => clearTimeout(t);
-  }, [toast?.open, onClose]);
-
-  if (!toast?.open) return null;
-
-  const tone =
-    toast.type === 'success'
-      ? 'bg-emerald-500/15 ring-emerald-400/20 text-emerald-100'
-      : toast.type === 'error'
-      ? 'bg-rose-500/15 ring-rose-400/20 text-rose-100'
-      : 'bg-white/10 ring-white/15 text-white';
-
+function getUsuarioNombre(caja) {
+  const userObj =
+    caja?.user ||
+    caja?.User ||
+    caja?.usuario ||
+    caja?.usuarios ||
+    caja?.UserModel ||
+    null;
   return (
-    <div className="fixed z-[9999] bottom-6 left-1/2 -translate-x-1/2 w-[min(680px,92vw)]">
-      <div
-        className={classNames(
-          'rounded-2xl px-4 py-3 ring-1 backdrop-blur-2xl shadow-[0_18px_60px_rgba(0,0,0,0.55)]',
-          tone
-        )}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="font-extrabold tracking-tight">{toast.title}</p>
-            {toast.message ? (
-              <p className="text-sm opacity-90 mt-0.5">{toast.message}</p>
-            ) : null}
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-xl px-3 py-1.5 text-xs font-extrabold uppercase tracking-widest bg-white/10 hover:bg-white/15 ring-1 ring-white/10 transition"
-          >
-            Cerrar
-          </button>
-        </div>
-      </div>
-    </div>
+    pickNombre(userObj) ||
+    (caja?.usuario_id != null ? `Usuario #${caja.usuario_id}` : '—')
   );
 }
 
-function ConfirmCloseModal({
-  open,
-  caja,
-  saldoFinalPreview,
-  loading,
-  onCancel,
-  onConfirm
-}) {
-  const cancelRef = useRef(null);
-
-  useEffect(() => {
-    if (open) setTimeout(() => cancelRef.current?.focus?.(), 0);
-  }, [open]);
-
-  if (!open) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-[9998] flex items-center justify-center px-4"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={loading ? undefined : onCancel}
-      />
-
-      <div className="relative w-[min(720px,95vw)] rounded-[28px] border border-white/12 bg-gradient-to-b from-white/[0.08] to-white/[0.04] backdrop-blur-2xl shadow-[0_30px_120px_rgba(0,0,0,0.65)]">
-        <div className="p-6 sm:p-7">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-2xl bg-rose-500/10 ring-1 ring-rose-400/20 px-3 py-1.5">
-                <span className="text-rose-200 text-xs font-extrabold uppercase tracking-widest">
-                  Confirmación requerida
-                </span>
-              </div>
-              <h2 className="mt-3 text-2xl sm:text-3xl font-black tracking-tight text-white">
-                Cerrar caja #{caja?.id}
-              </h2>
-              <p className="mt-2 text-sm text-white/75">
-                Se calculará el saldo final con ingresos y egresos registrados.
-                Esta acción cerrará la caja activa.
-              </p>
-            </div>
-            <Pill tone="rose">Cierre</Pill>
-          </div>
-
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-4">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-white/60">
-                Local
-              </p>
-              <p className="mt-1 font-extrabold text-white">
-                {caja?.locale?.nombre || caja?.local?.nombre || '---'}
-              </p>
-            </div>
-            <div className="rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-4">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-white/60">
-                Usuario
-              </p>
-              <p className="mt-1 font-extrabold text-white">
-                {caja?.usuario?.nombre || caja?.user?.name || '---'}
-              </p>
-            </div>
-            <div className="rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-4">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-white/60">
-                Saldo final estimado
-              </p>
-              <p className="mt-1 font-black text-emerald-200">
-                {money(saldoFinalPreview)}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:justify-end">
-            <button
-              ref={cancelRef}
-              disabled={loading}
-              onClick={onCancel}
-              className={classNames(
-                'rounded-2xl px-5 py-3 font-extrabold uppercase tracking-widest text-sm ring-1 transition',
-                loading
-                  ? 'bg-white/5 text-white/35 ring-white/10 cursor-not-allowed'
-                  : 'bg-white/5 hover:bg-white/10 text-white/80 ring-white/10 hover:ring-white/20'
-              )}
-            >
-              Cancelar
-            </button>
-
-            <button
-              disabled={loading}
-              onClick={onConfirm}
-              className={classNames(
-                'rounded-2xl px-5 py-3 font-extrabold uppercase tracking-widest text-sm shadow-[0_18px_55px_rgba(244,63,94,0.25)] transition ring-1',
-                loading
-                  ? 'bg-rose-600/40 text-white/60 ring-rose-400/20 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 ring-rose-300/30'
-              )}
-            >
-              {loading ? 'Cerrando…' : 'Sí, cerrar caja'}
-            </button>
-          </div>
-        </div>
-
-        <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-        <div className="px-6 sm:px-7 py-4 text-xs text-white/55">
-        </div>
-      </div>
-    </div>
-  );
-}
-
+/**
+ * AdminCajasAbiertas
+ * - Vista global de cajas abiertas (por local)
+ * - Default: modo normal (C1)
+ * - F10: modo auditoría (C1 + C2) => recalcula saldos / KPIs (NO cierra nada solo por ver)
+ */
 export default function AdminCajasAbiertas() {
-  const { userLevel } = useAuth();
+  const { userId, userLevel } = useAuth();
 
-  // Hooks SIEMPRE arriba (evita bugs por orden de hooks)
-  const [cajasAbiertas, setCajasAbiertas] = useState([]);
-  const [saldosActuales, setSaldosActuales] = useState({});
+  const [cajas, setCajas] = useState([]);
+  const [saldosByCaja, setSaldosByCaja] = useState({}); // { [cajaId]: saldoInfo }
   const [loading, setLoading] = useState(true);
   const [loadingSaldos, setLoadingSaldos] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
 
   const [q, setQ] = useState('');
   const [sort, setSort] = useState('apertura_desc'); // apertura_desc | apertura_asc | saldo_desc | saldo_asc
+  const [includeC2, setIncludeC2] = useState(false); // F10: false => C1, true => C1+C2
 
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmCaja, setConfirmCaja] = useState(null);
-  const [confirmSaldoFinalPreview, setConfirmSaldoFinalPreview] = useState(0);
-  const [confirmBusy, setConfirmBusy] = useState(false);
+  const requestSeq = useRef(0);
+  const intervalRef = useRef(null);
 
-  const [toast, setToast] = useState({
-    open: false,
-    type: 'info',
-    title: '',
-    message: ''
-  });
-
-  const permitted =
-    userLevel === 'socio' ||
-    userLevel === 'contador' ||
-    userLevel === 'administrativo';
-
-  const showToast = (type, title, message = '') => {
-    setToast({ open: true, type, title, message });
+  const buildCanalParams = (wantIncludeC2) => {
+    const p = new URLSearchParams();
+    if (wantIncludeC2) p.set('include_c2', '1');
+    else p.set('canal', 'C1');
+    return p.toString();
   };
 
-  const fetchCajas = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await axios.get(`${API_URL}/cajas-abiertas`);
-      setCajasAbiertas(res.data || []);
-    } catch (e) {
-      console.error(e);
-      setError('No se pudieron obtener las cajas abiertas.');
-      setCajasAbiertas([]);
-    } finally {
-      setLoading(false);
-    }
+  const fetchCajasAbiertas = async () => {
+    const res = await axios.get(`${API_URL}/cajas-abiertas`, {
+      headers: { 'X-User-Id': String(userId ?? '') }
+    });
+    return Array.isArray(res.data) ? res.data : [];
   };
 
-  const fetchSaldos = async (cajas) => {
-    if (!Array.isArray(cajas) || cajas.length === 0) {
-      setSaldosActuales({});
+  const fetchSaldoCaja = async (
+    cajaId,
+    { include_c2 = false, canal = null } = {}
+  ) => {
+    // - include_c2=1 => C1+C2
+    // - canal=C2 => solo C2 (si include_c2 NO está)
+    // - default => canal=C1
+    const p = new URLSearchParams();
+    if (include_c2) p.set('include_c2', '1');
+    else if (canal) p.set('canal', canal);
+    else p.set('canal', 'C1');
+
+    const { data } = await axios.get(
+      `${API_URL}/caja/${cajaId}/saldo-actual?${p.toString()}`,
+      {
+        headers: { 'X-User-Id': String(userId ?? '') }
+      }
+    );
+
+    return data || null;
+  };
+
+  const fetchSaldosForCajas = async (rows, wantIncludeC2) => {
+    if (!Array.isArray(rows) || rows.length === 0) {
+      setSaldosByCaja({});
       return;
     }
+
+    const seq = ++requestSeq.current;
     setLoadingSaldos(true);
+
     try {
-      const results = await Promise.all(
-        cajas.map(async (c) => {
+      const pairs = await Promise.all(
+        rows.map(async (c) => {
           try {
-            const res = await axios.get(`${API_URL}/caja/${c.id}/saldo-actual`);
-            return [c.id, res.data?.saldo_actual ?? null];
-          } catch (err) {
-            console.error('Error obteniendo saldo actual', err);
+            const data = await fetchSaldoCaja(c.id, {
+              include_c2: wantIncludeC2
+            });
+            return [c.id, data];
+          } catch {
             return [c.id, null];
           }
         })
       );
 
+      // si llegó tarde, no pises el estado
+      if (seq !== requestSeq.current) return;
+
       const map = {};
-      for (const [id, saldo] of results) map[id] = saldo;
-      setSaldosActuales(map);
+      for (const [id, data] of pairs) map[id] = data;
+      setSaldosByCaja(map);
     } finally {
-      setLoadingSaldos(false);
+      if (seq === requestSeq.current) setLoadingSaldos(false);
     }
   };
 
-  const refreshAll = async () => {
-    await fetchCajas();
+  const refreshAll = async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true);
+      setError('');
+    }
+    try {
+      const rows = await fetchCajasAbiertas();
+      setCajas(rows);
+      await fetchSaldosForCajas(rows, includeC2);
+    } catch (e) {
+      setError(
+        e?.response?.data?.mensajeError ||
+          e?.message ||
+          'Error al cargar cajas abiertas'
+      );
+      setCajas([]);
+      setSaldosByCaja({});
+    } finally {
+      if (!silent) setLoading(false);
+    }
   };
 
+  // F10 = toggle auditoría (C1+C2) / normal (C1)
   useEffect(() => {
-    if (!permitted) return;
-    fetchCajas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [permitted]);
+    const onKeyDown = (e) => {
+      if (e.key === 'F10' || e.keyCode === 121) {
+        e.preventDefault();
+        setIncludeC2((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, []);
 
+  // Carga inicial
   useEffect(() => {
-    if (!permitted) return;
-    if (!loading) fetchSaldos(cajasAbiertas);
+    refreshAll({ silent: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, cajasAbiertas, permitted]);
+  }, []);
 
-  const filteredSorted = useMemo(() => {
-    const term = q.trim().toLowerCase();
+  // Al cambiar modo (F10), recalcular saldos para TODAS las cajas visibles
+  useEffect(() => {
+    fetchSaldosForCajas(cajas, includeC2);
 
-    const filtered = (cajasAbiertas || []).filter((c) => {
-      if (!term) return true;
-      const local = (c.locale?.nombre || c.local?.nombre || '').toLowerCase();
-      const user = (c.usuario?.nombre || c.user?.name || '').toLowerCase();
+    try {
+      Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        timer: 1600,
+        timerProgressBar: true,
+        showConfirmButton: false
+      }).fire({
+        icon: includeC2 ? 'info' : 'success',
+        title: includeC2 ? 'Modo auditoría (F10) · C1 + C2' : 'Modo normal · C1'
+      });
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [includeC2]);
+
+  // “Tiempo real”: refresco suave cada 6s (solo saldos; cajas abiertas también pueden cambiar)
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      refreshAll({ silent: true });
+    }, 6000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [includeC2]);
+
+  const cajasFiltradas = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    if (!query) return cajas;
+
+    return (cajas || []).filter((c) => {
+      const local = getLocalNombre(c).toLowerCase();
+      const user = getUsuarioNombre(c).toLowerCase();
       const id = String(c.id || '');
-      return local.includes(term) || user.includes(term) || id.includes(term);
+      return (
+        local.includes(query) || user.includes(query) || id.includes(query)
+      );
     });
+  }, [cajas, q]);
 
-    const getSaldo = (c) => Number(saldosActuales[c.id] ?? 0);
-    const getApertura = (c) => new Date(c.fecha_apertura || 0).getTime();
+  const cajasOrdenadas = useMemo(() => {
+    const arr = [...(cajasFiltradas || [])];
 
-    const sorted = [...filtered].sort((a, b) => {
-      if (sort === 'apertura_asc') return getApertura(a) - getApertura(b);
-      if (sort === 'apertura_desc') return getApertura(b) - getApertura(a);
-      if (sort === 'saldo_asc') return getSaldo(a) - getSaldo(b);
-      if (sort === 'saldo_desc') return getSaldo(b) - getSaldo(a);
+    const getSaldoActual = (c) =>
+      Number(saldosByCaja?.[c.id]?.saldo_actual ?? 0);
+    const getAperturaTs = (c) =>
+      new Date(c?.fecha_apertura || c?.createdAt || 0).getTime();
+
+    arr.sort((a, b) => {
+      if (sort === 'apertura_desc') return getAperturaTs(b) - getAperturaTs(a);
+      if (sort === 'apertura_asc') return getAperturaTs(a) - getAperturaTs(b);
+      if (sort === 'saldo_desc') return getSaldoActual(b) - getSaldoActual(a);
+      if (sort === 'saldo_asc') return getSaldoActual(a) - getSaldoActual(b);
       return 0;
     });
 
-    return sorted;
-  }, [cajasAbiertas, q, sort, saldosActuales]);
+    return arr;
+  }, [cajasFiltradas, saldosByCaja, sort]);
 
   const kpis = useMemo(() => {
-    const count = (cajasAbiertas || []).length;
-    const totalInicial = (cajasAbiertas || []).reduce(
+    const abiertas = cajasOrdenadas || [];
+    const totalInicial = abiertas.reduce(
       (acc, c) => acc + Number(c.saldo_inicial || 0),
       0
     );
-    const totalActual = (cajasAbiertas || []).reduce(
-      (acc, c) => acc + Number(saldosActuales[c.id] ?? 0),
+    const totalActual = abiertas.reduce(
+      (acc, c) => acc + Number(saldosByCaja?.[c.id]?.saldo_actual ?? 0),
       0
     );
-    const neto = totalActual - totalInicial;
+    return {
+      count: abiertas.length,
+      totalInicial,
+      totalActual,
+      neto: totalActual - totalInicial
+    };
+  }, [cajasOrdenadas, saldosByCaja]);
 
-    return { count, totalInicial, totalActual, neto };
-  }, [cajasAbiertas, saldosActuales]);
+  // Cierre admin: persiste C1, C2 y TOTAL (según tu tabla extendida)
+  const cerrarCajaAdmin = async (caja) => {
+    const cajaId = caja?.id;
+    if (!cajaId) return;
 
-  const abrirConfirmCierre = async (caja) => {
-    // Pre-cálculo para preview (misma lógica final)
+    const confirm = await Swal.fire({
+      icon: 'warning',
+      title: `¿Cerrar caja #${cajaId}?`,
+      text: 'Se registrará el cierre y no se podrán cargar más movimientos en esa caja.',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, cerrar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#059669'
+    });
+
+    if (!confirm.isConfirmed) return;
+
     try {
-      const resMovs = await axios.get(`${API_URL}/movimientos/caja/${caja.id}`);
-      const movimientos = resMovs.data || [];
-
-      const totalIngresos = movimientos
-        .filter((m) => m.tipo === 'ingreso')
-        .reduce((sum, m) => sum + Number(m.monto || 0), 0);
-
-      const totalEgresos = movimientos
-        .filter((m) => m.tipo === 'egreso')
-        .reduce((sum, m) => sum + Number(m.monto || 0), 0);
-
-      const saldoInicial = Number(caja.saldo_inicial || 0);
-      const saldoFinal = saldoInicial + totalIngresos - totalEgresos;
-
-      setConfirmCaja(caja);
-      setConfirmSaldoFinalPreview(saldoFinal);
-      setConfirmOpen(true);
-    } catch (e) {
-      console.error(e);
-      showToast(
-        'error',
-        'No se pudo calcular el saldo',
-        'Revisá el endpoint de movimientos de caja.'
-      );
-    }
-  };
-
-  const cerrarCaja = async () => {
-    if (!confirmCaja) return;
-    setConfirmBusy(true);
-    try {
-      // Recalcular saldo final (misma lógica exacta)
-      const resMovs = await axios.get(
-        `${API_URL}/movimientos/caja/${confirmCaja.id}`
-      );
-      const movimientos = resMovs.data || [];
-
-      const totalIngresos = movimientos
-        .filter((m) => m.tipo === 'ingreso')
-        .reduce((sum, m) => sum + Number(m.monto || 0), 0);
-
-      const totalEgresos = movimientos
-        .filter((m) => m.tipo === 'egreso')
-        .reduce((sum, m) => sum + Number(m.monto || 0), 0);
-
-      const saldoInicial = Number(confirmCaja.saldo_inicial || 0);
-      const saldoFinal = saldoInicial + totalIngresos - totalEgresos;
-
-      await axios.put(`${API_URL}/caja/${confirmCaja.id}`, {
-        fecha_cierre: new Date(),
-        saldo_final: saldoFinal
+      Swal.fire({
+        title: 'Cerrando caja...',
+        text: 'Calculando saldos y registrando cierre.',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
       });
 
-      setCajasAbiertas((prev) => prev.filter((c) => c.id !== confirmCaja.id));
-      showToast(
-        'success',
-        'Caja cerrada',
-        `Caja #${confirmCaja.id} cerrada con saldo final ${money(saldoFinal)}.`
+      // 1) Saldos por canal (C1, C2) y TOTAL (C1+C2)
+      const [c1, c2, total] = await Promise.all([
+        fetchSaldoCaja(cajaId, { canal: 'C1' }),
+        fetchSaldoCaja(cajaId, { canal: 'C2' }),
+        fetchSaldoCaja(cajaId, { include_c2: true })
+      ]);
+
+      const saldo_final_c1 = Number(
+        c1?.saldo_actual ?? caja?.saldo_inicial ?? 0
       );
-      setConfirmOpen(false);
-      setConfirmCaja(null);
-    } catch (err) {
-      console.error(err);
-      showToast(
-        'error',
-        'Error al cerrar la caja',
-        'Verificá permisos / endpoint / estado de la caja.'
+      const saldo_final_c2 = Number(c2?.saldo_actual ?? 0);
+      const saldo_final_total = Number(
+        total?.saldo_actual ?? saldo_final_c1 + saldo_final_c2
       );
-    } finally {
-      setConfirmBusy(false);
+
+      // 2) Persistir en tabla caja (incluye compat legacy "saldo_final" si existe)
+      await axios.put(
+        `${API_URL}/caja/${cajaId}`,
+        {
+          fecha_cierre: new Date(),
+
+          // Compatibilidad con la columna histórica `saldo_final` (si sigue existiendo).
+          // Recomendación: dejarla como C1 (oficial) para reportes antiguos.
+          saldo_final: saldo_final_c1,
+
+          // Nuevos campos (si ya los agregaste a tu tabla)
+          saldo_final_c1,
+          saldo_final_c2,
+          saldo_final_total
+        },
+        { headers: { 'X-User-Id': String(userId ?? '') } }
+      );
+
+      Swal.close();
+      await Swal.fire({
+        icon: 'success',
+        title: 'Caja cerrada',
+        html: `
+          <div style="text-align:left">
+            <div><b>Saldo final C1:</b> ${money(saldo_final_c1)}</div>
+            <div><b>Saldo final C2:</b> ${money(saldo_final_c2)}</div>
+            <div><b>Saldo final Total:</b> ${money(saldo_final_total)}</div>
+          </div>
+        `,
+        confirmButtonColor: '#059669'
+      });
+
+      // 3) Refrescar tablero
+      await refreshAll({ silent: false });
+    } catch (e) {
+      Swal.close();
+      await Swal.fire({
+        icon: 'error',
+        title: 'No se pudo cerrar la caja',
+        text:
+          e?.response?.data?.mensajeError || e?.message || 'Error inesperado'
+      });
+
+      await refreshAll({ silent: true });
     }
   };
 
-  if (!permitted) {
-    return (
-      <div className="relative min-h-screen overflow-hidden bg-[#070A12] text-white">
-        <ParticlesBackground />
+  // // Guard: solo Admin
+  // if (String(userLevel || '').toLowerCase() !== 'socio') {
+  //   return (
+  //     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#101016] via-[#181A23] to-[#11192b] px-4 py-10">
+  //       <ParticlesBackground />
+  //       <div className="max-w-lg w-full rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl shadow-[0_25px_70px_rgba(0,0,0,0.45)] p-6 text-white">
+  //         <div className="text-xl font-bold mb-2">Acceso restringido</div>
+  //         <div className="text-white/70">
+  //           Esta pantalla es solo para administradores.
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  return (
+    <div className="min-h-screen w-full bg-gradient-to-br from-[#101016] via-[#181A23] to-[#11192b] px-2 py-8">
+      <ParticlesBackground />
+      <div className="max-w-6xl mx-auto">
         <ButtonBack />
 
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(244,63,94,0.18),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(59,130,246,0.18),transparent_40%),radial-gradient(circle_at_50%_90%,rgba(16,185,129,0.12),transparent_45%)]" />
-
-        <div className="relative min-h-screen flex items-center justify-center px-4">
-          <div className="w-full max-w-lg rounded-[32px] border border-white/10 bg-white/[0.06] backdrop-blur-2xl shadow-[0_30px_120px_rgba(0,0,0,0.65)] p-8">
-            <div className="flex items-start justify-between">
-              <div>
-                <Pill tone="rose">Acceso denegado</Pill>
-                <h1 className="mt-3 text-3xl font-black tracking-tight">
-                  No tenés permiso
-                </h1>
-                <p className="mt-2 text-sm text-white/70">
-                  Este panel es solo para{' '}
-                  <span className="font-bold">socio</span>,{' '}
-                  <span className="font-bold">contador</span> o{' '}
-                  <span className="font-bold">administrativo</span>.
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-2xl bg-rose-500/15 ring-1 ring-rose-400/20 grid place-items-center text-2xl">
-                🚫
-              </div>
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 rounded-2xl bg-emerald-500/15 ring-1 ring-emerald-400/20 flex items-center justify-center">
+              <FaCashRegister className="text-emerald-300 text-xl" />
             </div>
-
-            <div className="mt-6 rounded-2xl bg-white/[0.04] ring-1 ring-white/10 p-4">
-              <p className="text-xs font-extrabold uppercase tracking-widest text-white/60">
-                Tu nivel actual
-              </p>
-              <p className="mt-1 text-lg font-extrabold">
-                {String(userLevel || '---')}
-              </p>
-            </div>
-
-            <div className="mt-6 flex items-center justify-end">
-              <div className="text-xs text-white/50">
-                Sugerencia: si necesitás acceso, pedí al admin que te asigne el
-                rol.
+            <div>
+              <div className="titulo uppercase text-2xl md:text-3xl font-extrabold tracking-tight text-white">
+                Cajas abiertas
+              </div>
+              <div className="text-white/60 text-sm">
+                Vista ejecutiva por local con saldo inicial y saldo actual en
+                tiempo real.
               </div>
             </div>
           </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Pill tone={includeC2 ? 'info' : 'ok'}>
+              {includeC2 ? 'Auditoría (F10): C1 + C2' : 'Normal: C1'}
+            </Pill>
+            <Pill tone="neutral">Abiertas: {kpis.count}</Pill>
+            {loadingSaldos ? <Pill tone="neutral">Actualizando…</Pill> : null}
+          </div>
         </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="relative min-h-screen overflow-hidden bg-[#070A12] text-white">
-      <ParticlesBackground />
-      <ButtonBack />
-
-      {/* Glow background */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.22),transparent_40%),radial-gradient(circle_at_90%_15%,rgba(59,130,246,0.22),transparent_42%),radial-gradient(circle_at_55%_95%,rgba(245,158,11,0.14),transparent_45%)]" />
-
-      {/* Inline keyframes (sin config) */}
-      <style>{`
-        @keyframes floaty { 
-          0% { transform: translateY(0px) } 
-          50% { transform: translateY(-6px) } 
-          100% { transform: translateY(0px) } 
-        }
-        @keyframes shimmer {
-          0% { background-position: 0% 50% }
-          100% { background-position: 100% 50% }
-        }
-      `}</style>
-
-      <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 py-8">
-        {/* HERO */}
-        <div className="rounded-[34px] border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.03] backdrop-blur-2xl shadow-[0_28px_100px_rgba(0,0,0,0.65)] overflow-hidden">
-          <div className="p-6 sm:p-8">
-            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-              <div>
-                <div className="flex items-center gap-3">
-                  <div
-                    className="h-12 w-12 rounded-2xl grid place-items-center
-                               bg-gradient-to-br from-emerald-500/20 via-white/10 to-white/5
-                               ring-1 ring-white/15 shadow-[0_20px_60px_rgba(16,185,129,0.18)]"
-                    style={{ animation: 'floaty 4.6s ease-in-out infinite' }}
-                  >
-                    <FaCashRegister className="text-emerald-200 text-xl" />
-                  </div>
-
-                  <div>
-                    <h1 className="text-3xl sm:text-4xl font-black tracking-tight">
-                      Cajas abiertas
-                    </h1>
-                    <p className="mt-1 text-sm text-white/70">
-                      Vista ejecutiva por local con saldo inicial y saldo actual
-                      en tiempo real.
-                    </p>
-                  </div>
-                </div>
-
-                {/* KPIs */}
-                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-4">
-                    <p className="text-xs font-extrabold uppercase tracking-widest text-white/60">
-                      Abiertas
-                    </p>
-                    <p className="mt-1 text-2xl font-black">{kpis.count}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-4">
-                    <p className="text-xs font-extrabold uppercase tracking-widest text-white/60">
-                      Total saldo inicial
-                    </p>
-                    <p className="mt-1 text-2xl font-black text-white">
-                      {money(kpis.totalInicial)}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-4">
-                    <p className="text-xs font-extrabold uppercase tracking-widest text-white/60">
-                      Total saldo actual
-                    </p>
-                    <p className="mt-1 text-2xl font-black text-emerald-200">
-                      {loadingSaldos ? 'Calculando…' : money(kpis.totalActual)}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-4">
-                    <p className="text-xs font-extrabold uppercase tracking-widest text-white/60">
-                      Neto (actual - inicial)
-                    </p>
-                    <p
-                      className={classNames(
-                        'mt-1 text-2xl font-black',
-                        kpis.neto >= 0 ? 'text-emerald-200' : 'text-rose-200'
-                      )}
-                    >
-                      {loadingSaldos ? '—' : money(kpis.neto)}
-                    </p>
-                  </div>
-                </div>
+        {/* Toolbar */}
+        <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl shadow-[0_25px_70px_rgba(0,0,0,0.45)] p-4 md:p-5 mb-5">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+            <div className="flex-1">
+              <div className="text-xs text-white/60 mb-1">
+                Buscar (local / usuario / id)
               </div>
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Ej: Concepción, Admin, 12…"
+                className="w-full rounded-2xl bg-black/30 border border-white/10 focus:border-emerald-400/30 focus:ring-2 focus:ring-emerald-500/20 outline-none px-4 py-3 text-white placeholder:text-white/35"
+              />
+            </div>
 
-              {/* Controls */}
-              <div className="w-full lg:w-[440px]">
-                <div className="rounded-3xl bg-white/[0.04] ring-1 ring-white/10 p-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <label className="text-xs font-extrabold uppercase tracking-widest text-white/60">
-                        Buscar (local / usuario / id)
-                      </label>
-                      <input
-                        value={q}
-                        onChange={(e) => setQ(e.target.value)}
-                        placeholder="Ej: Concepción, Admin, 12…"
-                        className="mt-2 w-full rounded-2xl bg-black/30 ring-1 ring-white/10 px-4 py-3 text-sm font-semibold
-                                   outline-none placeholder:text-white/35 focus:ring-emerald-400/25 focus:bg-black/35 transition"
-                      />
-                    </div>
-                  </div>
+            <div className="min-w-[260px]">
+              <div className="text-xs text-white/60 mb-1">Ordenar</div>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="w-full rounded-2xl bg-black/30 border border-white/10 focus:border-emerald-400/30 focus:ring-2 focus:ring-emerald-500/20 outline-none px-4 py-3 text-white"
+              >
+                <option value="apertura_desc">Apertura: más reciente</option>
+                <option value="apertura_asc">Apertura: más antigua</option>
+                <option value="saldo_desc">Saldo actual: mayor</option>
+                <option value="saldo_asc">Saldo actual: menor</option>
+              </select>
+            </div>
 
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              onClick={() => refreshAll({ silent: false })}
+              className="rounded-2xl px-4 py-3 bg-emerald-500/15 ring-1 ring-emerald-400/20 hover:bg-emerald-500/20 text-emerald-200 transition font-semibold"
+            >
+              Refrescar
+            </button>
+          </div>
+
+          {/* KPIs */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+            <div className="rounded-2xl bg-black/30 border border-white/10 px-4 py-3">
+              <div className="text-xs text-white/60">Total saldo inicial</div>
+              <div className="text-xl font-extrabold text-white mt-1">
+                {money(kpis.totalInicial)}
+              </div>
+            </div>
+            <div className="rounded-2xl bg-black/30 border border-white/10 px-4 py-3">
+              <div className="text-xs text-white/60">
+                Total saldo actual {includeC2 ? '(C1+C2)' : '(C1)'}
+              </div>
+              <div className="text-xl font-extrabold text-white mt-1">
+                {money(kpis.totalActual)}
+              </div>
+            </div>
+            <div className="rounded-2xl bg-black/30 border border-white/10 px-4 py-3">
+              <div className="text-xs text-white/60">
+                Neto (actual - inicial)
+              </div>
+              <div
+                className={`text-xl font-extrabold mt-1 ${
+                  kpis.neto >= 0 ? 'text-emerald-200' : 'text-rose-200'
+                }`}
+              >
+                {money(kpis.neto)}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 text-xs text-white/45">
+            Tip UX: F10 alterna “auditoría” (C1+C2). No modifica datos; solo
+            recalcula la vista.
+          </div>
+        </div>
+
+        {/* Content */}
+        {error ? (
+          <div className="rounded-3xl border border-rose-500/20 bg-rose-500/10 backdrop-blur-2xl p-5 text-rose-100">
+            {error}
+          </div>
+        ) : null}
+
+        {loading ? (
+          <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl shadow-[0_25px_70px_rgba(0,0,0,0.45)] p-6 text-white/70">
+            Cargando…
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-12">
+            {cajasOrdenadas.length === 0 ? (
+              <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl p-6 text-white/70">
+                No hay cajas abiertas.
+              </div>
+            ) : null}
+
+            {cajasOrdenadas.map((caja) => {
+              const localNombre = getLocalNombre(caja);
+              const usuarioNombre = getUsuarioNombre(caja);
+
+              const apertura = caja?.fecha_apertura || caja?.createdAt || null;
+              const aperturaTxt = apertura
+                ? format(new Date(apertura), "d 'de' MMMM yyyy, HH:mm", {
+                    locale: es
+                  })
+                : '—';
+
+              const saldoInicial = Number(caja?.saldo_inicial ?? 0);
+              const saldoActual = Number(
+                saldosByCaja?.[caja.id]?.saldo_actual ?? 0
+              );
+              const neto = saldoActual - saldoInicial;
+
+              return (
+                <div
+                  key={caja.id}
+                  className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl shadow-[0_25px_70px_rgba(0,0,0,0.45)] p-5"
+                >
+                  <div className="flex items-start justify-between gap-3">
                     <div>
-                      <label className="text-xs font-extrabold uppercase tracking-widest text-white/60">
-                        Ordenar
-                      </label>
-                      <select
-                        value={sort}
-                        onChange={(e) => setSort(e.target.value)}
-                        className="mt-2 w-full rounded-2xl bg-black/30 ring-1 ring-white/10 px-4 py-3 text-sm font-extrabold
-                                   outline-none focus:ring-emerald-400/25 transition"
-                      >
-                        <option value="apertura_desc">
-                          Apertura: más reciente
-                        </option>
-                        <option value="apertura_asc">
-                          Apertura: más antigua
-                        </option>
-                        <option value="saldo_desc">Saldo actual: mayor</option>
-                        <option value="saldo_asc">Saldo actual: menor</option>
-                      </select>
+                      <div className="flex items-center gap-2">
+                        <div className="text-lg font-extrabold text-white">
+                          Caja #{caja.id}
+                        </div>
+                        <Pill tone="ok">Activa</Pill>
+                        {neto >= 0 ? (
+                          <Pill tone="ok">Neto ↑</Pill>
+                        ) : (
+                          <Pill tone="danger">Neto ↓</Pill>
+                        )}
+                      </div>
+                      <div className="mt-1 text-sm text-white/60 flex flex-wrap gap-x-4 gap-y-1">
+                        <span className="inline-flex items-center gap-2">
+                          <FaCalendarAlt className="text-white/50" />{' '}
+                          {aperturaTxt}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="flex items-end">
-                      <button
-                        onClick={refreshAll}
-                        className="w-full rounded-2xl px-4 py-3 font-extrabold uppercase tracking-widest text-sm
-                                   bg-gradient-to-r from-emerald-500/20 via-white/10 to-white/5
-                                   hover:from-emerald-500/25 hover:via-white/15 hover:to-white/10
-                                   ring-1 ring-white/12 hover:ring-emerald-400/25
-                                   shadow-[0_18px_65px_rgba(16,185,129,0.14)] transition"
+                    <button
+                      onClick={() => cerrarCajaAdmin(caja)}
+                      className="rounded-2xl px-4 py-2 bg-rose-500/15 ring-1 ring-rose-400/25 hover:bg-rose-500/20 text-rose-200 transition font-semibold"
+                    >
+                      Cerrar caja
+                    </button>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="rounded-2xl bg-black/30 border border-white/10 px-4 py-3">
+                      <div className="text-xs text-white/60 flex items-center gap-2">
+                        <FaStore className="text-white/50" /> Local
+                      </div>
+                      <div className="text-base font-semibold text-white mt-1">
+                        {localNombre}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/30 border border-white/10 px-4 py-3">
+                      <div className="text-xs text-white/60 flex items-center gap-2">
+                        <FaUser className="text-white/50" /> Usuario aperturador
+                      </div>
+                      <div className="text-base font-semibold text-white mt-1">
+                        {usuarioNombre}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/30 border border-white/10 px-4 py-3">
+                      <div className="text-xs text-white/60">Saldo inicial</div>
+                      <div className="text-xl font-extrabold text-white mt-1">
+                        {money(saldoInicial)}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/30 border border-white/10 px-4 py-3">
+                      <div className="text-xs text-white/60">
+                        Saldo actual {includeC2 ? '(C1+C2)' : '(C1)'}
+                      </div>
+                      <div className="text-xl font-extrabold text-white mt-1">
+                        {money(saldoActual)}
+                      </div>
+                      <div
+                        className={`text-xs mt-1 ${
+                          neto >= 0 ? 'text-emerald-200/80' : 'text-rose-200/80'
+                        }`}
                       >
-                        {loading ? 'Cargando…' : 'Refrescar'}
-                      </button>
+                        {neto >= 0 ? '+' : ''}
+                        {money(neto)} sobre el inicial
+                      </div>
                     </div>
                   </div>
 
-                  {error ? (
-                    <div className="mt-3 rounded-2xl bg-rose-500/10 ring-1 ring-rose-400/20 px-4 py-3 text-sm text-rose-100">
-                      {error}
+                  {/* Hint de auditoría */}
+                  {includeC2 ? (
+                    <div className="mt-4 text-xs text-white/50">
+                      Auditoría activada: el saldo actual incluye operaciones C2
+                      además de C1.
                     </div>
                   ) : null}
                 </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
-
-          <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-
-          <div className="px-6 sm:px-8 py-4 flex items-center justify-between">
-            <div className="text-xs text-white/55">
-              Tip UX: buscá rápido y cerrá cajas con confirmación premium (sin
-              alerts).
-            </div>
-            <Pill tone="emerald">Panel Admin</Pill>
-          </div>
-        </div>
-
-        {/* GRID */}
-        <div className="mt-8">
-          {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
-          ) : filteredSorted.length === 0 ? (
-            <div className="rounded-[30px] border border-white/10 bg-white/[0.04] backdrop-blur-2xl shadow-[0_22px_80px_rgba(0,0,0,0.55)] p-10 text-center">
-              <div className="mx-auto h-14 w-14 rounded-2xl bg-white/10 ring-1 ring-white/10 grid place-items-center text-2xl">
-                <FaCashRegister />
-              </div>
-              <h3 className="mt-4 text-2xl font-black tracking-tight">
-                No hay cajas abiertas
-              </h3>
-              <p className="mt-2 text-sm text-white/70">
-                {q.trim()
-                  ? 'No se encontraron resultados para tu búsqueda.'
-                  : 'Cuando se abra una caja en algún local, aparecerá aquí.'}
-              </p>
-              <div className="mt-6 flex justify-center">
-                <button
-                  onClick={() => {
-                    setQ('');
-                    refreshAll();
-                  }}
-                  className="rounded-2xl px-5 py-3 font-extrabold uppercase tracking-widest text-sm
-                             bg-white/5 hover:bg-white/10 ring-1 ring-white/10 hover:ring-white/20 transition"
-                >
-                  Limpiar y refrescar
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredSorted.map((caja) => {
-                const saldoInicial = Number(caja.saldo_inicial || 0);
-                const saldoActual = saldosActuales[caja.id];
-                const neto =
-                  saldoActual == null
-                    ? null
-                    : Number(saldoActual) - Number(saldoInicial);
-
-                const netoTone =
-                  neto == null ? 'zinc' : neto >= 0 ? 'emerald' : 'rose';
-
-                return (
-                  <div
-                    key={caja.id}
-                    className="group relative rounded-[28px] border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.03]
-                               backdrop-blur-2xl shadow-[0_24px_85px_rgba(0,0,0,0.55)] overflow-hidden"
-                  >
-                    {/* Halo */}
-                    <div className="pointer-events-none absolute -top-24 -right-24 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div className="pointer-events-none absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-blue-500/10 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                    <div className="p-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
-                            <FaCashRegister className="text-emerald-200" />
-                            Caja #{caja.id}
-                          </h2>
-                          <p className="mt-1 text-xs text-white/55 font-semibold tracking-wide">
-                            Estado: activa ·{' '}
-                            {formatearFecha(caja.fecha_apertura)}
-                          </p>
-                        </div>
-
-                        <div className="flex flex-col items-end gap-2">
-                          <Pill tone="emerald">Activa</Pill>
-                          <Pill tone={netoTone}>
-                            Neto {neto == null ? '—' : neto >= 0 ? '↑' : '↓'}
-                          </Pill>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-1 gap-2">
-                        <div className="rounded-2xl bg-black/25 ring-1 ring-white/10 p-3">
-                          <p className="text-xs font-extrabold uppercase tracking-widest text-white/60 flex items-center gap-2">
-                            <FaStore /> Local
-                          </p>
-                          <p className="mt-1 font-extrabold text-white">
-                            {caja.locale?.nombre || caja.local?.nombre || '---'}
-                          </p>
-                        </div>
-
-                        <div className="rounded-2xl bg-black/25 ring-1 ring-white/10 p-3">
-                          <p className="text-xs font-extrabold uppercase tracking-widest text-white/60 flex items-center gap-2">
-                            <FaUser /> Usuario Aperturador
-                          </p>
-                          <p className="mt-1 font-extrabold text-white">
-                            {caja.usuario?.nombre || caja.user?.name || '---'}
-                          </p>
-                        </div>
-
-                        <div className="rounded-2xl bg-black/25 ring-1 ring-white/10 p-3">
-                          <p className="text-xs font-extrabold uppercase tracking-widest text-white/60 flex items-center gap-2">
-                            <FaCalendarAlt /> Apertura
-                          </p>
-                          <p className="mt-1 font-extrabold text-white">
-                            {formatearFecha(caja.fecha_apertura)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-2 gap-3">
-                        <div className="rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-4">
-                          <p className="text-xs font-extrabold uppercase tracking-widest text-white/60">
-                            Saldo inicial
-                          </p>
-                          <p className="mt-1 text-lg font-black">
-                            {money(saldoInicial)}
-                          </p>
-                        </div>
-
-                        <div className="rounded-2xl bg-emerald-500/10 ring-1 ring-emerald-400/20 p-4">
-                          <p className="text-xs font-extrabold uppercase tracking-widest text-emerald-100/70">
-                            Saldo actual
-                          </p>
-                          <p className="mt-1 text-lg font-black text-emerald-100">
-                            {saldoActual != null
-                              ? money(saldoActual)
-                              : 'Cargando…'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 flex items-center justify-between gap-3">
-                        <div className="text-xs text-white/55">
-                          {neto == null ? (
-                            <span>Calculando neto…</span>
-                          ) : neto >= 0 ? (
-                            <span className="text-emerald-200 font-extrabold">
-                              +{money(neto)} sobre el inicial
-                            </span>
-                          ) : (
-                            <span className="text-rose-200 font-extrabold">
-                              {money(neto)} bajo el inicial
-                            </span>
-                          )}
-                        </div>
-
-                        <button
-                          onClick={() => abrirConfirmCierre(caja)}
-                          className="rounded-2xl px-4 py-2.5 font-extrabold uppercase tracking-widest text-xs
-                                     bg-gradient-to-r from-rose-600/25 via-white/10 to-white/5
-                                     hover:from-rose-600/35 hover:via-white/15 hover:to-white/10
-                                     ring-1 ring-white/12 hover:ring-rose-300/25
-                                     shadow-[0_18px_55px_rgba(244,63,94,0.18)] transition"
-                        >
-                          Cerrar caja
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Accent footer */}
-                    <div
-                      className="h-1.5 w-full opacity-70"
-                      style={{
-                        backgroundSize: '200% 200%',
-                        backgroundImage:
-                          'linear-gradient(90deg, rgba(16,185,129,0.0), rgba(16,185,129,0.55), rgba(59,130,246,0.45), rgba(245,158,11,0.35), rgba(16,185,129,0.0))',
-                        animation: 'shimmer 6s linear infinite'
-                      }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        )}
       </div>
-
-      {/* Confirm modal */}
-      <ConfirmCloseModal
-        open={confirmOpen}
-        caja={confirmCaja}
-        saldoFinalPreview={confirmSaldoFinalPreview}
-        loading={confirmBusy}
-        onCancel={() => {
-          if (confirmBusy) return;
-          setConfirmOpen(false);
-          setConfirmCaja(null);
-        }}
-        onConfirm={cerrarCaja}
-      />
-
-      {/* Toast */}
-      <Toast
-        toast={toast}
-        onClose={() => setToast((t) => ({ ...t, open: false }))}
-      />
     </div>
   );
 }
