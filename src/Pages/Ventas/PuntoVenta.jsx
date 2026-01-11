@@ -109,7 +109,6 @@ export default function PuntoVenta() {
 
   const inputRef = useRef(); // input invisible
   const buscadorRef = useRef(); // buscador manual
-
   const [modoEscaner, setModoEscaner] = useState(false); // Arranca en manual
 
   const [modalVerCombosOpen, setModalVerCombosOpen] = useState(false);
@@ -118,6 +117,479 @@ export default function PuntoVenta() {
 
   const [comboSeleccionado, setComboSeleccionado] = useState(null);
   const [combosSeleccionados, setCombosSeleccionados] = useState([]);
+
+  // =========================
+  // ARCA: Comprobante solicitado (F10 / F11) - FRONT ONLY
+  // =========================
+
+  // Tipos WSFE (ARCA/AFIP)
+  const CBTE_TIPO = {
+    FACTURA_A: 1,
+    NOTA_DEBITO_A: 2,
+    NOTA_CREDITO_A: 3,
+    FACTURA_B: 6,
+    NOTA_DEBITO_B: 7,
+    NOTA_CREDITO_B: 8
+  };
+
+  const CBTE_DEFAULT = CBTE_TIPO.FACTURA_B;
+
+  // “Catálogo” para labels + UX (lo usamos para el selector y para mostrar en pantalla)
+  const CBTE_META = {
+    NONE: {
+      key: 'NONE',
+      tipo: null,
+      title: 'Venta',
+      subtitle: 'Sin comprobante fiscal',
+      desc: 'No se factura en ARCA. Se registra la venta igual en tu sistema.',
+      badges: ['cbte_tipo = null', 'No ARCA'],
+      visible: 0 // <-- NUEVO (no se muestra en el Swal)
+    },
+    [CBTE_TIPO.FACTURA_B]: {
+      key: String(CBTE_TIPO.FACTURA_B),
+      tipo: CBTE_TIPO.FACTURA_B,
+      title: 'Factura B (6)',
+      subtitle: 'Consumidor Final',
+      desc: 'Venta fiscal estándar. Recomendado para público general.',
+      badges: ['WSFE', 'B'],
+      visible: 1
+    },
+    [CBTE_TIPO.FACTURA_A]: {
+      key: String(CBTE_TIPO.FACTURA_A),
+      tipo: CBTE_TIPO.FACTURA_A,
+      title: 'Factura A (1)',
+      subtitle: 'Responsable Inscripto / A',
+      desc: 'Para clientes que requieren factura A (CUIT/condición IVA).',
+      badges: ['WSFE', 'A'],
+      visible: 1
+    },
+    [CBTE_TIPO.NOTA_CREDITO_B]: {
+      key: String(CBTE_TIPO.NOTA_CREDITO_B),
+      tipo: CBTE_TIPO.NOTA_CREDITO_B,
+      title: 'Nota de Crédito B (8)',
+      subtitle: 'Anulación / devolución',
+      desc: 'Ajuste a favor del cliente (crédito). Usar en devoluciones/ajustes.',
+      badges: ['WSFE', 'NC B'],
+      visible: 1
+    },
+    [CBTE_TIPO.NOTA_CREDITO_A]: {
+      key: String(CBTE_TIPO.NOTA_CREDITO_A),
+      tipo: CBTE_TIPO.NOTA_CREDITO_A,
+      title: 'Nota de Crédito A (3)',
+      subtitle: 'Anulación / devolución',
+      desc: 'Ajuste a favor del cliente con comprobante tipo A.',
+      badges: ['WSFE', 'NC A'],
+      visible: 1
+    },
+    [CBTE_TIPO.NOTA_DEBITO_B]: {
+      key: String(CBTE_TIPO.NOTA_DEBITO_B),
+      tipo: CBTE_TIPO.NOTA_DEBITO_B,
+      title: 'Nota de Débito B (7)',
+      subtitle: 'Ajuste / débito',
+      desc: 'Ajuste que incrementa el monto adeudado (débito).',
+      badges: ['WSFE', 'ND B'],
+      visible: 1
+    },
+    [CBTE_TIPO.NOTA_DEBITO_A]: {
+      key: String(CBTE_TIPO.NOTA_DEBITO_A),
+      tipo: CBTE_TIPO.NOTA_DEBITO_A,
+      title: 'Nota de Débito A (2)',
+      subtitle: 'Ajuste / débito',
+      desc: 'Ajuste que incrementa el monto adeudado con comprobante tipo A.',
+      badges: ['WSFE', 'ND A'],
+      visible: 1
+    }
+  };
+
+  const getCbteMeta = (tipo) => {
+    if (tipo == null) return CBTE_META.NONE;
+    return (
+      CBTE_META[Number(tipo)] || {
+        key: String(tipo),
+        tipo: Number(tipo),
+        title: `CbteTipo ${Number(tipo)}`,
+        subtitle: 'Sin descripción',
+        desc: 'Tipo no mapeado en front.',
+        badges: ['WSFE']
+      }
+    );
+  };
+
+  // Estado único (y coherente)
+  const [cbteTipoSolicitado, setCbteTipoSolicitado] = useState(CBTE_DEFAULT);
+
+  // Refs para evitar “estado viejo” en handlers globales
+  const cbteTipoRef = useRef(CBTE_DEFAULT);
+  useEffect(() => {
+    cbteTipoRef.current = cbteTipoSolicitado;
+  }, [cbteTipoSolicitado]);
+
+  // Recordar último fiscal para “volver” cuando salís del modo negro
+  const ultimoFiscalRef = useRef(CBTE_DEFAULT);
+  useEffect(() => {
+    if (cbteTipoSolicitado != null)
+      ultimoFiscalRef.current = cbteTipoSolicitado;
+  }, [cbteTipoSolicitado]);
+
+  const openCbteSelectorRef = useRef(null);
+
+  const openCbteSelector = async () => {
+    const currentTipo = cbteTipoRef.current;
+    const currentKey = currentTipo == null ? 'NONE' : String(currentTipo);
+
+    const opciones = [
+      CBTE_META.NONE,
+      CBTE_META[CBTE_TIPO.FACTURA_B],
+      CBTE_META[CBTE_TIPO.FACTURA_A],
+      CBTE_META[CBTE_TIPO.NOTA_CREDITO_B],
+      CBTE_META[CBTE_TIPO.NOTA_CREDITO_A],
+      CBTE_META[CBTE_TIPO.NOTA_DEBITO_B],
+      CBTE_META[CBTE_TIPO.NOTA_DEBITO_A]
+    ]
+      .filter(Boolean)
+      .filter((m) => (m.visible ?? 1) === 1);
+
+    const cardHtml = (m) => {
+      const badges = (m.badges || [])
+        .map((b) => `<span class="cb-badge">${b}</span>`)
+        .join('');
+
+      return `
+      <label class="cb-card" data-cbte-key="${m.key}">
+        <input class="cb-radio" type="radio" name="cbteOpt" value="${m.key}" />
+        <div class="cb-head">
+          <div class="cb-title">${m.title}</div>
+          <div class="cb-sub">${m.subtitle || ''}</div>
+        </div>
+        <div class="cb-desc">${m.desc || ''}</div>
+        <div class="cb-badges">${badges}</div>
+      </label>
+    `;
+    };
+
+    const html = `
+      <div class="cb-wrap">
+    <div class="cb-hint">
+      Seleccioná el tipo de comprobante.
+    </div>
+    <div class="cb-grid">
+      ${opciones.map(cardHtml).join('')}
+    </div>
+  </div>
+
+ <style>
+  /* ====== Panel base (Swal) ====== */
+  .cb-wrap{ text-align:left; position:relative; }
+
+  /* Halo sutil detrás del contenido */
+  .cb-wrap::before{
+    content:"";
+    position:absolute;
+    inset:-14px -10px auto -10px;
+    height:160px;
+    background:
+      radial-gradient(700px 140px at 10% 20%, rgba(16,185,129,.18), transparent 60%),
+      radial-gradient(520px 160px at 95% 10%, rgba(59,130,246,.16), transparent 55%),
+      radial-gradient(520px 220px at 55% 0%, rgba(236,72,153,.10), transparent 60%);
+    filter: blur(10px);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .cb-hint{
+    position:relative;
+    z-index:1;
+    font-size:12px;
+    letter-spacing:.2px;
+    color: rgba(226,232,240,.88);
+    margin: 0 0 12px 0;
+    padding: 12px 14px;
+    border-radius: 16px;
+
+    /* glass real */
+    background:
+      linear-gradient(180deg, rgba(2,6,23,.52), rgba(2,6,23,.32));
+    border: 1px solid rgba(148,163,184,.18);
+    box-shadow:
+      0 18px 60px rgba(0,0,0,.35),
+      inset 0 1px 0 rgba(255,255,255,.06);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .cb-hint b{
+    color: rgba(52,211,153,.95);
+    font-weight: 800;
+  }
+
+  /* ====== Grid ====== */
+  .cb-grid{
+    position:relative;
+    z-index:1;
+    display:grid;
+    gap: 12px;
+  }
+
+  @media (min-width: 640px){
+    .cb-grid{ grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ====== Card ====== */
+  .cb-card{
+    cursor:pointer;
+    display:block;
+    position:relative;
+    overflow:hidden;
+    padding: 14px 14px;
+    border-radius: 18px;
+
+    /* glass + depth */
+    background:
+      linear-gradient(180deg, rgba(2,6,23,.55), rgba(2,6,23,.32));
+    border: 1px solid rgba(148,163,184,.16);
+    box-shadow:
+      0 18px 55px rgba(0,0,0,.35),
+      inset 0 1px 0 rgba(255,255,255,.06);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    transition:
+      transform .14s ease,
+      box-shadow .14s ease,
+      border-color .14s ease,
+      background .14s ease;
+  }
+
+  /* borde gradiente “premium” (sin pseudo border hack raro) */
+  .cb-card::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:18px;
+    padding:1px; /* thickness */
+    background:
+      linear-gradient(135deg,
+        rgba(52,211,153,.45),
+        rgba(59,130,246,.32),
+        rgba(236,72,153,.18)
+      );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    opacity:.35;
+    pointer-events:none;
+  }
+
+  /* shimmer sutil */
+  .cb-card::after{
+    content:"";
+    position:absolute;
+    inset:-40% -60%;
+    background:
+      radial-gradient(closest-side, rgba(255,255,255,.08), transparent 60%);
+    transform: rotate(18deg);
+    opacity:0;
+    transition: opacity .14s ease;
+    pointer-events:none;
+  }
+
+  .cb-card:hover{
+    transform: translateY(-2px) scale(1.01);
+    border-color: rgba(52,211,153,.25);
+    box-shadow:
+      0 26px 70px rgba(0,0,0,.45),
+      0 0 0 1px rgba(52,211,153,.14) inset,
+      inset 0 1px 0 rgba(255,255,255,.08);
+    background:
+      linear-gradient(180deg, rgba(2,6,23,.62), rgba(2,6,23,.36));
+  }
+  .cb-card:hover::after{ opacity:1; }
+
+  .cb-card.is-active{
+    border-color: rgba(16,185,129,.55);
+    box-shadow:
+      0 28px 80px rgba(0,0,0,.48),
+      0 0 0 2px rgba(16,185,129,.20) inset,
+      0 0 0 1px rgba(16,185,129,.30);
+  }
+  .cb-card.is-active::before{
+    opacity:.65;
+    background:
+      linear-gradient(135deg,
+        rgba(16,185,129,.70),
+        rgba(59,130,246,.40),
+        rgba(236,72,153,.22)
+      );
+  }
+
+  .cb-radio{ display:none; }
+
+  /* ====== Header / Typography ====== */
+  .cb-head{
+    display:flex;
+    flex-direction:column;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  .cb-title{
+    font-weight: 900;
+    letter-spacing: .25px;
+    font-size: 14px;
+    color: rgba(241,245,249,.96);
+    text-shadow: 0 1px 12px rgba(0,0,0,.35);
+  }
+
+  .cb-sub{
+    font-size: 12px;
+    color: rgba(226,232,240,.78);
+  }
+
+  .cb-desc{
+    font-size: 12px;
+    color: rgba(226,232,240,.70);
+    line-height: 1.45;
+  }
+
+  /* ====== Badges ====== */
+  .cb-badges{
+    display:flex;
+    flex-wrap:wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .cb-badge{
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 999px;
+
+    /* chip moderno */
+    background:
+      linear-gradient(180deg, rgba(148,163,184,.14), rgba(148,163,184,.08));
+    border: 1px solid rgba(148,163,184,.18);
+    color: rgba(226,232,240,.85);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.06);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    user-select:none;
+  }
+
+  /* Ajuste fino: que el activo “tiña” chips */
+  .cb-card.is-active .cb-badge{
+    border-color: rgba(16,185,129,.22);
+    background:
+      linear-gradient(180deg, rgba(16,185,129,.18), rgba(16,185,129,.10));
+    color: rgba(236,253,245,.92);
+  }
+    .cb-swal-popup{
+  border-radius: 22px !important;
+  background: rgba(2,6,23,.72) !important;
+  border: 1px solid rgba(148,163,184,.14) !important;
+  box-shadow: 0 35px 120px rgba(0,0,0,.65) !important;
+}
+
+</style>
+
+  `;
+
+    const r = await Swal.fire({
+      title: 'Comprobante (F11)',
+      html,
+      showCancelButton: true,
+      confirmButtonText: 'Aplicar',
+      cancelButtonText: 'Cerrar',
+      confirmButtonColor: '#059669',
+      cancelButtonColor: '#64748b',
+      reverseButtons: true,
+      focusConfirm: false,
+      customClass: {
+        popup: 'cb-swal-popup'
+      },
+      didOpen: () => {
+        const root = Swal.getHtmlContainer();
+        if (!root) return;
+
+        let selectedKey = currentKey;
+
+        const setActive = () => {
+          root.querySelectorAll('.cb-card').forEach((el) => {
+            const k = el.getAttribute('data-cbte-key');
+            el.classList.toggle('is-active', k === selectedKey);
+          });
+
+          const radio = root.querySelector(
+            `input.cb-radio[value="${selectedKey}"]`
+          );
+          if (radio) radio.checked = true;
+        };
+
+        // Inicial
+        setActive();
+
+        // Click en cards
+        root.querySelectorAll('.cb-card').forEach((el) => {
+          el.addEventListener('click', () => {
+            selectedKey = el.getAttribute('data-cbte-key') || currentKey;
+            setActive();
+          });
+        });
+      },
+      preConfirm: () => {
+        const root = Swal.getHtmlContainer();
+        const checked = root?.querySelector('input[name="cbteOpt"]:checked');
+        return checked?.value || currentKey;
+      }
+    });
+
+    if (!r.isConfirmed) return;
+
+    const key = String(r.value || currentKey);
+    const next = key === 'NONE' ? null : Number(key);
+
+    setCbteTipoSolicitado(Number.isFinite(next) ? next : null);
+
+    const meta = getCbteMeta(Number.isFinite(next) ? next : null);
+    toast?.fire?.({
+      icon: 'success',
+      title: `Comprobante: ${meta.title} (cbte_tipo=${
+        meta.tipo == null ? 'null' : meta.tipo
+      })`
+    });
+  };
+
+  openCbteSelectorRef.current = openCbteSelector;
+
+  // Teclado: F10 toggle negro / F11 selector
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      // F10 = 121
+      if (e.key === 'F10' || e.keyCode === 121) {
+        e.preventDefault();
+
+        // Toggle: fiscal <-> negro (null)
+        setCbteTipoSolicitado((prev) =>
+          prev == null ? ultimoFiscalRef.current : null
+        );
+
+        return;
+      }
+
+      // F11 = 122 (nota: algunos navegadores lo reservan para fullscreen)
+      if (e.key === 'F11' || e.keyCode === 122) {
+        e.preventDefault();
+        openCbteSelectorRef.current?.();
+        return;
+      }
+    };
+
+    // capture=true ayuda a interceptar antes (igual F11 puede estar reservado por el browser)
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, []);
 
   useEffect(() => {
     if (modoEscaner) {
@@ -475,7 +947,7 @@ export default function PuntoVenta() {
       // Solo los que tienen producto asociado
       const productosDirectos = permitidos.filter((p) => p.producto);
       if (!productosDirectos.length) {
-        await swalWarn(
+        await Swal.fire(
           'Combo sin ítems',
           'Este combo no tiene productos configurados.'
         );
@@ -553,7 +1025,7 @@ export default function PuntoVenta() {
       const items = (await Promise.all(consultas)).filter(Boolean);
 
       if (!items.length) {
-        await swalWarn(
+        await Swal.fire(
           'Sin stock en tu sucursal',
           'No hay stock disponible en tu sucursal para los productos del combo.'
         );
@@ -569,7 +1041,7 @@ export default function PuntoVenta() {
       }
 
       if (!usados.length) {
-        await swalWarn(
+        await Swal.fire(
           'Sin stock',
           'Los productos del combo no tienen stock disponible.'
         );
@@ -601,37 +1073,105 @@ export default function PuntoVenta() {
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [sugerencias, setSugerencias] = useState([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
+  const [isSearchingCliente, setIsSearchingCliente] = useState(false);
 
-  const handleBusquedaCliente = async (e) => {
-    setBusquedaCliente(e.target.value);
-    if (e.target.value.length > 2) {
-      try {
-        const res = await fetch(
-          `http://localhost:8080/clientes/search?query=${encodeURIComponent(
-            e.target.value
-          )}`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setSugerencias(data);
-        } else if (res.status === 404) {
-          setSugerencias([]); // No hay resultados, es válido
-        } else {
-          // Otro error de red
-          setSugerencias([]);
-        }
-      } catch (err) {
-        setSugerencias([]); // Error de red/fetch
-      }
-    } else {
-      setSugerencias([]);
-    }
+  // Debounce + cancel
+  const searchTimerRef = useRef(null);
+  const abortRef = useRef(null);
+
+  const onlyDigits = (v) => String(v ?? '').replace(/\D+/g, '');
+
+  const labelCliente = (c) => {
+    const dni = c?.dni ? onlyDigits(c.dni) : '';
+    const tel = c?.telefono ? onlyDigits(c.telefono) : '';
+    const mail = c?.email ? String(c.email) : '';
+    const extra = dni ? `DNI ${dni}` : tel ? `Tel ${tel}` : mail ? mail : '—';
+    return `${c?.nombre ?? ''} • ${extra}`;
   };
 
   const seleccionarCliente = (cliente) => {
     setClienteSeleccionado(cliente);
-    setBusquedaCliente(cliente.nombre);
+    setBusquedaCliente(cliente?.nombre ?? '');
     setSugerencias([]);
+  };
+
+  // -------------------------------
+  // búsqueda con debounce + abort + soporte nombre/dni/teléfono
+  // -------------------------------
+  const buscarClientes = async (q) => {
+    const query = String(q ?? '').trim();
+    if (query.length < 2) {
+      setSugerencias([]);
+      return;
+    }
+
+    // abort previo
+    try {
+      abortRef.current?.abort?.();
+    } catch {}
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setIsSearchingCliente(true);
+
+    try {
+      const res = await fetch(
+        `http://localhost:8080/clientes/search?query=${encodeURIComponent(
+          query
+        )}`,
+        { signal: controller.signal }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        // orden sugerida: los que tienen DNI/telefono primero, y por nombre
+        const normalized = Array.isArray(data) ? data : [];
+        const sorted = normalized
+          .slice(0, 20)
+          .sort((a, b) =>
+            String(a.nombre ?? '').localeCompare(String(b.nombre ?? ''))
+          );
+
+        setSugerencias(sorted);
+      } else if (res.status === 404) {
+        setSugerencias([]);
+      } else {
+        setSugerencias([]);
+      }
+    } catch (e) {
+      if (e?.name !== 'AbortError') setSugerencias([]);
+    } finally {
+      setIsSearchingCliente(false);
+    }
+  };
+
+  const handleBusquedaCliente = (e) => {
+    const value = e.target.value;
+    setBusquedaCliente(value);
+    setClienteSeleccionado(null);
+
+    // debounce
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      buscarClientes(value);
+    }, 220);
+  };
+
+  // Opcional: seleccionar con Enter si hay 1 sugerencia
+  const handleBusquedaKeyDown = (e) => {
+    if (e.key === 'Enter' && sugerencias.length === 1) {
+      e.preventDefault();
+      seleccionarCliente(sugerencias[0]);
+    }
+  };
+
+  // Cerrar sugerencias al perder foco (sin romper click)
+  const blurTimeoutRef = useRef(null);
+  const handleBlurCliente = () => {
+    blurTimeoutRef.current = setTimeout(() => setSugerencias([]), 120);
+  };
+  const handleFocusCliente = () => {
+    if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
   };
 
   function calcularTotalAjustado(precioBase, ajuste) {
@@ -722,7 +1262,7 @@ export default function PuntoVenta() {
     };
 
     calcularTotal();
-    // Ahora dependé también de estos estados 👇
+    // Ahora dependé también de estos estados
   }, [
     carrito,
     medioPago,
@@ -735,20 +1275,65 @@ export default function PuntoVenta() {
     new Set([1, ...cuotasDisponibles.map((c) => c.cuotas)])
   ).sort((a, b) => a - b);
 
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  const normalizeWarningUi = (w, ctx = {}) => {
+    const code = Number(w?.code ?? w?.Code ?? NaN);
+    const rawMsg = String(w?.uiMsg || w?.msg || w?.Msg || '').trim();
+
+    // si el backend ya mandó severity, lo respetamos
+    let severity = String(w?.severity || '').toLowerCase();
+    let recommendedAction = w?.recommendedAction ?? null;
+
+    // Fallback por código si falta severity
+    if (!severity) {
+      if (code === 10217) severity = 'info';
+      else if (code === 10234) {
+        severity = 'critical';
+        recommendedAction = recommendedAction || 'ANULAR_CON_NC';
+      } else severity = 'warning';
+    }
+
+    // Fallback de uiMsg si no viene enriquecido
+    let uiMsg = rawMsg;
+
+    // (opcional) si querés mantener tu texto “base” contextual
+    const base =
+      ctx?.docTipo != null && ctx?.docNro != null
+        ? `Observación ARCA sobre el receptor (DocTipo=${ctx.docTipo}, DocNro=${ctx.docNro}). `
+        : '';
+
+    if (!w?.uiMsg && base && rawMsg) uiMsg = `${base}${rawMsg}`;
+
+    return {
+      code,
+      severity,
+      recommendedAction,
+      uiMsg,
+      msg: uiMsg // COMPAT: si alguna parte usa msg
+    };
+  };
+
   const finalizarVenta = async () => {
     if (carrito.length === 0) {
-      await swalWarn('Carrito vacío', 'Agregá productos al carrito.');
+      await Swal.fire('Carrito vacío', 'Agregá productos al carrito.');
       return;
     }
     if (!medioPago) {
-      await swalWarn('Medio de pago', 'Seleccioná un medio de pago.');
+      await Swal.fire('Medio de pago', 'Seleccioná un medio de pago.');
       return;
     }
 
     const confirm = await swalConfirm({
       title: '¿Registrar la venta?',
-      text: 'Se confirmará la operación y se generará el comprobante.',
-      confirmText: 'Sí, registrar'
+      text: 'Se confirmará la operación.'
     });
     if (!confirm.isConfirmed) return;
 
@@ -821,6 +1406,15 @@ export default function PuntoVenta() {
       });
     }
 
+    // Si se solicita comprobante fiscal, pedimos cliente
+    if (cbteTipoSolicitado != null && !clienteSeleccionado) {
+      await Swal.fire(
+        'Cliente requerido',
+        'Para emitir comprobante fiscal, seleccioná un cliente.'
+      );
+      return;
+    }
+
     const totalFinalCalculado = aplicarDescuento
       ? totalCalculado.total
       : totalCalculado.precio_base;
@@ -833,6 +1427,7 @@ export default function PuntoVenta() {
       medio_pago_id: medioPago,
       usuario_id: userId,
       local_id: userLocalId,
+      cbte_tipo: cbteTipoSolicitado,
       descuento_porcentaje:
         aplicarDescuento && descuentoPersonalizado !== ''
           ? parseFloat(descuentoPersonalizado)
@@ -950,6 +1545,26 @@ export default function PuntoVenta() {
     };
 
     try {
+      // Guardrail front: RI no debería facturar con B
+      const isB = [6, 7, 8].includes(Number(cbteTipoSolicitado));
+      const condIvaCli = String(
+        clienteSeleccionado?.condicion_iva || ''
+      ).toUpperCase();
+
+      if (
+        cbteTipoSolicitado != null &&
+        isB &&
+        (condIvaCli === 'RI' || condIvaCli === 'RESPONSABLE_INSCRIPTO')
+      ) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Tipo de comprobante incompatible',
+          text: 'El cliente es Responsable Inscripto. Para ese caso corresponde Factura A (1), no Factura B (6). Cambiá el comprobante o el cliente.',
+          confirmButtonColor: '#f59e0b'
+        });
+        return;
+      }
+
       const response = await fetch('http://localhost:8080/ventas/pos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -982,11 +1597,6 @@ export default function PuntoVenta() {
           ).then((r) => r.json());
           setVentaFinalizada(ventaCompleta);
 
-          await swalWarn(
-            'Venta registrada',
-            'La venta se registró, pero la facturación quedó en proceso por numeración ocupada. Se reintentará automáticamente.'
-          );
-
           // auto-reintento en background (del lado del front)
           await autoRetryFacturacion(ventaId);
 
@@ -1012,6 +1622,87 @@ export default function PuntoVenta() {
         payload?.estado ||
         null;
 
+      const fact = payload?.facturacion || null;
+
+      // =========================================================
+      // NUEVO: Observaciones (warnings) - compat total
+      // - Preferimos fact.warnings (nuevo)
+      // - Fallback a payload.warnings (por compat si alguna capa lo envía así)
+      // =========================================================
+      const warningsRaw = Array.isArray(fact?.warnings)
+        ? fact.warnings
+        : Array.isArray(payload?.warnings)
+        ? payload.warnings
+        : [];
+
+      const warnings = warningsRaw
+        .map((w) =>
+          normalizeWarningUi(w, {
+            docTipo: fact?.docTipo,
+            docNro: fact?.docNro
+          })
+        )
+        .filter((x) => Number.isFinite(x.code) && x.uiMsg);
+
+      const hasCriticalWarnings =
+        Boolean(fact?.hasCriticalWarnings) ||
+        warnings.some(
+          (w) => String(w?.severity || '').toLowerCase() === 'critical'
+        );
+
+      const recommendedAction =
+        fact?.recommendedAction ??
+        warnings.find((w) => w?.recommendedAction)?.recommendedAction ??
+        null;
+
+      if (fact?.estado === 'aprobado') {
+        if (warnings.length > 0) {
+          const html = `
+<div style="text-align:left">
+  <div style="margin-bottom:8px">
+    <b>Comprobante emitido OK</b>, pero ARCA devolvió observaciones:
+    ${
+      hasCriticalWarnings
+        ? `<div style="margin-top:6px"><b>Atención:</b> hay observaciones críticas.</div>`
+        : ``
+    }
+    ${
+      recommendedAction
+        ? `<div style="margin-top:6px"><b>Acción recomendada:</b> ${escapeHtml(
+            String(recommendedAction)
+          )}</div>`
+        : ``
+    }
+  </div>
+  <ul style="padding-left:18px;margin:0">
+    ${warnings
+      .map((w) => {
+        const sev = String(w?.severity || '').toLowerCase();
+        const sevLabel =
+          sev === 'critical' ? 'CRÍTICO' : sev === 'info' ? 'INFO' : 'OBS';
+        return `<li><b>${w.code ?? ''}</b> [${sevLabel}] ${escapeHtml(
+          w.uiMsg || w.msg || ''
+        )}</li>`;
+      })
+      .join('')}
+  </ul>
+</div>
+`;
+
+          await Swal.fire({
+            icon: 'warning',
+            title: hasCriticalWarnings
+              ? 'Emitido con observaciones críticas'
+              : 'Emitido con observaciones',
+            html,
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#059669'
+          });
+        } else {
+          // opcional: swal OK normal
+        }
+      }
+
       // 🧹 limpiar UI (tu lógica)
       setCarrito([]);
       setBusqueda('');
@@ -1032,18 +1723,58 @@ export default function PuntoVenta() {
       ).then((r) => r.json());
       setVentaFinalizada(ventaCompleta);
 
-      // NUEVO: Mensaje distinto si quedó pendiente/omitido
+      // Mensajería según resultado de facturación (APROBADO / PENDIENTE / OMITIDO / RECHAZADO)
       const estadoLower = String(factEstado || '').toLowerCase();
-      if (estadoLower === 'pendiente' || estadoLower === 'omitido') {
-        await swalWarn(
+
+      if (!fact) {
+        await swalSuccess(
+          'Venta registrada',
+          'La venta se registró correctamente.'
+        );
+      } else if (estadoLower === 'aprobado') {
+        // Si hubo warnings, ya los mostramos arriba; acá sólo mostramos success si NO hubo warnings
+        if (warnings.length === 0) {
+          await swalSuccess(
+            'Venta registrada',
+            'Venta registrada y comprobante emitido.'
+          );
+        }
+      } else if (estadoLower === 'pendiente') {
+        await Swal.fire(
           'Venta registrada',
           'La venta se registró. La facturación quedó pendiente y se reintentará automáticamente.'
         );
         await autoRetryFacturacion(ventaId);
-      } else {
-        await swalSuccess(
+      } else if (estadoLower === 'omitido') {
+        await Swal.fire(
           'Venta registrada',
           'La venta se registró correctamente.'
+        );
+      } else if (estadoLower === 'rechazado') {
+        const motivo =
+          fact?.detalles ||
+          fact?.comprobante?.motivo_rechazo ||
+          'ARCA rechazó el comprobante. Revisá los datos del receptor y el tipo de comprobante.';
+
+        // Si querés, agregamos heurística UX para tu caso típico (RI + Factura B)
+        const hint = motivo.includes('Condicion IVA receptor')
+          ? '\n\nSugerencia: si el cliente es RI, corresponde Factura A (1), no Factura B (6).'
+          : '';
+
+        await Swal.fire({
+          icon: 'error',
+          title: 'Facturación rechazada',
+          text: `${motivo}${hint}`,
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#ef4444'
+        });
+      } else {
+        // fallback: cualquier otro estado inesperado
+        await Swal.fire(
+          'Venta registrada',
+          `La venta se registró. Estado de facturación: ${
+            estadoLower || 'desconocido'
+          }.`
         );
       }
 
@@ -1065,7 +1796,7 @@ export default function PuntoVenta() {
       isNaN(parseFloat(saldoInicial)) ||
       parseFloat(saldoInicial) < 0
     ) {
-      await swalWarn('Saldo inválido', 'Ingresá un saldo inicial válido.');
+      await Swal.fire('Saldo inválido', 'Ingresá un saldo inicial válido.');
       return false;
     }
     try {
@@ -1108,7 +1839,7 @@ export default function PuntoVenta() {
 
       const data = await res.json();
       if (!Array.isArray(data) || data.length === 0) {
-        await swalWarn(
+        await Swal.fire(
           'Sin stock',
           'Producto no encontrado o sin stock en tu local.'
         );
@@ -1156,6 +1887,75 @@ export default function PuntoVenta() {
     }
   };
 
+  // -------------------------------
+  // Hook al crear cliente: preguntar si lo selecciona
+  // (Se llama desde onClienteCreado del modal)
+  // -------------------------------
+  const onClienteCreadoDesdeModal = async (clienteCreado) => {
+    console.log('[PV] Cliente creado:', clienteCreado); // 👈 debug
+
+    if (!clienteCreado?.id) {
+      // Si acá entra, tu backend no está devolviendo el cliente como esperás
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Cliente creado',
+        text: 'Se creó el cliente, pero no recibí el objeto completo para seleccionarlo.'
+      });
+      return;
+    }
+
+    const onlyDigits = (v) => String(v ?? '').replace(/\D+/g, '');
+
+    const result = await Swal.fire({
+      icon: 'question',
+      title: 'Cliente creado',
+      html: `
+      <div style="text-align:left">
+        <div style="font-weight:800; font-size:14px; margin-bottom:8px;">
+          ¿Querés seleccionar este cliente para la venta?
+        </div>
+        <div style="font-size:13px; line-height:1.35">
+          <div><b>Nombre:</b> ${clienteCreado.nombre ?? '-'}</div>
+          <div><b>DNI:</b> ${
+            clienteCreado.dni ? onlyDigits(clienteCreado.dni) : '-'
+          }</div>
+          <div><b>Tel:</b> ${
+            clienteCreado.telefono ? onlyDigits(clienteCreado.telefono) : '-'
+          }</div>
+          <div><b>Email:</b> ${clienteCreado.email ?? '-'}</div>
+        </div>
+      </div>
+    `,
+      showCancelButton: true,
+      confirmButtonText: 'Sí, seleccionar',
+      cancelButtonText: 'No, por ahora',
+      confirmButtonColor: '#059669',
+      cancelButtonColor: '#111827',
+
+      // ✅ FIX z-index si hay overlays altos
+      didOpen: () => {
+        const container = document.querySelector('.swal2-container');
+        if (container) container.style.zIndex = '20000';
+      }
+    });
+
+    if (result.isConfirmed) {
+      seleccionarCliente(clienteCreado);
+      await Swal.fire({
+        icon: 'success',
+        title: 'Cliente seleccionado',
+        timer: 900,
+        showConfirmButton: false,
+        didOpen: () => {
+          const container = document.querySelector('.swal2-container');
+          if (container) container.style.zIndex = '20000';
+        }
+      });
+    }
+  };
+
+  const cbteMeta = getCbteMeta(cbteTipoSolicitado);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-4 sm:p-6 text-white">
       <ParticlesBackground />
@@ -1163,7 +1963,6 @@ export default function PuntoVenta() {
       <h1 className="text-3xl font-bold mb-6 titulo uppercase flex items-center gap-3 text-emerald-400">
         <FaCashRegister /> Punto de Venta
       </h1>
-
       <div className="mb-4 w-full max-w-2xl">
         <label className="block text-xl font-bold mb-1 text-gray-200">
           Cliente
@@ -1172,31 +1971,94 @@ export default function PuntoVenta() {
         <div className="relative w-full max-w-3xl mb-6 flex items-center gap-2">
           {/* Input + icono */}
           <div className="relative flex-grow">
-            <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-emerald-400 text-lg" />
+            <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 text-lg" />
+
             <input
               type="text"
-              placeholder="Buscar cliente por nombre, DNI o teléfono..."
+              placeholder="Buscar cliente por nombre, DNI o teléfono…"
               value={busquedaCliente}
               onChange={handleBusquedaCliente}
-              className="pl-10 pr-4 py-3 w-full rounded-xl bg-[#232323] text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow"
+              onKeyDown={handleBusquedaKeyDown}
+              onBlur={handleBlurCliente}
+              onFocus={handleFocusCliente}
+              className="pl-10 pr-10 py-3 w-full rounded-xl bg-[#232323] text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow"
               autoComplete="off"
             />
-            {/* SUGERENCIAS */}
+
+            {/* Loading pill */}
+            {isSearchingCliente && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/20">
+                Buscando…
+              </div>
+            )}
+
+            {/* Cliente seleccionado */}
+            {clienteSeleccionado?.id && (
+              <div className="mt-2 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20 px-3 py-2 text-emerald-200 text-sm flex items-center justify-between gap-3">
+                <div className="truncate">
+                  <span className="font-bold">Seleccionado:</span>{' '}
+                  <span className="text-emerald-100/90">
+                    {labelCliente(clienteSeleccionado)}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClienteSeleccionado(null);
+                    setBusquedaCliente('');
+                    setSugerencias([]);
+                  }}
+                  className="text-xs font-bold px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 ring-1 ring-white/10"
+                >
+                  Quitar
+                </button>
+              </div>
+            )}
+
+            {/* SUGERENCIAS PRO */}
             {sugerencias.length > 0 && (
-              <ul className="absolute z-10 left-0 right-0 bg-[#191919] shadow-xl rounded-xl mt-2 max-h-52 overflow-auto border border-emerald-700">
-                {sugerencias.map((cli) => (
-                  <li
-                    key={cli.id}
-                    onClick={() => seleccionarCliente(cli)}
-                    className="px-4 py-2 hover:bg-emerald-800/80 cursor-pointer text-gray-200"
-                  >
-                    {cli.nombre} –{' '}
-                    <span className="text-emerald-400">
-                      {cli.dni ? cli.dni : cli.telefono}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <div className="absolute z-20 left-0 right-0 mt-2 rounded-2xl overflow-hidden border border-emerald-500/25 bg-[#101010]/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)]">
+                <div className="px-3 py-2 text-xs text-white/55 flex items-center justify-between">
+                  <span>Resultados ({sugerencias.length})</span>
+                  <span className="text-white/35">Click para seleccionar</span>
+                </div>
+
+                <ul className="max-h-72 overflow-auto">
+                  {sugerencias.map((cli) => {
+                    const dni = cli?.dni ? onlyDigits(cli.dni) : '';
+                    const tel = cli?.telefono ? onlyDigits(cli.telefono) : '';
+                    const badge = dni
+                      ? `DNI ${dni}`
+                      : tel
+                      ? `Tel ${tel}`
+                      : 'Sin doc/tel';
+
+                    return (
+                      <li
+                        key={cli.id}
+                        onMouseDown={() => seleccionarCliente(cli)} // 👈 evita que blur cierre antes del click
+                        className="group px-4 py-3 cursor-pointer border-t border-white/5 hover:bg-emerald-500/10 transition"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-gray-100 font-semibold truncate">
+                              {cli.nombre}
+                            </div>
+                            <div className="text-xs text-white/45 truncate">
+                              {cli.email || cli.direccion || '—'}
+                            </div>
+                          </div>
+
+                          <span className="shrink-0 text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-500/12 text-emerald-200 ring-1 ring-emerald-400/20 group-hover:bg-emerald-500/18">
+                            {badge}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             )}
           </div>
 
@@ -1209,6 +2071,17 @@ export default function PuntoVenta() {
           >
             <FaUserPlus /> Nuevo Cliente
           </button>
+          {/* Indicador interno: verde=fiscal, rojo=modo interno */}
+          <div className="mt-2 flex items-center gap-2">
+            <span
+              className={[
+                'inline-block h-3 w-3 rounded-full ring-1',
+                cbteTipoSolicitado == null
+                  ? 'bg-red-500 ring-red-300/40'
+                  : 'bg-emerald-500 ring-emerald-300/40'
+              ].join(' ')}
+            />
+          </div>
         </div>
 
         <div className="mt-2">
@@ -1254,7 +2127,6 @@ export default function PuntoVenta() {
           onKeyDown={handleKeyDown}
         />
       </div>
-
       {/* Buscador por fuera*/}
       <div className="w-full max-w-3xl mb-6 sm:mx-0 mx-auto">
         {/* Acá el truco: flex-col por defecto (mobile), flex-row en sm+ */}
@@ -1313,7 +2185,6 @@ export default function PuntoVenta() {
           </button>
         </div>
       </div>
-
       {/* Productos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
@@ -1467,6 +2338,31 @@ export default function PuntoVenta() {
               />
             )}
 
+          <div className="text-xs text-white/70">
+            <div className="font-semibold text-white/90">Comprobante</div>
+
+            <div className="mt-0.5 flex flex-wrap items-center gap-2">
+              <span>
+                {cbteMeta.title}
+                {cbteMeta.subtitle ? ` – ${cbteMeta.subtitle}` : ''}
+              </span>
+
+              {/* <span className="ml-1 text-white/40">
+                cbte_tipo_solicitado:{' '}
+                {cbteMeta.tipo == null ? 'null' : cbteMeta.tipo}
+              </span> */}
+
+              <button
+                type="button"
+                onClick={() => openCbteSelectorRef.current?.()}
+                className="ml-auto rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 hover:ring-white/20 px-3 py-1 text-[11px] text-white/85 transition"
+                title="F11"
+              >
+                F11 · Cambiar
+              </button>
+            </div>
+          </div>
+
           {/* Medios de pago */}
           <div className="flex flex-wrap gap-2 items-center mb-2">
             <div className="flex flex-wrap gap-2 flex-1 min-w-0">
@@ -1523,11 +2419,10 @@ export default function PuntoVenta() {
                 : 'bg-green-500 hover:bg-green-600'
             }`}
           >
-            Finalizar Venta
+            Finalizar Venta (F2)
           </button>
         </div>
       </div>
-
       {modalVerProductosOpen && (
         <div
           role="dialog"
@@ -1656,7 +2551,6 @@ export default function PuntoVenta() {
           </div>
         </div>
       )}
-
       {modalVerCombosOpen && (
         <div
           role="dialog"
@@ -1775,7 +2669,6 @@ export default function PuntoVenta() {
           </div>
         </div>
       )}
-
       {/* Modal de gestión */}
       <ModalMediosPago
         show={showModal}
@@ -1793,7 +2686,17 @@ export default function PuntoVenta() {
       <ModalNuevoCliente
         open={modalNuevoClienteOpen}
         onClose={() => setModalNuevoClienteOpen(false)}
+        onClienteCreado={async (cliente) => {
+          // si tu modal ya hace onClose, esto es opcional
+          setModalNuevoClienteOpen(false);
+
+          //  mini delay por si queda overlay 1 frame
+          setTimeout(() => {
+            onClienteCreadoDesdeModal(cliente);
+          }, 80);
+        }}
       />
+
       {mostrarModalCaja && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md relative border-t-4 border-pink-500">
@@ -1868,7 +2771,6 @@ export default function PuntoVenta() {
           </div>
         </div>
       )}
-
       <ModalOtrosLocales
         open={modalOtrosOpen}
         onClose={() => setModalOtrosOpen(false)}

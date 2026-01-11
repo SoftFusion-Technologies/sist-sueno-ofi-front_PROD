@@ -42,7 +42,11 @@ export default function HistorialCajasPorLocal() {
     });
   };
 
-  if (userLevel !== 'socio' && userLevel !== 'contador') {
+  if (
+    userLevel !== 'socio' &&
+    userLevel !== 'contador' &&
+    userLevel !== 'administrativo'
+  ) {
     return (
       <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] text-white px-4">
         <ParticlesBackground />

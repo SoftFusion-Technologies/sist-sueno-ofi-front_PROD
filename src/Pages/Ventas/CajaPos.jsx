@@ -183,6 +183,90 @@ export default function CajaPOS() {
     }
   }
 
+  // ===============================
+  // Verificación “caja sigue abierta” (se ejecuta en clicks críticos)
+  // ===============================
+  const getCajaAbiertaLocal = async () => {
+    const res = await axios.get(`${BASE_URL}/caja`);
+    const abierta = (res.data || []).find(
+      (c) =>
+        String(c.local_id) === String(userLocalId) && c.fecha_cierre === null
+    );
+    return abierta || null;
+  };
+
+  const refreshMovimientosCaja = async (cajaId) => {
+    const mov = await axios.get(`${BASE_URL}/movimientos/caja/${cajaId}`);
+    setMovimientos(mov.data || []);
+    return mov.data || [];
+  };
+
+  /**
+   * Verifica en backend si la caja del local sigue abierta.
+   * - Si no hay caja abierta => resetea estado y muestra Swal (si notify=true).
+   * - Si hay caja abierta pero cambió el id => actualiza cajaActual y movimientos.
+   */
+  const ensureCajaAbierta = async ({
+    notify = true,
+    refreshMovs = false
+  } = {}) => {
+    try {
+      const abierta = await getCajaAbiertaLocal();
+
+      // Caso: no hay caja abierta en el local
+      if (!abierta) {
+        setCajaActual(null);
+        setMovimientos([]);
+
+        if (notify) {
+          await Swal.fire({
+            icon: 'warning',
+            title: 'Caja cerrada',
+            text: 'Esta caja ya no está abierta para tu local. Se actualizó la pantalla.',
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#059669'
+          });
+        }
+        return { ok: false, caja: null };
+      }
+
+      // Caso: hay caja abierta y no coincide con la que tenías en pantalla
+      const changed =
+        !cajaActual || String(abierta.id) !== String(cajaActual.id);
+
+      if (changed) {
+        setCajaActual(abierta);
+        await refreshMovimientosCaja(abierta.id);
+
+        if (notify) {
+          toast.fire({
+            icon: 'info',
+            title: `Caja actualizada (abierta #${abierta.id})`
+          });
+        }
+
+        return { ok: true, caja: abierta, changed: true };
+      }
+
+      // Caso: coincide => opcional refrescar movimientos
+      if (refreshMovs && cajaActual?.id) {
+        await refreshMovimientosCaja(cajaActual.id);
+      }
+
+      return { ok: true, caja: abierta, changed: false };
+    } catch (e) {
+      if (notify) {
+        await swalError(
+          'No se pudo verificar caja',
+          e?.response?.data?.mensajeError ||
+            e?.message ||
+            'Error al consultar el estado de la caja.'
+        );
+      }
+      return { ok: false, caja: null };
+    }
+  };
+
   useEffect(() => {
     const fetchCaja = async () => {
       setCargando(true);
@@ -254,7 +338,11 @@ export default function CajaPOS() {
   };
 
   const cerrarCaja = async () => {
-    if (!cajaActual) return;
+    // 1) Verificar estado real en backend + refrescar movimientos para cálculo exacto
+    const verif = await ensureCajaAbierta({ notify: true, refreshMovs: true });
+    if (!verif.ok || !verif.caja?.id) return;
+
+    const cajaId = verif.caja.id;
 
     const confirm = await swalConfirm({
       title: '¿Cerrar caja?',
@@ -262,20 +350,22 @@ export default function CajaPOS() {
     });
     if (!confirm.isConfirmed) return;
 
-    const totalIngresos = movimientos
+    // 2) Recalcular saldoFinal con movimientos ya refrescados
+    const totalIngresos = (movimientos || [])
       .filter((m) => m.tipo === 'ingreso')
       .reduce((sum, m) => sum + Number(m.monto), 0);
 
-    const totalEgresos = movimientos
+    const totalEgresos = (movimientos || [])
       .filter((m) => m.tipo === 'egreso')
       .reduce((sum, m) => sum + Number(m.monto), 0);
 
     const saldoFinal =
-      Number(cajaActual.saldo_inicial) + totalIngresos - totalEgresos;
+      Number(verif.caja.saldo_inicial) + totalIngresos - totalEgresos;
 
     try {
       swalLoading('Cerrando caja...');
-      await axios.put(`http://localhost:8080/caja/${cajaActual.id}`, {
+
+      await axios.put(`${BASE_URL}/caja/${cajaId}`, {
         fecha_cierre: new Date(),
         saldo_final: saldoFinal
       });
@@ -294,12 +384,21 @@ export default function CajaPOS() {
         'No se pudo cerrar la caja',
         err.response?.data?.mensajeError || 'Error al cerrar caja'
       );
+
+      // Si falló porque ya se cerró desde otro lado, sincronizamos pantalla
+      await ensureCajaAbierta({ notify: true, refreshMovs: true });
     }
   };
 
   const registrarMovimiento = async () => {
-    if (!cajaActual) return;
+    // 1) Verificar en backend si sigue abierta
+    const verif = await ensureCajaAbierta({ notify: true, refreshMovs: false });
+    if (!verif.ok || !verif.caja?.id) return;
 
+    // Aseguramos usar la caja del server (por si cambió)
+    const cajaId = verif.caja.id;
+
+    // 2) Validaciones
     if (
       !nuevoMovimiento.descripcion ||
       !nuevoMovimiento.monto ||
@@ -314,19 +413,18 @@ export default function CajaPOS() {
 
     try {
       swalLoading('Registrando movimiento...');
-      await axios.post(`http://localhost:8080/movimientos_caja`, {
-        caja_id: cajaActual.id,
+
+      await axios.post(`${BASE_URL}/movimientos_caja`, {
+        caja_id: cajaId,
         tipo: nuevoMovimiento.tipo,
         descripcion: nuevoMovimiento.descripcion,
         monto: Number(nuevoMovimiento.monto),
         usuario_id: userId
       });
 
-      const mov = await axios.get(
-        `http://localhost:8080/movimientos/caja/${cajaActual.id}`
-      );
+      // 3) Refrescar movimientos (y por ende saldo UI)
+      await refreshMovimientosCaja(cajaId);
 
-      setMovimientos(mov.data);
       setNuevoMovimiento({ tipo: 'ingreso', monto: '', descripcion: '' });
 
       Swal.close();
@@ -337,6 +435,9 @@ export default function CajaPOS() {
         'Error al registrar movimiento',
         err.response?.data?.mensajeError || 'No se pudo registrar el movimiento'
       );
+
+      // Opcional: si el backend falló por caja cerrada, refrescamos estado
+      await ensureCajaAbierta({ notify: true, refreshMovs: true });
     }
   };
 

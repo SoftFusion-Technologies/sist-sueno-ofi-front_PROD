@@ -473,13 +473,13 @@ export default function ComprobantesFiscalesCards() {
                     <option value="todos">Todos los tipos</option>
                     <option value="1">01 - Factura A</option>
                     <option value="6">06 - Factura B</option>
-                    <option value="11">11 - Factura C</option>
+                    {/* <option value="11">11 - Factura C</option> */}
                     <option value="3">03 - NC A</option>
                     <option value="8">08 - NC B</option>
-                    <option value="13">13 - NC C</option>
+                    {/* <option value="13">13 - NC C</option> */}
                     <option value="2">02 - ND A</option>
                     <option value="7">07 - ND B</option>
-                    <option value="12">12 - ND C</option>
+                    {/* <option value="12">12 - ND C</option> */}
                   </select>
                 </div>
 
