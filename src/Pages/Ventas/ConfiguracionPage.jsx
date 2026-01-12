@@ -11,7 +11,7 @@ export default function ConfiguracionPage() {
 
   useEffect(() => {
     axios
-      .get('http://localhost:8080/medios-pago')
+      .get('https://api.rioromano.com.ar/medios-pago')
       .then((res) => setMediosPago(res.data))
       .finally(() => setLoading(false));
   }, []);

@@ -47,7 +47,7 @@ export default function VentasTimeline() {
     params.append('page', page);
     params.append('limit', limit);
 
-    fetch(`http://localhost:8080/ventas-historial?${params.toString()}`)
+    fetch(`https://api.rioromano.com.ar/ventas-historial?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
         setVentas(data.ventas);
@@ -58,7 +58,7 @@ export default function VentasTimeline() {
 
   useEffect(() => {
     // Traer locales para filtro
-    fetch('http://localhost:8080/locales')
+    fetch('https://api.rioromano.com.ar/locales')
       .then((r) => r.json())
       .then(setLocales);
 
@@ -76,7 +76,7 @@ export default function VentasTimeline() {
   const cargarDetalleVenta = async (ventaId) => {
     try {
       const res = await fetch(
-        `http://localhost:8080/ventas/${ventaId}/detalle`
+        `https://api.rioromano.com.ar/ventas/${ventaId}/detalle`
       );
       if (!res.ok) throw new Error('Error al obtener detalle de venta');
       const data = await res.json();
@@ -133,7 +133,7 @@ export default function VentasTimeline() {
       };
     });
 
-    const res = await fetch('http://localhost:8080/devoluciones', {
+    const res = await fetch('https://api.rioromano.com.ar/devoluciones', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -168,7 +168,7 @@ export default function VentasTimeline() {
 
     try {
       const response = await fetch(
-        `http://localhost:8080/ventas/${idVenta}/anular`,
+        `https://api.rioromano.com.ar/ventas/${idVenta}/anular`,
         {
           method: 'PUT'
         }

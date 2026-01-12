@@ -12,7 +12,7 @@ import {
   BadgeDollarSign
 } from 'lucide-react';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://api.rioromano.com.ar';
 
 function cx(...a) {
   return a.filter(Boolean).join(' ');

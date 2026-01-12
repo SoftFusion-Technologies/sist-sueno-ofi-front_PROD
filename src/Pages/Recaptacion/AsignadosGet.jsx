@@ -28,7 +28,7 @@ const AsignadosGet = () => {
   const cargarAsignados = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8080/recaptacion-clientes');
+      const res = await fetch('https://api.rioromano.com.ar/recaptacion-clientes');
       const data = await res.json();
       setAsignados(data);
     } catch (error) {
@@ -42,7 +42,7 @@ const AsignadosGet = () => {
     if (!window.confirm('¿Eliminar esta asignación?')) return;
     try {
       const res = await fetch(
-        `http://localhost:8080/recaptacion-clientes/${id}`,
+        `https://api.rioromano.com.ar/recaptacion-clientes/${id}`,
         {
           method: 'DELETE'
         }
@@ -58,7 +58,7 @@ const AsignadosGet = () => {
   const actualizarRespuesta = async (id, nuevaRespuesta) => {
     try {
       const res = await fetch(
-        `http://localhost:8080/recaptacion-clientes/${id}`,
+        `https://api.rioromano.com.ar/recaptacion-clientes/${id}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },

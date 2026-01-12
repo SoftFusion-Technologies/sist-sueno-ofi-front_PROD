@@ -36,7 +36,7 @@ import RoleGate from '../../Components/auth/RoleGate';
 
 Modal.setAppElement('#root');
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rioromano.com.ar';
 const MAX_NOMBRE = 100;
 // R1- que se puedan imprimir todas las etiquetas del mismo producto BENJAMIN ORELLANA 9/8/25 ✅
 const descargarPdf = async (pathWithQuery, filename, token) => {
@@ -173,7 +173,7 @@ const StockGet = () => {
     try {
       const [resStock, resProd, resLocales, resLugares, resEstados] =
         await Promise.all([
-          axios.get('http://localhost:8080/stock', {
+          axios.get('https://api.rioromano.com.ar/stock', {
             params: {
               page,
               limit,
@@ -186,10 +186,10 @@ const StockGet = () => {
               orderDir
             }
           }),
-          axios.get('http://localhost:8080/productos'),
-          axios.get('http://localhost:8080/locales'),
-          axios.get('http://localhost:8080/lugares'),
-          axios.get('http://localhost:8080/estados')
+          axios.get('https://api.rioromano.com.ar/productos'),
+          axios.get('https://api.rioromano.com.ar/locales'),
+          axios.get('https://api.rioromano.com.ar/lugares'),
+          axios.get('https://api.rioromano.com.ar/estados')
         ]);
 
       // /stock puede devolver array (retrocompat) o {data, meta}
@@ -357,7 +357,7 @@ const StockGet = () => {
           usuario_log_id,
           reemplazar: (formData.modo || 'reemplazar') === 'reemplazar'
         };
-        await axios.put(`http://localhost:8080/stock/${editId}`, payload);
+        await axios.put(`https://api.rioromano.com.ar/stock/${editId}`, payload);
         postOk('Stock actualizado correctamente.');
       } catch (err) {
         postErr(err, 'Error inesperado al editar el stock');
@@ -381,7 +381,7 @@ const StockGet = () => {
         }))
       };
 
-      await axios.post(`http://localhost:8080/stock`, payload);
+      await axios.post(`https://api.rioromano.com.ar/stock`, payload);
       postOk(
         isMulti
           ? 'Stock actualizado en múltiples locales.'
@@ -421,7 +421,7 @@ const StockGet = () => {
     if (!confirmado) return;
 
     try {
-      await axios.delete(`http://localhost:8080/stock/${id}`, {
+      await axios.delete(`https://api.rioromano.com.ar/stock/${id}`, {
         data: {
           usuario_log_id: getUserId()
         }
@@ -454,7 +454,7 @@ const StockGet = () => {
       productos.find((p) => p.id === grupoAEliminar.producto_id)?.nombre || '';
 
     try {
-      const res = await axios.post('http://localhost:8080/eliminar-grupo', {
+      const res = await axios.post('https://api.rioromano.com.ar/eliminar-grupo', {
         producto_id: grupoAEliminar.producto_id,
         local_id: grupoAEliminar.local_id,
         lugar_id: grupoAEliminar.lugar_id,
@@ -817,7 +817,7 @@ const StockGet = () => {
       };
 
       const { data } = await axios.post(
-        `http://localhost:8080/productos/${prodId}/duplicar`,
+        `https://api.rioromano.com.ar/productos/${prodId}/duplicar`,
         body
       );
 

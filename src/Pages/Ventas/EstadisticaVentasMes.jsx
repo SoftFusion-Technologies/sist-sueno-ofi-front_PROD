@@ -9,7 +9,7 @@ export default function EstadisticaVentasMes({ apiUrl }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch(apiUrl || 'http://localhost:8080/ventas-mes')
+    fetch(apiUrl || 'https://api.rioromano.com.ar/ventas-mes')
       .then((res) => {
         if (!res.ok) throw new Error('Error al cargar los datos');
         return res.json();

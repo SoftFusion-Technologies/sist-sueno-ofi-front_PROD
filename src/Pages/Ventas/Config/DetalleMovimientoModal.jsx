@@ -80,7 +80,7 @@ function DetalleMovimientoModal({ movimiento, onClose, onUpdate, onDelete }) {
   const handleUpdate = async () => {
     try {
       const res = await fetch(
-        `http://localhost:8080/movimientos_caja/${movimiento.id}`,
+        `https://api.rioromano.com.ar/movimientos_caja/${movimiento.id}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -99,7 +99,7 @@ function DetalleMovimientoModal({ movimiento, onClose, onUpdate, onDelete }) {
     if (!window.confirm('¿Seguro que deseas eliminar este movimiento?')) return;
 
     try {
-      await fetch(`http://localhost:8080/movimientos_caja/${movimiento.id}`, {
+      await fetch(`https://api.rioromano.com.ar/movimientos_caja/${movimiento.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usuario_id: userId }) // 👈 pasamos usuario_id

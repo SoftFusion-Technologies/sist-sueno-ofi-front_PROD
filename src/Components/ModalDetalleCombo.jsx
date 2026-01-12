@@ -9,7 +9,7 @@ const ModalDetalleCombo = ({ comboVenta, isOpen, onClose }) => {
   useEffect(() => {
     if (comboVenta && comboVenta.combo?.id) {
       fetch(
-        `http://localhost:8080/combo-productos-permitidos/${comboVenta.combo.id}`
+        `https://api.rioromano.com.ar/combo-productos-permitidos/${comboVenta.combo.id}`
       )
         .then((res) => res.json())
         .then(setPermitidos)

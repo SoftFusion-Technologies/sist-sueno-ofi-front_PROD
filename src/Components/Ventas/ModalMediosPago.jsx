@@ -90,7 +90,7 @@ export default function ModalMediosPago({
     try {
       if (editando) {
         await axios.put(
-          `http://localhost:8080/medios-pago/${editando.id}`,
+          `https://api.rioromano.com.ar/medios-pago/${editando.id}`,
           nuevo
         );
 
@@ -105,7 +105,7 @@ export default function ModalMediosPago({
         });
       } else {
         const res = await axios.post(
-          'http://localhost:8080/medios-pago',
+          'https://api.rioromano.com.ar/medios-pago',
           nuevo
         );
         setMediosPago((prev) => [...prev, res.data.medio]);
@@ -147,7 +147,7 @@ export default function ModalMediosPago({
     if (!result.isConfirmed) return;
 
     try {
-      await axios.delete(`http://localhost:8080/medios-pago/${medio.id}`);
+      await axios.delete(`https://api.rioromano.com.ar/medios-pago/${medio.id}`);
       setMediosPago((prev) => prev.filter((m) => m.id !== medio.id));
 
       Toast.fire({
@@ -173,7 +173,7 @@ export default function ModalMediosPago({
 
         if (fallback.isConfirmed) {
           try {
-            await axios.put(`http://localhost:8080/medios-pago/${medio.id}`, {
+            await axios.put(`https://api.rioromano.com.ar/medios-pago/${medio.id}`, {
               ...medio,
               activo: 0
             });
@@ -741,7 +741,7 @@ function CuotasPorMedio({ medioPago }) {
     const cargarCuotas = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:8080/cuotas-medios-pago/${medioPago.id}`
+          `https://api.rioromano.com.ar/cuotas-medios-pago/${medioPago.id}`
         );
         setCuotas(res.data);
       } catch (error) {
@@ -756,7 +756,7 @@ function CuotasPorMedio({ medioPago }) {
 
   const refrescar = async () => {
     const res = await axios.get(
-      `http://localhost:8080/cuotas-medios-pago/${medioPago.id}`
+      `https://api.rioromano.com.ar/cuotas-medios-pago/${medioPago.id}`
     );
     setCuotas(res.data);
   };
@@ -770,7 +770,7 @@ function CuotasPorMedio({ medioPago }) {
       return;
     }
     try {
-      await axios.post('http://localhost:8080/cuotas-medios-pago', {
+      await axios.post('https://api.rioromano.com.ar/cuotas-medios-pago', {
         medio_pago_id: medioPago.id,
         cuotas: nuevaCuota.cuotas,
         porcentaje_recargo: nuevaCuota.porcentaje_recargo || 0
@@ -800,7 +800,7 @@ function CuotasPorMedio({ medioPago }) {
     if (!result.isConfirmed) return;
 
     try {
-      await axios.delete(`http://localhost:8080/cuotas-medios-pago/${id}`);
+      await axios.delete(`https://api.rioromano.com.ar/cuotas-medios-pago/${id}`);
       setCuotas((prev) => prev.filter((c) => c.id !== id));
       Toast.fire({ icon: 'success', title: 'Cuota eliminada' });
     } catch (error) {
@@ -812,7 +812,7 @@ function CuotasPorMedio({ medioPago }) {
 
   const guardarEdicion = async (id) => {
     try {
-      await axios.put(`http://localhost:8080/cuotas-medios-pago/${id}`, {
+      await axios.put(`https://api.rioromano.com.ar/cuotas-medios-pago/${id}`, {
         porcentaje_recargo: editandoCuota.porcentaje_recargo
       });
       await refrescar();

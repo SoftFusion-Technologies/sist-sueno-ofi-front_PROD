@@ -81,7 +81,7 @@ const toNum = (v, d = 0) => {
   return Number.isFinite(n) ? n : d;
 };
 
-const API_URL = 'http://localhost:8080';
+const API_URL = 'https://api.rioromano.com.ar';
 
 const authHeader = () => {
   const t = localStorage.getItem('authToken'); // o tomalo de tu AuthContext
@@ -610,7 +610,7 @@ export default function PuntoVenta() {
   useEffect(() => {
     setLoadingMediosPago(true);
     axios
-      .get('http://localhost:8080/medios-pago')
+      .get('https://api.rioromano.com.ar/medios-pago')
       .then((res) => setMediosPago(res.data))
       .finally(() => setLoadingMediosPago(false));
   }, []);
@@ -664,7 +664,7 @@ export default function PuntoVenta() {
         });
 
         const res = await fetch(
-          `http://localhost:8080/buscar-productos-detallado?${params}`,
+          `https://api.rioromano.com.ar/buscar-productos-detallado?${params}`,
           {
             signal: controller.signal,
             headers: {
@@ -907,7 +907,7 @@ export default function PuntoVenta() {
   const abrirModalVerCombos = async () => {
     setModalVerCombosOpen(true);
     try {
-      const res = await fetch('http://localhost:8080/combos');
+      const res = await fetch('https://api.rioromano.com.ar/combos');
       const data = await res.json();
       setCombosModal(data);
     } catch (error) {
@@ -1116,7 +1116,7 @@ export default function PuntoVenta() {
 
     try {
       const res = await fetch(
-        `http://localhost:8080/clientes/search?query=${encodeURIComponent(
+        `https://api.rioromano.com.ar/clientes/search?query=${encodeURIComponent(
           query
         )}`,
         { signal: controller.signal }
@@ -1214,7 +1214,7 @@ export default function PuntoVenta() {
     const cargarCuotas = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:8080/cuotas-medios-pago/${medioPago}`
+          `https://api.rioromano.com.ar/cuotas-medios-pago/${medioPago}`
         );
         setCuotasDisponibles(res.data);
         setCuotasSeleccionadas(1); // reset por defecto
@@ -1252,7 +1252,7 @@ export default function PuntoVenta() {
 
       try {
         const res = await axios.post(
-          'http://localhost:8080/calcular-total-final',
+          'https://api.rioromano.com.ar/calcular-total-final',
           payload
         );
         setTotalCalculado(res.data);
@@ -1487,7 +1487,7 @@ export default function PuntoVenta() {
 
         try {
           const r = await fetch(
-            `http://localhost:8080/ventas/${ventaId}/reintentar-facturacion`,
+            `https://api.rioromano.com.ar/ventas/${ventaId}/reintentar-facturacion`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -1510,7 +1510,7 @@ export default function PuntoVenta() {
 
             // refrescar venta para UI
             const ventaCompleta = await fetch(
-              `http://localhost:8080/ventas/${ventaId}`
+              `https://api.rioromano.com.ar/ventas/${ventaId}`
             ).then((rr) => rr.json());
             setVentaFinalizada(ventaCompleta);
 
@@ -1565,7 +1565,7 @@ export default function PuntoVenta() {
         return;
       }
 
-      const response = await fetch('http://localhost:8080/ventas/pos', {
+      const response = await fetch('https://api.rioromano.com.ar/ventas/pos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ventaRequest)
@@ -1593,7 +1593,7 @@ export default function PuntoVenta() {
 
           // traer venta para mostrar ticket/detalle aunque sea con comprobante pendiente
           const ventaCompleta = await fetch(
-            `http://localhost:8080/ventas/${ventaId}`
+            `https://api.rioromano.com.ar/ventas/${ventaId}`
           ).then((r) => r.json());
           setVentaFinalizada(ventaCompleta);
 
@@ -1711,7 +1711,7 @@ export default function PuntoVenta() {
 
       if (busqueda.trim() !== '') {
         const res2 = await fetch(
-          `http://localhost:8080/buscar-productos-detallado?query=${encodeURIComponent(
+          `https://api.rioromano.com.ar/buscar-productos-detallado?query=${encodeURIComponent(
             busqueda
           )}`
         );
@@ -1719,7 +1719,7 @@ export default function PuntoVenta() {
       }
 
       const ventaCompleta = await fetch(
-        `http://localhost:8080/ventas/${ventaId}`
+        `https://api.rioromano.com.ar/ventas/${ventaId}`
       ).then((r) => r.json());
       setVentaFinalizada(ventaCompleta);
 
@@ -1801,7 +1801,7 @@ export default function PuntoVenta() {
     }
     try {
       swalLoading('Abriendo caja...');
-      await axios.post(`http://localhost:8080/caja`, {
+      await axios.post(`https://api.rioromano.com.ar/caja`, {
         usuario_id: userId,
         local_id: userLocalId,
         saldo_inicial: parseFloat(saldoInicial)
@@ -1833,7 +1833,7 @@ export default function PuntoVenta() {
 
     try {
       const res = await fetch(
-        `http://localhost:8080/buscar-productos-detallado?${params.toString()}`
+        `https://api.rioromano.com.ar/buscar-productos-detallado?${params.toString()}`
       );
       if (!res.ok) throw new Error(`Error ${res.status} al buscar producto`);
 

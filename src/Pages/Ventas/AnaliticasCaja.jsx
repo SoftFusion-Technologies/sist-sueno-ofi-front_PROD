@@ -36,11 +36,11 @@ export default function AnaliticasCaja() {
           resLocales,
           resDescuentos
         ] = await Promise.all([
-          axios.get('http://localhost:8080/ventas-mensuales'),
-          axios.get('http://localhost:8080/ventas-por-medio-pago'),
-          axios.get('http://localhost:8080/productos-mas-vendidos'),
-          axios.get('http://localhost:8080/ventas-por-local'),
-          axios.get('http://localhost:8080/resumen-descuentos')
+          axios.get('https://api.rioromano.com.ar/ventas-mensuales'),
+          axios.get('https://api.rioromano.com.ar/ventas-por-medio-pago'),
+          axios.get('https://api.rioromano.com.ar/productos-mas-vendidos'),
+          axios.get('https://api.rioromano.com.ar/ventas-por-local'),
+          axios.get('https://api.rioromano.com.ar/resumen-descuentos')
         ]);
 
         setVentasPorMes(resVentasMes.data);

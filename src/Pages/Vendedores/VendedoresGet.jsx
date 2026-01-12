@@ -37,7 +37,7 @@ const VendedoresGet = () => {
     const client = axiosWithAuth();
 
     try {
-      const res = await client.get('http://localhost:8080/usuarios');
+      const res = await client.get('https://api.rioromano.com.ar/usuarios');
       setVendedores(res.data.filter((u) => u.rol === 'vendedor'));
     } catch (err) {
       console.error('Error al obtener vendedores:', err);
@@ -60,7 +60,7 @@ const VendedoresGet = () => {
   const eliminarVendedor = async (id) => {
     if (!window.confirm('¿Eliminar este vendedor?')) return;
     try {
-      await axios.delete(`http://localhost:8080/usuarios/${id}`);
+      await axios.delete(`https://api.rioromano.com.ar/usuarios/${id}`);
       fetchVendedores();
     } catch (err) {
       alert('Error al eliminar');

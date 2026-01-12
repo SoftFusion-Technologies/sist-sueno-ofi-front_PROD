@@ -244,7 +244,7 @@ export default function UsuariosGet() {
         // si tu backend ya expone /locales con auth/baseURL, esto es ideal:
         client.get('/locales').catch(async () => {
           // fallback: tu endpoint hardcodeado anterior
-          const fallback = await axios.get('http://localhost:8080/locales');
+          const fallback = await axios.get('https://api.rioromano.com.ar/locales');
           return fallback;
         })
       ]);

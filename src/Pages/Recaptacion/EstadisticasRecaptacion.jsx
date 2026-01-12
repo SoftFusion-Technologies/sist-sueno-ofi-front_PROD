@@ -20,7 +20,7 @@ const EstadisticasRecaptacion = () => {
 
   const fetchEstadisticas = async () => {
     try {
-      const res = await fetch('http://localhost:8080/recaptacion-estadisticas');
+      const res = await fetch('https://api.rioromano.com.ar/recaptacion-estadisticas');
       const data = await res.json();
       setStats(data);
     } catch (error) {

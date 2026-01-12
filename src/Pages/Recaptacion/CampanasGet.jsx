@@ -29,7 +29,7 @@ const CampanasGet = () => {
   const obtenerCampanas = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8080/recaptacion-campanas');
+      const res = await fetch('https://api.rioromano.com.ar/recaptacion-campanas');
       const data = await res.json();
       setCampanas(data);
     } catch (error) {
@@ -44,7 +44,7 @@ const CampanasGet = () => {
       return;
     try {
       const res = await fetch(
-        `http://localhost:8080/recaptacion-campanas/${id}`,
+        `https://api.rioromano.com.ar/recaptacion-campanas/${id}`,
         {
           method: 'DELETE'
         }

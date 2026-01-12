@@ -49,7 +49,7 @@ export default function AjustePreciosModal({ open, onClose, onSuccess }) {
     if (open) {
       setError('');
       setSuccessMessage('');
-      axios.get('http://localhost:8080/categorias').then((res) => {
+      axios.get('https://api.rioromano.com.ar/categorias').then((res) => {
         const options = res.data.map((c) => ({
           value: c.id,
           label: c.nombre
@@ -85,8 +85,8 @@ export default function AjustePreciosModal({ open, onClose, onSuccess }) {
     try {
       const ruta =
         modoAjuste === 'descuento'
-          ? 'http://localhost:8080/aplicar-descuento'
-          : 'http://localhost:8080/aumentar-precio';
+          ? 'https://api.rioromano.com.ar/aplicar-descuento'
+          : 'https://api.rioromano.com.ar/aumentar-precio';
 
       const payload =
         modoAjuste === 'descuento'
@@ -142,8 +142,8 @@ export default function AjustePreciosModal({ open, onClose, onSuccess }) {
     try {
       const ruta =
         modoAjuste === 'descuento'
-          ? 'http://localhost:8080/deshacer-descuento'
-          : 'http://localhost:8080/productos/deshacer-ajuste';
+          ? 'https://api.rioromano.com.ar/deshacer-descuento'
+          : 'https://api.rioromano.com.ar/productos/deshacer-ajuste';
 
       await axios.post(ruta, {
         ajuste_id: ajusteId

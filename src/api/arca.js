@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { getUserId } from '../utils/authUtils';
 
-export const urlArca = 'http://localhost:8080/';
+export const urlArca = 'https://api.rioromano.com.ar/';
 
 export const arcaClient = axios.create({
   baseURL: urlArca,

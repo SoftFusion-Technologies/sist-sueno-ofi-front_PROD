@@ -16,7 +16,7 @@ const ClientesInactivos = () => {
     setLoading(true);
     try {
       const res = await fetch(
-        `http://localhost:8080/clientes-inactivos?dias=${dias}`
+        `https://api.rioromano.com.ar/clientes-inactivos?dias=${dias}`
       );
       const data = await res.json();
       setClientes(data);

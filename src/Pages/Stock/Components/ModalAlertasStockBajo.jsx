@@ -28,7 +28,7 @@ import {
 } from 'react-icons/fa';
 import { FiX, FiSearch } from 'react-icons/fi';
 
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = 'https://api.rioromano.com.ar';
 
 const ModalAlertasStockBajo = ({ open, onClose, threshold = 10 }) => {
   const [loading, setLoading] = useState(false);

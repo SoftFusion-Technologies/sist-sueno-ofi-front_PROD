@@ -51,7 +51,7 @@ const CombosGet = () => {
 
   const fetchCombos = async () => {
     try {
-      const res = await axios.get('http://localhost:8080/combos', {
+      const res = await axios.get('https://api.rioromano.com.ar/combos', {
         params: {
           page,
           limit,
@@ -158,9 +158,9 @@ const CombosGet = () => {
 
     try {
       if (editId) {
-        await axios.put(`http://localhost:8080/combos/${editId}`, payload);
+        await axios.put(`https://api.rioromano.com.ar/combos/${editId}`, payload);
       } else {
-        await axios.post('http://localhost:8080/combos', payload);
+        await axios.post('https://api.rioromano.com.ar/combos', payload);
       }
       fetchCombos();
       setModalOpen(false);
@@ -176,7 +176,7 @@ const CombosGet = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:8080/combos/${id}`, {
+      await axios.delete(`https://api.rioromano.com.ar/combos/${id}`, {
         data: { usuario_log_id: getUserId() } // ← enviar quién elimina
       });
       fetchCombos();
@@ -497,7 +497,7 @@ const CombosGet = () => {
                   try {
                     setDeletingCombo(true);
                     await axios.delete(
-                      `http://localhost:8080/combos/${confirmDeleteCombo}`,
+                      `https://api.rioromano.com.ar/combos/${confirmDeleteCombo}`,
                       {
                         data: { usuario_log_id: getUserId(), forzado: true } // ← forzado
                       }

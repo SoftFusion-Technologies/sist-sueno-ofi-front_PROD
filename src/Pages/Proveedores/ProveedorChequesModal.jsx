@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import ChequeViewModal from '../../Components/Cheques/ChequeViewModal';
 
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = 'https://api.rioromano.com.ar';
 
 function cx(...a) {
   return a.filter(Boolean).join(' ');

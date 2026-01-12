@@ -67,7 +67,7 @@ const DashboardEstadisticasVendedores = () => {
 
   useEffect(() => {
     axios
-      .get('http://localhost:8080/ventas-estadisticas')
+      .get('https://api.rioromano.com.ar/ventas-estadisticas')
       .then((res) => setData(res.data))
       .catch(() => setData(null));
   }, []);

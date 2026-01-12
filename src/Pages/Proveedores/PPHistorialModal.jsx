@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import RoleGate from '../../Components/auth/RoleGate';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://api.rioromano.com.ar';
 
 function cx() {
   return Array.from(arguments).filter(Boolean).join(' ');

@@ -14,9 +14,9 @@ import {
 import axios from 'axios';
 import { useAuth } from '../../../AuthContext';
 
-const API_URL = 'http://localhost:8080/ticket-config';
+const API_URL = 'https://api.rioromano.com.ar/ticket-config';
 
-const BACKEND_URL = 'http://localhost:8080';
+const BACKEND_URL = 'https://api.rioromano.com.ar';
 
 const getLogoUrl = (path) => {
   if (!path) return null;

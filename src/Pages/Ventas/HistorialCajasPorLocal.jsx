@@ -19,7 +19,7 @@ export default function HistorialCajasPorLocal() {
 
   useEffect(() => {
     axios
-      .get('http://localhost:8080/locales')
+      .get('https://api.rioromano.com.ar/locales')
       .then((res) => setLocales(res.data))
       .catch((err) => console.error(err));
   }, []);
@@ -28,7 +28,7 @@ export default function HistorialCajasPorLocal() {
     setLocalSeleccionado(idLocal);
     try {
       const res = await axios.get(
-        `http://localhost:8080/caja/local/${idLocal}`
+        `https://api.rioromano.com.ar/caja/local/${idLocal}`
       );
       setCajas(res.data);
     } catch (err) {

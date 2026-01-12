@@ -10,7 +10,7 @@ import {
 import ButtonBack from '../../../Components/ButtonBack';
 import ParticlesBackground from '../../../Components/ParticlesBackground';
 
-const API_URL = 'http://localhost:8080';
+const API_URL = 'https://api.rioromano.com.ar';
 
 // util pequeño para “debounce”
 const useDebounce = (value, delay = 350) => {

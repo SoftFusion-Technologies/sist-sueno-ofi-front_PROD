@@ -9,7 +9,7 @@ import ParticlesBackground from '../../Components/ParticlesBackground';
 import ButtonBack from '../../Components/ButtonBack';
 import { useAuth } from '../../AuthContext';
 
-const API_URL = import.meta?.env?.VITE_API_URL || 'http://localhost:8080';
+const API_URL = import.meta?.env?.VITE_API_URL || 'https://api.rioromano.com.ar';
 
 const money = (n) =>
   Number(n || 0).toLocaleString('es-AR', {

@@ -93,7 +93,7 @@ const swalLoading = (title = 'Procesando...') =>
     didOpen: () => Swal.showLoading()
   });
 
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = 'https://api.rioromano.com.ar';
 const GlassCard = ({ children, className = '' }) => (
   <div
     className={`rounded-2xl p-6 shadow-2xl bg-white/10 backdrop-blur-2xl border border-white/10 ${className}`}
@@ -375,7 +375,7 @@ export default function CajaPOS() {
     const fetchCaja = async () => {
       setCargando(true);
       try {
-        const res = await axios.get(`http://localhost:8080/caja`);
+        const res = await axios.get(`https://api.rioromano.com.ar/caja`);
         const abierta = res.data.find(
           (c) =>
             // c.usuario_id == userId && misma caja
@@ -396,7 +396,7 @@ export default function CajaPOS() {
   // Cargar historial
   const cargarHistorial = async () => {
     const res = await axios.get(
-      `http://localhost:8080/caja?local_id=${userLocalId}`
+      `https://api.rioromano.com.ar/caja?local_id=${userLocalId}`
     );
     setHistorial(res.data.filter((c) => c.fecha_cierre !== null));
     setShowHistorial(true);
@@ -415,7 +415,7 @@ export default function CajaPOS() {
 
     try {
       swalLoading('Abriendo caja...');
-      const res = await axios.post(`http://localhost:8080/caja`, {
+      const res = await axios.post(`https://api.rioromano.com.ar/caja`, {
         usuario_id: userId,
         local_id: userLocalId,
         saldo_inicial: parseFloat(saldoInicial)
@@ -613,7 +613,7 @@ export default function CajaPOS() {
     try {
       swalLoading('Cargando detalle de venta...');
       const res = await fetch(
-        `http://localhost:8080/ventas/${idVenta}/detalle`
+        `https://api.rioromano.com.ar/ventas/${idVenta}/detalle`
       );
       if (!res.ok) throw new Error('No se pudo obtener el detalle');
 

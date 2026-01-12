@@ -10,7 +10,7 @@ import RoleGate from '../../Components/auth/RoleGate';
 
 Modal.setAppElement('#root');
 
-const API = 'http://localhost:8080/lugares';
+const API = 'https://api.rioromano.com.ar/lugares';
 
 const LugaresGet = () => {
   const [data, setData] = useState([]); // filas (array plano o data.data)

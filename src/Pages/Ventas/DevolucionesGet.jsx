@@ -27,7 +27,7 @@ export default function DevolucionesPage() {
 
   const cargarDevoluciones = async () => {
     try {
-      const res = await fetch('http://localhost:8080/devoluciones');
+      const res = await fetch('https://api.rioromano.com.ar/devoluciones');
       const data = await res.json();
       setDevoluciones(data);
     } catch (error) {
@@ -55,7 +55,7 @@ export default function DevolucionesPage() {
 
       // Obtener los datos de la venta para calcular proporcionalmente
       const resVenta = await fetch(
-        `http://localhost:8080/ventas/${nuevaDevolucion.venta_id}`
+        `https://api.rioromano.com.ar/ventas/${nuevaDevolucion.venta_id}`
       );
       const venta = await resVenta.json();
 
@@ -98,7 +98,7 @@ export default function DevolucionesPage() {
         };
       });
 
-      const res = await fetch('http://localhost:8080/devoluciones', {
+      const res = await fetch('https://api.rioromano.com.ar/devoluciones', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -144,7 +144,7 @@ export default function DevolucionesPage() {
 
   const verDetalleDevolucion = async (id) => {
     try {
-      const res = await fetch(`http://localhost:8080/devoluciones/${id}`);
+      const res = await fetch(`https://api.rioromano.com.ar/devoluciones/${id}`);
       const data = await res.json();
       setDevolucionSeleccionada(data);
     } catch (error) {
@@ -214,7 +214,7 @@ export default function DevolucionesPage() {
                     return alert('Ingresá un ID de venta');
                   try {
                     const res = await fetch(
-                      `http://localhost:8080/ventas/${nuevaDevolucion.venta_id}`
+                      `https://api.rioromano.com.ar/ventas/${nuevaDevolucion.venta_id}`
                     );
                     const data = await res.json();
                     setProductosVenta(data.detalles || []);

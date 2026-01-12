@@ -50,7 +50,7 @@ export default function ModalOtrosLocales({
 
     try {
       setLoadingId(p.stock_id);
-      const res = await fetch('http://localhost:8080/pedidos', {
+      const res = await fetch('https://api.rioromano.com.ar/pedidos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -21,8 +21,8 @@ import { useAuth } from '../../AuthContext';
 
 Modal.setAppElement('#root');
 
-const API = 'http://localhost:8080/locales';
-const TICKET_API = 'http://localhost:8080/ticket-config';
+const API = 'https://api.rioromano.com.ar/locales';
+const TICKET_API = 'https://api.rioromano.com.ar/ticket-config';
 
 const defaultFormValues = {
   nombre: '',

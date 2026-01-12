@@ -24,7 +24,7 @@ export default function BulkUploadButton({ tabla, className = '', onSuccess }) {
     fd.append('file', file);
 
     try {
-      const res = await fetch(`http://localhost:8080/carga-masiva/${tabla}`, {
+      const res = await fetch(`https://api.rioromano.com.ar/carga-masiva/${tabla}`, {
         method: 'POST',
         body: fd
       });

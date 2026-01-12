@@ -24,7 +24,7 @@ import 'sweetalert2/dist/sweetalert2.min.css';
 import RoleGate from '../../Components/auth/RoleGate';
 
 Modal.setAppElement('#root');
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = 'https://api.rioromano.com.ar';
 
 const ProductosGet = () => {
   // 🔁 Paginación / orden server-side
@@ -450,7 +450,7 @@ const ProductosGet = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:8080/productos/${id}`, {
+      await axios.delete(`https://api.rioromano.com.ar/productos/${id}`, {
         data: { usuario_log_id: getUserId() }
       });
       fetchData();
@@ -1197,12 +1197,12 @@ const ProductosGet = () => {
                     const userId = getUserId();
                     // 1) Eliminar stock
                     await axios.delete(
-                      `http://localhost:8080/stock/producto/${confirmDelete}`,
+                      `https://api.rioromano.com.ar/stock/producto/${confirmDelete}`,
                       { data: { usuario_log_id: userId } }
                     );
                     // 2) Eliminar producto (forzado)
                     await axios.delete(
-                      `http://localhost:8080/productos/${confirmDelete}`,
+                      `https://api.rioromano.com.ar/productos/${confirmDelete}`,
                       { data: { usuario_log_id: userId, forzado: true } }
                     );
                     setConfirmDelete(null);
@@ -1238,7 +1238,7 @@ const ProductosGet = () => {
                   try {
                     const userId = getUserId();
                     await axios.delete(
-                      `http://localhost:8080/productos/${confirmDelete}`,
+                      `https://api.rioromano.com.ar/productos/${confirmDelete}`,
                       { data: { usuario_log_id: userId, forzado: true } } // <- clave
                     );
                     setConfirmDelete(null);

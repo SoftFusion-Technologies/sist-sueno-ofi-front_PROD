@@ -23,7 +23,7 @@ import {
   FaBalanceScale
 } from 'react-icons/fa';
 // ===================== Config =====================
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = 'https://api.rioromano.com.ar';
 const ORANGE = '#fc4b08';
 
 // ===================== API helpers =====================

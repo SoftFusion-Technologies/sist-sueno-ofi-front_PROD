@@ -44,7 +44,7 @@ import ParticlesBackground from '../../Components/ParticlesBackground';
 import ButtonBack from '../../Components/ButtonBack';
 import RoleGate from '../../Components/auth/RoleGate';
 // ================== CONFIG ==================
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rioromano.com.ar';
 
 const ESTADOS = [
   'pendiente',

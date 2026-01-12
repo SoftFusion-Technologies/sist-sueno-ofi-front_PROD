@@ -49,8 +49,8 @@ const CampanaModal = ({ campana, onClose }) => {
     try {
       const res = await fetch(
         isEditing
-          ? `http://localhost:8080/recaptacion-campanas/${campana.id}`
-          : 'http://localhost:8080/recaptacion-campanas',
+          ? `https://api.rioromano.com.ar/recaptacion-campanas/${campana.id}`
+          : 'https://api.rioromano.com.ar/recaptacion-campanas',
         {
           method: isEditing ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },

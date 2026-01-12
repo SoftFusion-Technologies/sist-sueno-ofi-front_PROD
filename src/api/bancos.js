@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { getUserId } from '../utils/authUtils';
 
-export const url = 'http://localhost:8080/';
+export const url = 'https://api.rioromano.com.ar/';
 
 export const client = axios.create({
   baseURL: url,

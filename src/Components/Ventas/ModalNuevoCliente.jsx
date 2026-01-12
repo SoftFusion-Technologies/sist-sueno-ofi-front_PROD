@@ -76,7 +76,7 @@ export default function ModalNuevoCliente({ open, onClose, onClienteCreado }) {
     setError('');
 
     try {
-      const { data } = await axios.post('http://localhost:8080/clientes', form);
+      const { data } = await axios.post('https://api.rioromano.com.ar/clientes', form);
 
       const clienteCreado = data?.cliente ?? data;
 

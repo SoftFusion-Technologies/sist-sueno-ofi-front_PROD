@@ -31,8 +31,8 @@ export default function MovimientosGlobal() {
 
     const endpoint =
       userLevel === 'socio'
-        ? 'http://localhost:8080/movimientos_caja'
-        : `http://localhost:8080/movimientos_caja?local_id=${userLocalId}`;
+        ? 'https://api.rioromano.com.ar/movimientos_caja'
+        : `https://api.rioromano.com.ar/movimientos_caja?local_id=${userLocalId}`;
 
     fetch(endpoint)
       .then((res) => res.json())

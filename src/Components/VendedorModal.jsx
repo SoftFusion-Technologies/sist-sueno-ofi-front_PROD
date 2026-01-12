@@ -25,7 +25,7 @@ const VendedorModal = ({ vendedor = {}, onClose }) => {
   // Obtener locales al montar el modal
   useEffect(() => {
     axios
-      .get('http://localhost:8080/locales')
+      .get('https://api.rioromano.com.ar/locales')
       .then((res) => setLocales(res.data))
       .catch(() => setLocales([]));
   }, []);
@@ -63,12 +63,12 @@ const VendedorModal = ({ vendedor = {}, onClose }) => {
         const payload = { ...form };
         if (!form.password) delete payload.password;
         await axios.put(
-          `http://localhost:8080/usuarios/${vendedor.id}`,
+          `https://api.rioromano.com.ar/usuarios/${vendedor.id}`,
           payload
         );
         setMsg('¡Vendedor actualizado correctamente!');
       } else {
-        await axios.post('http://localhost:8080/usuarios', { ...form });
+        await axios.post('https://api.rioromano.com.ar/usuarios', { ...form });
         setMsg('¡Vendedor creado exitosamente!');
       }
       setTimeout(onClose, 1000); // Cierra modal tras éxito

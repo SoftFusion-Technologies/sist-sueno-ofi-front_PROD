@@ -179,7 +179,7 @@ export default function TicketVentaModal({
     const fetchConfigByLocal = async () => {
       try {
         const { data } = await axios.get(
-          `http://localhost:8080/ticket-config/by-local/${localId}`
+          `https://api.rioromano.com.ar/ticket-config/by-local/${localId}`
         );
         // El backend devuelve: { local: {...}, ticketConfig: {...} }
         setConfig(data.ticketConfig || null);
@@ -216,7 +216,7 @@ export default function TicketVentaModal({
 
   const email = config?.email || localInfo?.email || '';
 
-  const apiBase = 'http://localhost:8080';
+  const apiBase = 'https://api.rioromano.com.ar';
 
   // Armamos URL completa del logo
   const logoUrl = config?.logo_path

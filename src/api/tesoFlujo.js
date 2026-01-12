@@ -2,7 +2,7 @@
 import { getUserId } from '../utils/authUtils';
 import { client } from './bancos';
 
-export const url = 'http://localhost:8080/';
+export const url = 'https://api.rioromano.com.ar/';
 
 // Listado con filtros: { fecha_from, fecha_to, signo, origen_tipo, origen_id, q, page, limit, orderBy, orderDir }
 export const listTesoFlujo = async (params = {}) => {

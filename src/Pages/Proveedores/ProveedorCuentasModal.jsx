@@ -39,7 +39,7 @@ import RoleGate from '../../Components/auth/RoleGate';
  * GET    /proveedores/cuentas/search?text=...&proveedorId=...
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://api.rioromano.com.ar';
 
 const emptyForm = {
   banco: '',

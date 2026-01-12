@@ -1,4 +1,4 @@
-// Base URL del backend (ej: http://localhost:8080)
+// Base URL del backend (ej: https://api.rioromano.com.ar)
 const API_BASE =
   typeof import.meta !== 'undefined' &&
   import.meta.env &&

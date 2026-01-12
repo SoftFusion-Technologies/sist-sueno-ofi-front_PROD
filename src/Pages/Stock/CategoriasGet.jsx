@@ -12,7 +12,7 @@ import RoleGate from '../../Components/auth/RoleGate';
 
 Modal.setAppElement('#root');
 
-const API = 'http://localhost:8080/categorias';
+const API = 'https://api.rioromano.com.ar/categorias';
 
 const CategoriasGet = () => {
   const [data, setData] = useState([]);

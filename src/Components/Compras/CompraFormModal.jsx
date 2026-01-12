@@ -267,7 +267,7 @@ const defaultSubmit = async (payload) => {
   return data;
 
   // --- Alternativa con fetch ---
-  // const resp = await fetch('http://localhost:8080/compras', {
+  // const resp = await fetch('https://api.rioromano.com.ar/compras', {
   //   method: 'POST',
   //   headers: {
   //     'Content-Type': 'application/json',

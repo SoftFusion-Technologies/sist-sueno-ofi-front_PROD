@@ -3,7 +3,7 @@ import api from '../utils/axiosClient';
 
 // --- Funciones para obtener datos desde endpoints ---
 export async function fetchLocales() {
-  const res = await fetch('http://localhost:8080/locales');
+  const res = await fetch('https://api.rioromano.com.ar/locales');
   if (!res.ok) throw new Error('Error al obtener locales');
   return await res.json();
 }
