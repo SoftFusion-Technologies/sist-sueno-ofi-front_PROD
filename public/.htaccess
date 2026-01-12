@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Si tu app está en la raíz del dominio:
+  RewriteBase /
+
+  # No reescribir el index
+  RewriteRule ^index\.html$ - [L]
+
+  # Si el archivo o carpeta existe, servirlo normal
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Todo lo demás va a index.html (React Router)
+  RewriteRule . /index.html [L]
+</IfModule>
