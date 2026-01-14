@@ -409,6 +409,9 @@ export default function TicketConfigCard() {
                         <span className="font-semibold">
                           {cfg.nombre_tienda || `Plantilla #${cfg.id}`}
                         </span>
+                        <span className="font-semibold text-[12px]">
+                          {cfg.direccion || `Sin dirección`}
+                        </span>
                         <span className="text-[9px] opacity-70">
                           ID {cfg.id}
                         </span>

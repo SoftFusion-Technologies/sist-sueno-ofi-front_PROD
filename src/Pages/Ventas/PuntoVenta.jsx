@@ -645,8 +645,16 @@ export default function PuntoVenta() {
     const controller = new AbortController();
     const q = (debouncedBusqueda || '').trim();
 
-    // umbral mínimo de caracteres opcional
-    if (q.length < 2) {
+    // 👇 Detectar si es numérico puro (para permitir 1 dígito: codigo_interno/id)
+    const qDigits = q.replace(/[^\d]/g, '');
+    const isNumericPure = qDigits.length > 0 && qDigits === q;
+
+    // ✅ Umbral:
+    // - Texto: mínimo 2 chars
+    // - Numérico puro: mínimo 1 char (para codigo_interno=1,2,...)
+    const minLen = isNumericPure ? 1 : 2;
+
+    if (q.length < minLen) {
       setProductos([]);
       setOtrosLocales([]);
       setModalOtrosOpen(false);
@@ -657,14 +665,15 @@ export default function PuntoVenta() {
       try {
         setLoading(true);
 
-        const params = new URLSearchParams({
-          query: q,
-          local_id: String(userLocalId || ''),
-          include_otros: '1'
-        });
+        const params = new URLSearchParams();
+        params.set('query', q);
+        params.set('include_otros', '1');
+
+        // Si tenés local, lo mandás. Si no, no lo mandes vacío.
+        if (userLocalId) params.set('local_id', String(userLocalId));
 
         const res = await fetch(
-          `https://api.rioromano.com.ar/buscar-productos-detallado?${params}`,
+          `https://api.rioromano.com.ar/buscar-productos-detallado?${params.toString()}`,
           {
             signal: controller.signal,
             headers: {
@@ -672,17 +681,18 @@ export default function PuntoVenta() {
             }
           }
         );
+
         if (!res.ok) throw new Error(`Error ${res.status}`);
 
         const payload = await res.json();
 
-        let itemsLocal = Array.isArray(payload)
+        const itemsLocal = Array.isArray(payload)
           ? payload
           : Array.isArray(payload.items_local)
           ? payload.items_local
           : [];
 
-        let itemsOtros = Array.isArray(payload?.otros_items)
+        const itemsOtros = Array.isArray(payload?.otros_items)
           ? payload.otros_items
           : [];
 
@@ -691,8 +701,6 @@ export default function PuntoVenta() {
         setProductos(itemsLocal);
         setOtrosLocales(itemsOtros);
 
-        // 🔔 Abrir modal SOLO si el usuario hizo pausa (debounce),
-        // no hay stock local y sí hay en otras sucursales.
         setModalOtrosOpen(itemsLocal.length === 0 && itemsOtros.length > 0);
       } catch (e) {
         if (e.name !== 'AbortError') {
@@ -710,7 +718,7 @@ export default function PuntoVenta() {
 
     return () => {
       ignore = true;
-      controller.abort(); // ⛔ cancela la request anterior si el user sigue tipeando
+      controller.abort();
     };
   }, [debouncedBusqueda, userLocalId]);
 
@@ -2203,7 +2211,7 @@ export default function PuntoVenta() {
 
               return (
                 <div
-                  key={producto.producto_id}
+                  key={producto.stock_id}
                   className="bg-white/5 p-4 rounded-xl shadow hover:shadow-lg transition relative flex flex-col"
                 >
                   <div className="flex items-center justify-between mb-2">

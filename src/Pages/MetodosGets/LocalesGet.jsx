@@ -635,7 +635,7 @@ const LocalesGet = () => {
                       {ticketConfigs.map((cfg) => (
                         <option key={cfg.id} value={cfg.id}>
                           {cfg.nombre_tienda
-                            ? `${cfg.nombre_tienda} (ID ${cfg.id})`
+                            ? `${cfg.nombre_tienda} ${cfg.direccion} (ID ${cfg.id})`
                             : `Plantilla #${cfg.id}`}
                         </option>
                       ))}

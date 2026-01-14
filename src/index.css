@@ -213,3 +213,8 @@
   }
 }
 
+
+/* SweetAlert2 siempre por encima de tus modales */
+.swal2-container {
+  z-index: 30000 !important;
+}
