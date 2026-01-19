@@ -375,20 +375,31 @@ export default function ChequeCard({
         >
           <div>
             <span className="font-medium">Emisión:</span>{' '}
-            {fecha_emision ? new Date(fecha_emision).toLocaleDateString() : '—'}
+            {fecha_emision
+              ? new Date(fecha_emision).toLocaleDateString('es-AR', {
+                  timeZone: 'UTC'
+                })
+              : '—'}
           </div>
+
           <div>
             <span className="font-medium">Vencimiento:</span>{' '}
             {fecha_vencimiento
-              ? new Date(fecha_vencimiento).toLocaleDateString()
+              ? new Date(fecha_vencimiento).toLocaleDateString('es-AR', {
+                  timeZone: 'UTC'
+                })
               : '—'}
           </div>
+
           <div>
             <span className="font-medium">Cobro previsto:</span>{' '}
             {fecha_cobro_prevista
-              ? new Date(fecha_cobro_prevista).toLocaleDateString()
+              ? new Date(fecha_cobro_prevista).toLocaleDateString('es-AR', {
+                  timeZone: 'UTC'
+                })
               : '—'}
           </div>
+
           <div className={`sm:col-span-3 text-[11px] ${txtMuted(formato)}`}>
             ID: {id}
             {item.created_at
