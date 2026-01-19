@@ -4,9 +4,9 @@ export default function PasswordEditor({
   value,
   onChange,
   showConfirm = true,
-  confirmValue = '', // 👈 nuevo
-  onConfirmChange = () => {}, // 👈 nuevo
-  onValidityChange = () => {} // 👈 opcional: notifica match/mismatch
+  confirmValue = '', //  nuevo
+  onConfirmChange = () => {}, //  nuevo
+  onValidityChange = () => {} //  opcional: notifica match/mismatch
 }) {
   const [show, setShow] = useState(false);
 
@@ -51,7 +51,7 @@ export default function PasswordEditor({
           onChange={(e) => onChange(e.target.value)}
           placeholder="Nueva contraseña (dejar vacío para no cambiar)"
           autoComplete="new-password"
-          className="w-full px-4 py-2 rounded-lg border border-gray-300 pr-36 sm:pr-28"
+          className="w-full px-4 py-2 rounded-lg border text-white border-gray-300 pr-36 sm:pr-28"
         />
         <div className="hidden sm:flex items-center gap-3 absolute inset-y-0 right-2">
           <button
@@ -120,7 +120,7 @@ export default function PasswordEditor({
             onChange={(e) => onConfirmChange(e.target.value)}
             placeholder="Repetir contraseña"
             autoComplete="new-password"
-            className={`w-full px-4 py-2 rounded-lg border ${
+            className={`w-full px-4 py-2 rounded-lg border text-white ${
               mismatch ? 'border-rose-400' : 'border-gray-300'
             }`}
           />

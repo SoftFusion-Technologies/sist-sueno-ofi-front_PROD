@@ -1031,23 +1031,23 @@ export default function UsuariosGet() {
                 {modalMode === 'view'
                   ? getInitials(selectedUser?.nombre)
                   : editId
-                  ? getInitials(formData.nombre)
-                  : '＋'}
+                    ? getInitials(formData.nombre)
+                    : '＋'}
               </div>
               <div>
                 <p className="text-xs font-semibold text-white uppercase tracking-wide">
                   {modalMode === 'view'
                     ? 'Detalle de usuario'
                     : editId
-                    ? 'Edición de usuario'
-                    : 'Alta de usuario'}
+                      ? 'Edición de usuario'
+                      : 'Alta de usuario'}
                 </p>
                 <p className="mt-1 text-lg sm:text-xl font-extrabold text-emerald-500 uppercase tracking-tight">
                   {modalMode === 'view'
                     ? selectedUser?.nombre || 'Usuario'
                     : editId
-                    ? 'Editar Usuario'
-                    : 'Nuevo Usuario'}
+                      ? 'Editar Usuario'
+                      : 'Nuevo Usuario'}
                 </p>
                 <p className="mt-1 text-sm text-white">
                   {modalMode === 'view'
@@ -1345,7 +1345,11 @@ export default function UsuariosGet() {
                         >
                           <option value="">Seleccioná un local</option>
                           {(locales || []).map((l) => (
-                            <option key={l.id} value={l.id}>
+                            <option
+                              className="text-black"
+                              key={l.id}
+                              value={l.id}
+                            >
                               {l.nombre}
                             </option>
                           ))}

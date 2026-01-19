@@ -5,16 +5,12 @@ import {
   FaBox,
   FaPlus,
   FaPercentage,
-  FaTrash,
   FaDownload,
   FaTimes,
   FaBarcode,
   FaHashtag,
   FaMoneyBillWave,
-  FaStore,
-  FaCube,
-  FaTag,
-  FaCopy
+  FaQuestionCircle
 } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import ButtonBack from '../../Components/ButtonBack.jsx';
@@ -31,7 +27,7 @@ import 'sweetalert2/dist/sweetalert2.min.css';
 import RoleGate from '../../Components/auth/RoleGate';
 
 import Swal from 'sweetalert2';
-
+import ModalAyudaProductos from '../../Components/Productos/ModalAyudaProductos.jsx';
 const ACCENT = '#fc4b08';
 
 export const swalWarn = (title, text, opts = {}) => {
@@ -91,7 +87,7 @@ Modal.setAppElement('#root');
 const BASE_URL = 'https://api.rioromano.com.ar';
 
 const ProductosGet = () => {
-  // 🔁 Paginación / orden server-side
+  // Paginación / orden server-side
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(6);
   const [orderBy, setOrderBy] = useState('id'); // servidor: id | nombre | codigo | created_at | updated_at (o lo que habilitaste)
@@ -154,6 +150,9 @@ const ProductosGet = () => {
   // Vista: NETO (sin IVA) o CAJA (con IVA)
   const [vistaRent, setVistaRent] = useState('NETO'); // 'NETO' | 'CAJA'
 
+  // Abrir modal de guía rápida
+  const [helpOpen, setHelpOpen] = useState(false);
+
   useEffect(() => {
     // Cargar proveedores activos (podés ajustar al endpoint que uses)
     fetch(`${BASE_URL}/proveedores`)
@@ -162,8 +161,8 @@ const ProductosGet = () => {
         const arr = Array.isArray(json?.data)
           ? json.data
           : Array.isArray(json)
-          ? json
-          : [];
+            ? json
+            : [];
         setProveedores(arr.filter((p) => p.estado === 'activo'));
       })
       .catch(() => setProveedores([]));
@@ -183,14 +182,14 @@ const ProductosGet = () => {
           params: {
             page,
             limit,
-            // 🔎 filtro servidor:
+            //  filtro servidor:
             q: debouncedQ || undefined,
             estado: estadoFiltro !== 'todos' ? estadoFiltro : undefined,
             categoriaId: categoriaFiltro || undefined,
             // si tenés proveedor seleccionado:
             // proveedorId: proveedorIdSel || undefined,
 
-            // 🔁 orden servidor:
+            //  orden servidor:
             orderBy,
             orderDir
           }
@@ -221,7 +220,7 @@ const ProductosGet = () => {
     }
   };
 
-  // 🔎 Query server-side a partir de tu search (simple “debounce” lógico)
+  //  Query server-side a partir de tu search (simple “debounce” lógico)
   const debouncedQ = useMemo(() => search.trim(), [search]);
 
   useEffect(() => {
@@ -532,6 +531,14 @@ const ProductosGet = () => {
         }
       });
 
+      // ✅ Proveedor preferido: en creación usás proveedorIdSel, en edición conviene fallback al form
+      // (evita que si proveedorIdSel no está cargado en modo edit, mandes null y se pierda el vínculo)
+      const provPrefToSend = proveedorIdSel
+        ? Number(proveedorIdSel)
+        : formValues.proveedor_preferido_id
+          ? Number(formValues.proveedor_preferido_id)
+          : null;
+
       const dataToSend = {
         ...formValues,
 
@@ -561,8 +568,13 @@ const ProductosGet = () => {
 
         // Auditoría / proveedor
         usuario_log_id: uid,
-        proveedor_preferido_id: proveedorIdSel ? Number(proveedorIdSel) : null
+        proveedor_preferido_id: provPrefToSend
       };
+
+      // ✅ CAMBIO MÍNIMO: en editar forzamos sync hacia producto_proveedor
+      if (editId) {
+        dataToSend.sync_proveedor_preferido = 1;
+      }
 
       // === EDITAR PRODUCTO ===
       if (editId) {
@@ -623,7 +635,7 @@ const ProductosGet = () => {
         costo_neto: Number(parsedCosto.toFixed(2)),
         moneda: 'ARS',
         alicuota_iva: Number(parsedIva.toFixed(2)),
-        inc_iva: false, // dejamos false por defecto (costo_neto como neto)
+        inc_iva: formValues.iva_incluido ? 1 : 0,
 
         descuento_porcentaje: 0,
         plazo_entrega_dias: 7,
@@ -694,19 +706,19 @@ const ProductosGet = () => {
         icon: 'error',
         title: 'Error al guardar',
         html: `
-      <div style="text-align:left; line-height:1.35">
-        <div style="font-size:13px; color:#334155;">
-          ${String(msg).replaceAll('<', '&lt;').replaceAll('>', '&gt;')}
+        <div style="text-align:left; line-height:1.35">
+          <div style="font-size:13px; color:#334155;">
+            ${String(msg).replaceAll('<', '&lt;').replaceAll('>', '&gt;')}
+          </div>
+          ${
+            err?.response?.status
+              ? `<div style="margin-top:10px; font-size:12px; color:#64748b;">
+                   HTTP ${err.response.status}
+                 </div>`
+              : ''
+          }
         </div>
-        ${
-          err?.response?.status
-            ? `<div style="margin-top:10px; font-size:12px; color:#64748b;">
-                 HTTP ${err.response.status}
-               </div>`
-            : ''
-        }
-      </div>
-    `,
+      `,
         confirmButtonText: 'Entendido',
         confirmButtonColor: '#fc4b08',
         heightAuto: false
@@ -842,16 +854,27 @@ const ProductosGet = () => {
   // ==============================
   // Preview de precios (UI)
   // ==============================
+  // Helpers mínimos (no rompen nada)
+  const toNum = (v, fallback = 0) => {
+    if (v == null) return fallback;
+    const s = String(v).trim().replace(',', '.'); // por si pegan con coma
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
+  // ==============================
+  // Preview de precios (UI)
+  // ==============================
   const precioFinalPreview = useMemo(() => {
-    const p = parseFloat(formValues.precio || '0');
-    if (Number.isNaN(p)) return 0;
+    const p = Math.max(0, toNum(formValues.precio, 0));
 
     const permite = !!formValues.permite_descuento;
-    const dRaw = parseFloat(formValues.descuento_porcentaje || '0');
-    const d = permite && !Number.isNaN(dRaw) ? dRaw : 0;
+    const d = permite
+      ? clamp(toNum(formValues.descuento_porcentaje, 0), 0, 100)
+      : 0;
 
-    const final = p - p * (d / 100);
-    return Number.isFinite(final) ? final : 0;
+    const final = p * (1 - d / 100);
+    return Number.isFinite(final) ? Math.max(0, final) : 0;
   }, [
     formValues.precio,
     formValues.descuento_porcentaje,
@@ -859,15 +882,17 @@ const ProductosGet = () => {
   ]);
 
   const costoFinalPreview = useMemo(() => {
-    const c = parseFloat(formValues.precio_costo || '0');
-    if (Number.isNaN(c)) return 0;
+    const c = Math.max(0, toNum(formValues.precio_costo, 0));
 
-    const ivaRaw = parseFloat(formValues.iva_alicuota || '21');
-    const iva = !Number.isNaN(ivaRaw) ? ivaRaw : 21;
+    const iva = clamp(toNum(formValues.iva_alicuota, 21), 0, 100);
+    const factor = 1 + iva / 100;
 
     const inc = !!formValues.iva_incluido;
-    const final = inc ? c : c * (1 + iva / 100);
-    return Number.isFinite(final) ? final : 0;
+
+    // Si el usuario dice "IVA incluido", costoFinal = c.
+    // Si no, asumimos costo neto y sumamos IVA.
+    const final = inc ? c : c * factor;
+    return Number.isFinite(final) ? Math.max(0, final) : 0;
   }, [
     formValues.precio_costo,
     formValues.iva_alicuota,
@@ -875,52 +900,56 @@ const ProductosGet = () => {
   ]);
 
   const margenPreview = useMemo(() => {
-    const ivaRaw = parseFloat(formValues.iva_alicuota || '21');
-    const iva = Number.isFinite(ivaRaw) ? ivaRaw : 21;
+    const iva = clamp(toNum(formValues.iva_alicuota, 21), 0, 100);
     const factor = 1 + iva / 100;
 
-    const costoInputRaw = parseFloat(formValues.precio_costo || '0');
-    const costoInput = Number.isFinite(costoInputRaw) ? costoInputRaw : 0;
+    const precioBase = Math.max(0, toNum(formValues.precio, 0));
+    const precioFinal = Math.max(0, Number(precioFinalPreview || 0)); // asumimos con IVA
+    const precioNeto = factor > 0 ? precioFinal / factor : 0;
 
-    // Costo neto (sin IVA)
-    const costoNeto = formValues.iva_incluido
-      ? costoInput / factor
-      : costoInput;
+    const costoInput = Math.max(0, toNum(formValues.precio_costo, 0));
+    const costoFinal = Math.max(0, Number(costoFinalPreview || 0));
+    const costoNeto =
+      factor > 0
+        ? formValues.iva_incluido
+          ? costoInput / factor
+          : costoInput
+        : 0;
 
-    // Precios (asumimos que precioFinalPreview ya incluye IVA)
-    const precioFinal = Number(precioFinalPreview || 0);
-    const precioBase = Number(formValues.precio || 0);
+    // Flags (evitan “100% margen” con costo 0)
+    const hasPrecio = precioFinal > 0;
+    const hasCosto = costoFinal > 0; // acá definimos "hay costo" si el costo final > 0
+    const hasCore = hasPrecio && hasCosto;
 
-    const precioNeto = precioFinal / factor;
-
-    // Ganancias / márgenes NETO
+    // ===== NETO (sin IVA) =====
     const ganancia = precioNeto - costoNeto;
-    const margenPct = precioNeto > 0 ? (ganancia / precioNeto) * 100 : 0;
-    const markupPct = costoNeto > 0 ? (ganancia / costoNeto) * 100 : 0;
+    const margenPct = precioNeto > 0 ? (ganancia / precioNeto) * 100 : 0; // margen sobre venta
+    const markupPct = costoNeto > 0 ? (ganancia / costoNeto) * 100 : 0; // markup sobre costo
 
-    // Vista “Caja” (con IVA): diferencia entre lo que entra y el costo operativo final
-    const costoFinal = Number(costoFinalPreview || 0);
+    // ===== CAJA (con IVA) =====
     const gananciaCaja = precioFinal - costoFinal;
     const margenCajaPct =
       precioFinal > 0 ? (gananciaCaja / precioFinal) * 100 : 0;
+    const markupCajaPct =
+      costoFinal > 0 ? (gananciaCaja / costoFinal) * 100 : 0;
+
+    const isPerdida = hasCore ? gananciaCaja < 0 : false;
 
     // Descuento para sugerencias
-    const descRaw = parseFloat(formValues.descuento_porcentaje || '0');
     const descPct = formValues.permite_descuento
-      ? clamp(descRaw || 0, 0, 100)
+      ? clamp(toNum(formValues.descuento_porcentaje, 0), 0, 100)
       : 0;
+
     const divisorDesc = 1 - descPct / 100;
 
-    // Objetivo
-    const target = clamp(Number(margenObjetivo || 0), 0, 90);
+    // Objetivo (seguimos con tu margenObjetivo, 0–90)
+    const target = clamp(toNum(margenObjetivo, 0), 0, 90);
 
-    // Precio sugerido (para cumplir margen objetivo sobre VENTA NETA)
+    // Sugerencia: cumplir margen objetivo sobre VENTA NETA (sin IVA)
     // margen = (Pnet - Cnet) / Pnet  =>  Pnet = Cnet / (1 - margen)
     const reqPrecioNetoFinal =
-      target < 90
-        ? 1 - target / 100 > 0
-          ? costoNeto / (1 - target / 100)
-          : Infinity
+      hasCosto && target < 90 && 1 - target / 100 > 0
+        ? costoNeto / (1 - target / 100)
         : Infinity;
 
     const reqPrecioBrutoFinal = reqPrecioNetoFinal * factor;
@@ -938,22 +967,35 @@ const ProductosGet = () => {
       iva,
       factor,
 
+      // Flags
+      hasPrecio,
+      hasCosto,
+      hasCore,
+      isPerdida,
+
+      // Inputs/Previews
       precioBase,
       precioFinal,
+      precioNeto,
+
+      costoInput,
       costoFinal,
+      costoNeto,
 
-      costoNeto: Number.isFinite(costoNeto) ? costoNeto : 0,
-      precioNeto: Number.isFinite(precioNeto) ? precioNeto : 0,
-
+      // NETO
       ganancia: Number.isFinite(ganancia) ? ganancia : 0,
       margenPct: Number.isFinite(margenPct) ? margenPct : 0,
       markupPct: Number.isFinite(markupPct) ? markupPct : 0,
 
+      // CAJA
       gananciaCaja: Number.isFinite(gananciaCaja) ? gananciaCaja : 0,
       margenCajaPct: Number.isFinite(margenCajaPct) ? margenCajaPct : 0,
+      markupCajaPct: Number.isFinite(markupCajaPct) ? markupCajaPct : 0,
 
+      // Descuento
       descPct,
 
+      // Objetivo y sugerencias
       targetMargin: target,
       reqPrecioBrutoFinal: Number.isFinite(reqPrecioBrutoFinal)
         ? reqPrecioBrutoFinal
@@ -989,6 +1031,36 @@ const ProductosGet = () => {
       minimumFractionDigits: 2
     }).format(Number.isFinite(n) ? n : 0);
   };
+
+  const [ciSugerido, setCiSugerido] = useState(null);
+  const [ciLoading, setCiLoading] = useState(false);
+
+  const fetchCodigoInternoSugerido = async () => {
+    try {
+      setCiLoading(true);
+      const r = await axios.get(
+        `${BASE_URL}/productos/codigo-interno/sugerido`,
+        {
+          params: { strategy: 'max_plus_one', start: 1 },
+          headers: { 'X-User-Id': String(getUserId?.() ?? '') }
+        }
+      );
+      const sug = r?.data?.suggested ?? null;
+      setCiSugerido(sug != null ? String(sug) : null);
+    } catch (e) {
+      console.warn('[codigo-interno/sugerido] error:', e?.message || e);
+      setCiSugerido(null);
+    } finally {
+      setCiLoading(false);
+    }
+  };
+
+  // Traer sugerido cuando se abre el modal (o cuando quieras)
+  useEffect(() => {
+    if (!modalOpen) return;
+    fetchCodigoInternoSugerido();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalOpen]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-10 px-6 text-white relative">
@@ -1032,6 +1104,15 @@ const ProductosGet = () => {
                   className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 transition px-5 py-2 rounded-xl font-semibold flex items-center gap-2 shadow-lg"
                 >
                   <FaPlus /> Nuevo Producto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHelpOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-sm font-extrabold text-slate-800 shadow-sm transition"
+                  title="Guía rápida del módulo"
+                >
+                  <FaQuestionCircle className="text-orange-600" />
+                  Ayuda
                 </button>
               </div>
             </RoleGate>
@@ -1410,8 +1491,8 @@ const ProductosGet = () => {
                       m >= 35
                         ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/40'
                         : m >= 15
-                        ? 'bg-amber-500/15 text-amber-300 border-amber-400/40'
-                        : 'bg-rose-500/15 text-rose-300 border-rose-400/40';
+                          ? 'bg-amber-500/15 text-amber-300 border-amber-400/40'
+                          : 'bg-rose-500/15 text-rose-300 border-rose-400/40';
 
                     return (
                       <span
@@ -1692,19 +1773,78 @@ const ProductosGet = () => {
                             <label className="block text-[12px] font-medium text-slate-700 mb-1">
                               Código interno
                             </label>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={formValues.codigo_interno}
-                              onChange={(e) =>
-                                setFormValues({
-                                  ...formValues,
-                                  codigo_interno: e.target.value
-                                })
-                              }
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                              placeholder="Ej: 10025"
-                            />
+
+                            <div className="relative">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={formValues.codigo_interno}
+                                onChange={(e) =>
+                                  setFormValues({
+                                    ...formValues,
+                                    codigo_interno: e.target.value
+                                  })
+                                }
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
+                                placeholder="Ej: 10025"
+                              />
+
+                              {/* CTA rápido: usar sugerido si el campo está vacío */}
+                              {!String(
+                                formValues.codigo_interno || ''
+                              ).trim() &&
+                                ciSugerido && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setFormValues((prev) => ({
+                                        ...prev,
+                                        codigo_interno: String(ciSugerido)
+                                      }))
+                                    }
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] px-2.5 py-1.5 rounded-lg border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 transition"
+                                    title="Aplicar sugerido"
+                                  >
+                                    Usar {ciSugerido}
+                                  </button>
+                                )}
+                            </div>
+
+                            {/* Hint + botón ocupados */}
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                              <div className="text-[11px] text-slate-500">
+                                {ciLoading ? (
+                                  <span>Calculando sugerido…</span>
+                                ) : ciSugerido ? (
+                                  <span>
+                                    Sugerido disponible:{' '}
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setFormValues((prev) => ({
+                                          ...prev,
+                                          codigo_interno: String(ciSugerido)
+                                        }))
+                                      }
+                                      className="font-semibold text-orange-700 hover:text-orange-800 underline underline-offset-2"
+                                      title="Aplicar sugerido"
+                                    >
+                                      {ciSugerido}
+                                    </button>
+                                  </span>
+                                ) : (
+                                  <span>Sugerido no disponible.</span>
+                                )}
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={verCodigosOcupados}
+                                className="text-[11px] font-semibold text-slate-700 hover:text-orange-700 transition"
+                              >
+                                Ver ocupados
+                              </button>
+                            </div>
                           </div>
 
                           <div>
@@ -2064,66 +2204,91 @@ const ProductosGet = () => {
 
                       <div className="p-5 space-y-4">
                         {(() => {
-                          const hasCore =
-                            Number(precioFinalPreview || 0) > 0 &&
-                            Number(formValues.precio_costo || 0) >= 0;
+                          const hasPrecio = !!margenPreview.hasPrecio;
+                          const hasCosto = !!margenPreview.hasCosto;
+                          const hasCore = !!margenPreview.hasCore;
+
+                          const objetivo = Number(
+                            margenPreview.targetMargin || 0
+                          );
 
                           const margenActual =
                             vistaRent === 'NETO'
                               ? Number(margenPreview.margenPct || 0)
                               : Number(margenPreview.margenCajaPct || 0);
 
+                          const markupActual =
+                            vistaRent === 'NETO'
+                              ? Number(margenPreview.markupPct || 0)
+                              : Number(margenPreview.markupCajaPct || 0);
+
                           const gananciaActual =
                             vistaRent === 'NETO'
                               ? Number(margenPreview.ganancia || 0)
                               : Number(margenPreview.gananciaCaja || 0);
 
-                          const objetivo = Number(
-                            margenPreview.targetMargin || 0
-                          );
+                          const isPerdida = !!margenPreview.isPerdida;
 
-                          // Badge relativo al objetivo (mucho más útil que thresholds fijos)
-                          const status = !hasCore
-                            ? {
-                                text: 'Completá precio y costo',
-                                cls: 'bg-slate-100 text-slate-700 ring-slate-200'
-                              }
-                            : margenActual >= objetivo
-                            ? {
-                                text: 'Cumple objetivo',
-                                cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                              }
-                            : margenActual >= objetivo * 0.75
-                            ? {
-                                text: 'Cerca del objetivo',
-                                cls: 'bg-amber-50 text-amber-700 ring-amber-200'
-                              }
-                            : margenActual > 0
-                            ? {
-                                text: 'Bajo objetivo',
-                                cls: 'bg-rose-50 text-rose-700 ring-rose-200'
-                              }
-                            : {
-                                text: 'Sin margen / pérdida',
-                                cls: 'bg-slate-100 text-slate-700 ring-slate-200'
-                              };
+                          // Status “inteligente”
+                          const status =
+                            !hasPrecio && !hasCosto
+                              ? {
+                                  text: 'Completá precio y costo',
+                                  cls: 'bg-slate-100 text-slate-700 ring-slate-200'
+                                }
+                              : !hasPrecio
+                                ? {
+                                    text: 'Falta precio',
+                                    cls: 'bg-slate-100 text-slate-700 ring-slate-200'
+                                  }
+                                : !hasCosto
+                                  ? {
+                                      text: 'Sin costo cargado',
+                                      cls: 'bg-amber-50 text-amber-700 ring-amber-200'
+                                    }
+                                  : isPerdida
+                                    ? {
+                                        text: 'Pérdida',
+                                        cls: 'bg-rose-50 text-rose-700 ring-rose-200'
+                                      }
+                                    : margenActual >= objetivo
+                                      ? {
+                                          text: 'Cumple objetivo',
+                                          cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                                        }
+                                      : margenActual >= objetivo * 0.75
+                                        ? {
+                                            text: 'Cerca del objetivo',
+                                            cls: 'bg-amber-50 text-amber-700 ring-amber-200'
+                                          }
+                                        : {
+                                            text: 'Bajo objetivo',
+                                            cls: 'bg-rose-50 text-rose-700 ring-rose-200'
+                                          };
 
-                          // Barra visual (0–60% como rango “usable”, clamp para no romper)
+                          // Barra visual (0–60%)
                           const barMax = 60;
-                          const barWidth = `${
-                            (clamp(margenActual, 0, barMax) / barMax) * 100
-                          }%`;
+                          const barWidth = hasCore
+                            ? `${(clamp(margenActual, 0, barMax) / barMax) * 100}%`
+                            : '0%';
 
                           const canSuggest =
                             margenPreview.reqPrecioBaseBruto != null &&
-                            Number.isFinite(margenPreview.reqPrecioBaseBruto);
+                            Number.isFinite(margenPreview.reqPrecioBaseBruto) &&
+                            margenPreview.reqPrecioBaseBruto > 0 &&
+                            hasCosto;
+
                           const canBreakeven =
                             margenPreview.equilibrioBaseBruto != null &&
-                            Number.isFinite(margenPreview.equilibrioBaseBruto);
+                            Number.isFinite(
+                              margenPreview.equilibrioBaseBruto
+                            ) &&
+                            margenPreview.equilibrioBaseBruto > 0 &&
+                            hasCosto;
 
                           const applyPrice = (value) => {
                             if (!Number.isFinite(value) || value <= 0) return;
-                            // Redondeo a 2 decimales (si querés redondeo a entero, cambia aquí)
+                            // Redondeo: por defecto 2 decimales (si querés retail AR, podés pasar a 0)
                             const rounded = Math.round(value * 100) / 100;
                             setFormValues((prev) => ({
                               ...prev,
@@ -2133,14 +2298,41 @@ const ProductosGet = () => {
 
                           return (
                             <>
-                              {/* Indicador + objetivo */}
-                              <div className="flex items-center justify-between gap-3">
+                              {/* Encabezado: indicador + badges de “cómo se interpreta” */}
+                              <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
                                   <div className="text-[12px] text-slate-600">
                                     Indicador (
                                     {vistaRent === 'NETO' ? 'Neto' : 'Caja'})
                                   </div>
-                                  <div className="text-[11px] text-slate-500 mt-0.5">
+
+                                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                                    <span className="text-[11px] px-2.5 py-1 rounded-full ring-1 bg-slate-50 text-slate-700 ring-slate-200">
+                                      Precio: c/IVA
+                                    </span>
+                                    <span className="text-[11px] px-2.5 py-1 rounded-full ring-1 bg-slate-50 text-slate-700 ring-slate-200">
+                                      Costo:{' '}
+                                      {formValues.iva_incluido
+                                        ? 'c/IVA'
+                                        : 's/IVA'}
+                                    </span>
+                                    <span className="text-[11px] px-2.5 py-1 rounded-full ring-1 bg-slate-50 text-slate-700 ring-slate-200">
+                                      IVA:{' '}
+                                      {Number(margenPreview.iva || 21).toFixed(
+                                        2
+                                      )}
+                                      %
+                                    </span>
+                                    <span className="text-[11px] px-2.5 py-1 rounded-full ring-1 bg-slate-50 text-slate-700 ring-slate-200">
+                                      Desc:{' '}
+                                      {Number(
+                                        margenPreview.descPct || 0
+                                      ).toFixed(2)}
+                                      %
+                                    </span>
+                                  </div>
+
+                                  <div className="text-[11px] text-slate-500 mt-1.5">
                                     Objetivo:{' '}
                                     <span className="font-semibold text-slate-700">
                                       {objetivo.toFixed(0)}%
@@ -2161,25 +2353,29 @@ const ProductosGet = () => {
                               {/* Barra visual margen */}
                               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                                 <div className="flex items-center justify-between text-[11px] text-slate-600">
-                                  <span>Margen</span>
+                                  <span>Margen (sobre venta)</span>
                                   <span className="font-semibold text-slate-900">
-                                    {margenActual.toFixed(2)}%
+                                    {hasCore
+                                      ? `${margenActual.toFixed(2)}%`
+                                      : '—'}
                                   </span>
                                 </div>
+
                                 <div className="mt-2 h-2.5 w-full rounded-full bg-white border border-slate-200 overflow-hidden">
                                   <div
                                     className="h-full rounded-full bg-orange-500/80 transition-[width] duration-300"
                                     style={{ width: barWidth }}
                                   />
                                 </div>
+
                                 <div className="mt-2 text-[11px] text-slate-500 leading-5">
                                   {vistaRent === 'NETO'
-                                    ? 'Rentabilidad real comparando precio y costo netos (sin IVA).'
-                                    : 'Lectura operativa: diferencia en caja entre precio final y costo final.'}
+                                    ? 'Neto: se compara precio neto vs costo neto (sin IVA).'
+                                    : 'Caja: se compara precio final vs costo final (con IVA).'}
                                 </div>
                               </div>
 
-                              {/* KPIs compactos */}
+                              {/* KPIs (ahora incluye Markup + guardrails) */}
                               <div className="grid grid-cols-2 gap-3">
                                 <div className="rounded-2xl bg-white border border-slate-200 p-4">
                                   <div className="text-[11px] text-slate-500">
@@ -2206,6 +2402,11 @@ const ProductosGet = () => {
                                   <div className="text-sm font-semibold text-slate-900 mt-1">
                                     {formatARS(costoFinalPreview)}
                                   </div>
+                                  {!hasCosto && (
+                                    <div className="text-[11px] text-amber-700 mt-1">
+                                      Sin costo: no se calcula rentabilidad.
+                                    </div>
+                                  )}
                                 </div>
 
                                 <div className="rounded-2xl bg-white border border-slate-200 p-4">
@@ -2215,18 +2416,36 @@ const ProductosGet = () => {
                                       : 'Ganancia / unidad (caja)'}
                                   </div>
                                   <div
-                                    className={`text-sm font-semibold mt-1 ${
-                                      gananciaActual >= 0
-                                        ? 'text-slate-900'
-                                        : 'text-rose-700'
-                                    }`}
+                                    className={`text-sm font-semibold mt-1 ${gananciaActual >= 0 ? 'text-slate-900' : 'text-rose-700'}`}
                                   >
-                                    {formatARS(gananciaActual)}
+                                    {hasCore ? formatARS(gananciaActual) : '—'}
+                                  </div>
+                                </div>
+
+                                <div className="rounded-2xl bg-white border border-slate-200 p-4">
+                                  <div className="text-[11px] text-slate-500">
+                                    Margen
+                                  </div>
+                                  <div className="text-sm font-semibold text-slate-900 mt-1">
+                                    {hasCore
+                                      ? `${margenActual.toFixed(2)}%`
+                                      : '—'}
+                                  </div>
+                                </div>
+
+                                <div className="rounded-2xl bg-white border border-slate-200 p-4">
+                                  <div className="text-[11px] text-slate-500">
+                                    Markup (sobre costo)
+                                  </div>
+                                  <div className="text-sm font-semibold text-slate-900 mt-1">
+                                    {hasCore
+                                      ? `${markupActual.toFixed(2)}%`
+                                      : '—'}
                                   </div>
                                 </div>
                               </div>
 
-                              {/* Detalle Rentabilidad neta */}
+                              {/* Detalle compacto: neto vs caja */}
                               <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
@@ -2236,73 +2455,54 @@ const ProductosGet = () => {
                                         : 'Detalle caja (con IVA)'}
                                     </div>
                                     <div className="text-[12px] text-slate-600 mt-1 leading-5">
-                                      IVA actual:{' '}
-                                      <span className="font-semibold text-slate-700">
-                                        {Number(
-                                          margenPreview.iva || 21
-                                        ).toFixed(2)}
-                                        %
-                                      </span>
+                                      {vistaRent === 'NETO' ? (
+                                        <>
+                                          Precio neto:{' '}
+                                          <span className="font-semibold text-slate-700">
+                                            {formatARS(
+                                              margenPreview.precioNeto
+                                            )}
+                                          </span>{' '}
+                                          · Costo neto:{' '}
+                                          <span className="font-semibold text-slate-700">
+                                            {formatARS(margenPreview.costoNeto)}
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          Precio (caja):{' '}
+                                          <span className="font-semibold text-slate-700">
+                                            {formatARS(
+                                              margenPreview.precioFinal
+                                            )}
+                                          </span>{' '}
+                                          · Costo (caja):{' '}
+                                          <span className="font-semibold text-slate-700">
+                                            {formatARS(
+                                              margenPreview.costoFinal
+                                            )}
+                                          </span>
+                                        </>
+                                      )}
                                     </div>
                                   </div>
 
-                                  {vistaRent === 'NETO' ? (
-                                    <div className="text-right">
-                                      <div className="text-[11px] text-slate-500">
-                                        Markup
-                                      </div>
-                                      <div className="text-sm font-semibold text-slate-900 mt-0.5">
-                                        {Number(
-                                          margenPreview.markupPct || 0
-                                        ).toFixed(2)}
-                                        %
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="text-right">
-                                      <div className="text-[11px] text-slate-500">
-                                        Margen caja
-                                      </div>
-                                      <div className="text-sm font-semibold text-slate-900 mt-0.5">
-                                        {Number(
-                                          margenPreview.margenCajaPct || 0
-                                        ).toFixed(2)}
-                                        %
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-
-                                <div className="mt-4 grid grid-cols-2 gap-3">
-                                  <div className="rounded-xl bg-white border border-slate-200 px-3 py-2.5">
+                                  <div className="text-right">
                                     <div className="text-[11px] text-slate-500">
                                       {vistaRent === 'NETO'
-                                        ? 'Precio neto'
-                                        : 'Precio (caja)'}
+                                        ? 'Markup neto'
+                                        : 'Markup caja'}
                                     </div>
                                     <div className="text-sm font-semibold text-slate-900 mt-0.5">
-                                      {vistaRent === 'NETO'
-                                        ? formatARS(margenPreview.precioNeto)
-                                        : formatARS(margenPreview.precioFinal)}
-                                    </div>
-                                  </div>
-
-                                  <div className="rounded-xl bg-white border border-slate-200 px-3 py-2.5">
-                                    <div className="text-[11px] text-slate-500">
-                                      {vistaRent === 'NETO'
-                                        ? 'Costo neto'
-                                        : 'Costo (caja)'}
-                                    </div>
-                                    <div className="text-sm font-semibold text-slate-900 mt-0.5">
-                                      {vistaRent === 'NETO'
-                                        ? formatARS(margenPreview.costoNeto)
-                                        : formatARS(margenPreview.costoFinal)}
+                                      {hasCore
+                                        ? `${markupActual.toFixed(2)}%`
+                                        : '—'}
                                     </div>
                                   </div>
                                 </div>
                               </div>
 
-                              {/* Asistente de precio (ultra útil) */}
+                              {/* Asistente de precio (se mantiene, pero más “a prueba de costo 0”) */}
                               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
@@ -2311,8 +2511,16 @@ const ProductosGet = () => {
                                     </div>
                                     <div className="text-[11px] text-slate-500 mt-1 leading-5">
                                       Sugiere precio base para cumplir margen
-                                      objetivo (neto) considerando descuento
+                                      objetivo (neto) considerando el descuento
                                       actual.
+                                      {Number(margenPreview.iva || 21) > 0 && (
+                                        <>
+                                          {' '}
+                                          Si precio y costo usan la misma
+                                          alícuota, el % de margen suele
+                                          coincidir en NETO y CAJA.
+                                        </>
+                                      )}
                                     </div>
                                   </div>
                                   <div className="text-right">
@@ -2320,10 +2528,7 @@ const ProductosGet = () => {
                                       Objetivo
                                     </div>
                                     <div className="text-sm font-semibold text-slate-900 mt-0.5">
-                                      {Number(
-                                        margenPreview.targetMargin || 0
-                                      ).toFixed(0)}
-                                      %
+                                      {objetivo.toFixed(0)}%
                                     </div>
                                   </div>
                                 </div>
@@ -2369,15 +2574,6 @@ const ProductosGet = () => {
                                     }
                                     className="mt-3 w-full accent-orange-600"
                                   />
-                                  <div className="mt-1 text-[11px] text-slate-500">
-                                    Descuento actual considerado:{' '}
-                                    <span className="font-semibold text-slate-700">
-                                      {Number(
-                                        margenPreview.descPct || 0
-                                      ).toFixed(2)}
-                                      %
-                                    </span>
-                                  </div>
                                 </div>
 
                                 <div className="mt-4 grid grid-cols-1 gap-3">
@@ -2402,6 +2598,12 @@ const ProductosGet = () => {
                                           : '—'}
                                         )
                                       </div>
+                                      {!hasCosto && (
+                                        <div className="text-[11px] text-amber-700 mt-1">
+                                          Cargá un costo para habilitar
+                                          sugerencias.
+                                        </div>
+                                      )}
                                     </div>
 
                                     <button
@@ -2466,8 +2668,8 @@ const ProductosGet = () => {
                               </div>
 
                               <div className="text-[11px] text-slate-500 leading-5">
-                                Los cálculos son estimaciones. El backend puede
-                                recalcular valores finales.
+                                Los cálculos son estimaciones UI. El backend
+                                puede recalcular valores finales.
                               </div>
                             </>
                           );
@@ -2658,8 +2860,101 @@ const ProductosGet = () => {
         BASE_URL={BASE_URL}
         onRefresh={fetchData}
       /> */}
+      <ModalAyudaProductos
+        isOpen={helpOpen}
+        onClose={() => setHelpOpen(false)}
+      />
     </div>
   );
+};
+
+const escapeHtml = (s) =>
+  String(s ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+
+const verCodigosOcupados = async () => {
+  const uid = getUserId?.() ?? null;
+
+  Swal.fire({
+    title: 'Códigos internos ocupados',
+    html: `<div style="text-align:left; font-size:13px; color:#334155;">Cargando…</div>`,
+    showCloseButton: true,
+    showConfirmButton: false,
+    width: 780,
+    heightAuto: false,
+    didOpen: async () => {
+      try {
+        // alrededor del sugerido suele ser lo más útil
+        const r = await axios.get(
+          `${BASE_URL}/productos/codigo-interno/sugerido`,
+          {
+            params: {
+              include_ocupados: 1,
+              around: 1,
+              around_window: 120,
+              ocupados_limit: 250,
+              ocupados_order: 'asc',
+              strategy: 'max_plus_one'
+            },
+            headers: { 'X-User-Id': String(uid ?? '') }
+          }
+        );
+
+        const ocupados = Array.isArray(r?.data?.ocupados)
+          ? r.data.ocupados
+          : [];
+        const suggested = r?.data?.suggested ?? null;
+
+        const rowsHtml = ocupados.length
+          ? ocupados
+              .map((it) => {
+                const ci = escapeHtml(it.codigo_interno);
+                const id = escapeHtml(it.id);
+                const nom = escapeHtml(it.nombre);
+                return `
+                  <tr>
+                    <td style="padding:8px 10px; border-bottom:1px solid #e2e8f0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">${ci}</td>
+                    <td style="padding:8px 10px; border-bottom:1px solid #e2e8f0; color:#64748b;">#${id}</td>
+                    <td style="padding:8px 10px; border-bottom:1px solid #e2e8f0; color:#0f172a;">${nom}</td>
+                  </tr>
+                `;
+              })
+              .join('')
+          : `<tr><td colspan="3" style="padding:10px; color:#64748b;">Sin datos</td></tr>`;
+
+        const html = `
+          <div style="text-align:left; line-height:1.35; color:#0f172a;">
+            <div style="margin-bottom:10px; font-size:13px; color:#334155;">
+              Sugerido actual: <b>${escapeHtml(suggested)}</b>
+              <span style="color:#94a3b8;">(rango cercano)</span>
+            </div>
+            <div style="max-height:420px; overflow:auto; border:1px solid #e2e8f0; border-radius:12px;">
+              <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                <thead>
+                  <tr style="position:sticky; top:0; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                    <th style="text-align:left; padding:10px;">Código</th>
+                    <th style="text-align:left; padding:10px;">Producto</th>
+                    <th style="text-align:left; padding:10px;">Nombre</th>
+                  </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+              </table>
+            </div>
+          </div>
+        `;
+
+        Swal.update({ html });
+      } catch (e) {
+        Swal.update({
+          html: `<div style="text-align:left; font-size:13px; color:#b91c1c;">Error cargando ocupados: ${escapeHtml(e?.message || e)}</div>`
+        });
+      }
+    }
+  });
 };
 
 export default ProductosGet;

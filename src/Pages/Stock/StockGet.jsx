@@ -11,14 +11,11 @@ import {
   FaCheckCircle,
   FaTimesCircle,
   FaDownload,
-  FaBoxOpen,
-  FaMapPin,
-  FaCircle,
-  FaPrint,
   FaCopy,
   FaTicketAlt,
   FaTimes,
-  FaCog
+  FaCog,
+  FaQuestionCircle
 } from 'react-icons/fa';
 import ButtonBack from '../../Components/ButtonBack.jsx';
 import ParticlesBackground from '../../Components/ParticlesBackground.jsx';
@@ -33,7 +30,7 @@ import SearchableSelect from './Components/SearchableSelect.jsx';
 import LocalesCantidadPicker from './Components/LocalesCantidadPicker.jsx';
 import ModalAlertasStockBajo from './Components/ModalAlertasStockBajo.jsx';
 import RoleGate from '../../Components/auth/RoleGate';
-
+import StockGuiaModal from '../../Components/Productos/StockGuiaModal.jsx';
 Modal.setAppElement('#root');
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rioromano.com.ar';
@@ -168,6 +165,9 @@ const StockGet = () => {
 
   // para “debounce” lógico de búsqueda
   const debouncedQ = useMemo(() => q.trim(), [q]);
+
+  // Abrir modal de guía rápida
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const fetchAll = async () => {
     try {
@@ -875,6 +875,15 @@ const StockGet = () => {
               >
                 <FaPlus /> Nuevo
               </button>
+              <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-sm font-extrabold text-slate-800 shadow-sm transition"
+                title="Guía rápida del módulo"
+              >
+                <FaQuestionCircle className="text-orange-600" />
+                Ayuda
+              </button>
             </div>
           </RoleGate>
         </div>
@@ -1258,7 +1267,8 @@ const StockGet = () => {
                     </span>
                   </p>
 
-                  {userLevel === 'socio' || userLevel === 'administrativo' && (
+                  {(userLevel === 'socio' ||
+                    userLevel === 'administrativo') && (
                     <div className="flex items-center gap-2">
                       {/* Imprimir */}
                       <div className="relative group">
@@ -1269,11 +1279,11 @@ const StockGet = () => {
                             descargandoTicket || !hayImprimiblesEnGrupo(group)
                           }
                           className={`w-8 h-8 rounded-lg text-white flex items-center justify-center disabled:opacity-50
-              ${
-                hayImprimiblesEnGrupo(group)
-                  ? 'bg-orange-500 hover:bg-orange-400'
-                  : 'bg-orange-500/50 cursor-not-allowed'
-              }`}
+          ${
+            hayImprimiblesEnGrupo(group)
+              ? 'bg-orange-500 hover:bg-orange-400'
+              : 'bg-orange-500/50 cursor-not-allowed'
+          }`}
                           aria-label="Imprimir código de barras"
                         >
                           <FaTicketAlt className="text-white/90 text-sm" />
@@ -1888,7 +1898,7 @@ const StockGet = () => {
                             {it.cantidad ?? 0}
                           </td>
                           <td className="px-3 py-2 text-right">
-                            {dupCopiarCant ? it.cantidad ?? 0 : 0}
+                            {dupCopiarCant ? (it.cantidad ?? 0) : 0}
                           </td>
                         </tr>
                       ))}
@@ -1920,8 +1930,8 @@ const StockGet = () => {
                   !dupNombre.trim()
                     ? 'Ingresá un nombre'
                     : dupNombre.trim().length > MAX_NOMBRE
-                    ? `Máximo ${MAX_NOMBRE} caracteres`
-                    : ''
+                      ? `Máximo ${MAX_NOMBRE} caracteres`
+                      : ''
                 }
               >
                 {dupLoading ? 'Duplicando…' : 'Duplicar'}
@@ -1943,6 +1953,7 @@ const StockGet = () => {
         onClose={() => setShowAlertasStock(false)}
         threshold={10} // menor o igual a 10 unidades
       />
+      <StockGuiaModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 };

@@ -186,8 +186,8 @@ export default function ProductoProveedorModal({
           const arr = Array.isArray(j?.data)
             ? j.data
             : Array.isArray(j)
-            ? j
-            : [];
+              ? j
+              : [];
           setProductosOpts(arr.map((p) => ({ id: p.id, nombre: p.nombre })));
         } else {
           // scope === 'producto' → cargar proveedores
@@ -196,8 +196,8 @@ export default function ProductoProveedorModal({
           const arr = Array.isArray(j?.data)
             ? j.data
             : Array.isArray(j)
-            ? j
-            : [];
+              ? j
+              : [];
           setProveedoresOpts(
             arr
               .filter((p) => p.estado === 'activo')
@@ -274,8 +274,8 @@ export default function ProductoProveedorModal({
       const rows = Array.isArray(data?.data)
         ? data.data
         : Array.isArray(data)
-        ? data
-        : [];
+          ? data
+          : [];
 
       // Si el contexto cambió mientras esperábamos, NO actualices el estado
       const stillCurrent =
@@ -339,7 +339,6 @@ export default function ProductoProveedorModal({
       setSelected(null);
       fetchList();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, proveedorId, productoId, scope]);
 
   useEffect(() => {
@@ -349,7 +348,6 @@ export default function ProductoProveedorModal({
       fetchList();
     }, 300);
     return () => clearTimeout(searchDebounce.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
   const startCreate = () => {

@@ -2,14 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import Modal from 'react-modal';
 import { motion } from 'framer-motion';
-import { FaFolderOpen, FaPlus } from 'react-icons/fa';
+import { FaFolderOpen, FaPlus, FaQuestionCircle } from 'react-icons/fa';
 import ButtonBack from '../../Components/ButtonBack.jsx';
 import ParticlesBackground from '../../Components/ParticlesBackground.jsx';
 import BulkUploadButton from '../../Components/BulkUploadButton.jsx';
 import AdminActions from '../../Components/AdminActions';
 import { getUserId } from '../../utils/authUtils';
 import RoleGate from '../../Components/auth/RoleGate';
-
+import CategoriaGuiaModal from '../../Components/Productos/CategoriaGuiaModal.jsx';
 Modal.setAppElement('#root');
 
 const API = 'https://api.rioromano.com.ar/categorias';
@@ -39,6 +39,9 @@ const CategoriasGet = () => {
   const usuarioId = getUserId();
 
   const debouncedQ = useMemo(() => search.trim(), [search]);
+
+  // Abrir modal de guía rápida
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const fetchCategorias = async () => {
     setLoading(true);
@@ -162,6 +165,15 @@ const CategoriasGet = () => {
                 className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
               >
                 <FaPlus /> Nueva Categoría
+              </button>
+              <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-sm font-extrabold text-slate-800 shadow-sm transition"
+                title="Guía rápida del módulo"
+              >
+                <FaQuestionCircle className="text-orange-600" />
+                Ayuda
               </button>
             </div>
           </RoleGate>
@@ -504,6 +516,7 @@ const CategoriasGet = () => {
           </div>
         </Modal>
       </div>
+      <CategoriaGuiaModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 };

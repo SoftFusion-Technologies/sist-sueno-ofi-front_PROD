@@ -315,8 +315,8 @@ export default function ModalMediosPago({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl">
       {/* Contenedor centrado con scroll interno en móviles */}
-      <div className="w-full  max-h-[95vh] mx-3 md:mx-6">
-        <div className="relative h-full flex flex-col bg-zinc-950/90 dark:bg-zinc-950/90 rounded-3xl shadow-[0_18px_60px_rgba(0,0,0,0.75)] border border-zinc-800/80 overflow-y-auto md:overflow-hidden">
+      <div className="w-full h-[95vh] mx-3 md:mx-6">
+        <div className="relative h-full flex flex-col bg-zinc-950/90 rounded-3xl shadow-[0_18px_60px_rgba(0,0,0,0.75)] border border-zinc-800/80 overflow-hidden">
           {/* Cabecera */}
           <div className="flex items-center justify-between px-5 sm:px-8 py-4 border-b border-zinc-800/80 bg-gradient-to-r from-emerald-500/10 via-zinc-900/80 to-emerald-500/10">
             <div>
@@ -432,8 +432,8 @@ export default function ModalMediosPago({
                               m.ajuste_porcentual < 0
                                 ? 'text-emerald-400'
                                 : m.ajuste_porcentual > 0
-                                ? 'text-red-400'
-                                : 'text-zinc-500'
+                                  ? 'text-red-400'
+                                  : 'text-zinc-500'
                             }`}
                           >
                             {m.ajuste_porcentual > 0 && '+'}
@@ -588,42 +588,6 @@ export default function ModalMediosPago({
 
                         {/* ORDEN / AJUSTE / ACTIVO */}
                         <div className="flex flex-col gap-2 w-full md:w-[40%]">
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            {/* Orden primero, bien compacto */}
-                            <div className="w-full sm:w-24">
-                              <input
-                                type="number"
-                                className="w-full rounded-2xl px-3 py-2.5 text-xs bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder:text-zinc-500 font-mono"
-                                placeholder="Orden"
-                                value={nuevo.orden}
-                                onChange={(e) =>
-                                  setNuevo({
-                                    ...nuevo,
-                                    orden: parseInt(e.target.value) || 0
-                                  })
-                                }
-                              />
-                            </div>
-
-                            {/* % Ajuste a la derecha, más ancho */}
-                            <div className="flex-1">
-                              <input
-                                type="number"
-                                className="w-full rounded-2xl px-3 py-2.5 text-sm bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
-                                placeholder="% Ajuste"
-                                step="0.01"
-                                value={nuevo.ajuste_porcentual}
-                                onChange={(e) =>
-                                  setNuevo({
-                                    ...nuevo,
-                                    ajuste_porcentual:
-                                      parseFloat(e.target.value) || 0
-                                  })
-                                }
-                              />
-                            </div>
-                          </div>
-
                           <button
                             type="button"
                             className="inline-flex items-center justify-start gap-2 rounded-2xl px-3 py-2 text-sm border border-zinc-700 bg-zinc-900/80 text-zinc-200 hover:border-emerald-500/60 hover:bg-zinc-900 transition"
@@ -647,6 +611,198 @@ export default function ModalMediosPago({
                         </div>
                       </div>
                     </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* ===== LEMON CARD: ORDEN ===== */}
+                      <div className="relative rounded-3xl border border-lime-300/15 bg-zinc-950/55 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.75)] overflow-hidden">
+                        {/* halo */}
+                        <div className="pointer-events-none absolute -top-24 -right-24 h-56 w-56 rounded-full bg-lime-400/15 blur-3xl" />
+                        <div className="pointer-events-none absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-emerald-400/10 blur-3xl" />
+                        {/* top shimmer line */}
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-lime-300/35 to-transparent" />
+
+                        <div className="p-4 sm:p-5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-400">
+                                Orden
+                              </p>
+                              <p className="text-xs text-zinc-500 mt-1">
+                                Prioridad en la lista (menor = más arriba)
+                              </p>
+                            </div>
+
+                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-lime-300/20 bg-lime-300/10 text-lime-200 text-[11px] font-semibold">
+                              <span className="h-1.5 w-1.5 rounded-full bg-lime-300/80" />
+                              #{Number(nuevo.orden ?? 0)}
+                            </span>
+                          </div>
+
+                          <div className="mt-4 flex items-center gap-2">
+                            {/* Stepper - */}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setNuevo((n) => ({
+                                  ...n,
+                                  orden: Math.max(0, (Number(n.orden) || 0) - 1)
+                                }))
+                              }
+                              className="h-11 w-11 rounded-2xl border border-zinc-800 bg-zinc-950/40 text-zinc-200 hover:border-lime-300/35 hover:bg-zinc-900/50 transition"
+                              title="Disminuir"
+                            >
+                              –
+                            </button>
+
+                            {/* Input */}
+                            <div className="flex-1 relative">
+                              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+                                <span className="px-2 py-1 rounded-xl border border-zinc-800 bg-zinc-950/40 text-[11px] font-semibold text-zinc-300">
+                                  #
+                                </span>
+                              </div>
+
+                              <input
+                                type="number"
+                                min={0}
+                                className="w-full h-11 rounded-2xl pl-14 pr-3 text-sm bg-zinc-950/40 border border-zinc-800 text-zinc-100 placeholder:text-zinc-600 font-mono focus:outline-none focus:ring-2 focus:ring-lime-300/40 focus:border-lime-300/30"
+                                placeholder="0"
+                                value={nuevo.orden}
+                                onChange={(e) =>
+                                  setNuevo({
+                                    ...nuevo,
+                                    orden: Number.isFinite(
+                                      parseInt(e.target.value, 10)
+                                    )
+                                      ? parseInt(e.target.value, 10)
+                                      : 0
+                                  })
+                                }
+                              />
+                            </div>
+
+                            {/* Stepper + */}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setNuevo((n) => ({
+                                  ...n,
+                                  orden: (Number(n.orden) || 0) + 1
+                                }))
+                              }
+                              className="h-11 w-11 rounded-2xl border border-zinc-800 bg-zinc-950/40 text-zinc-200 hover:border-lime-300/35 hover:bg-zinc-900/50 transition"
+                              title="Aumentar"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ===== LEMON CARD: AJUSTE ===== */}
+                      <div className="relative rounded-3xl border border-lime-300/15 bg-zinc-950/55 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.75)] overflow-hidden">
+                        {/* halo */}
+                        <div className="pointer-events-none absolute -top-24 -left-24 h-56 w-56 rounded-full bg-lime-400/15 blur-3xl" />
+                        <div className="pointer-events-none absolute -bottom-24 -right-24 h-56 w-56 rounded-full bg-amber-400/10 blur-3xl" />
+                        {/* top shimmer line */}
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-lime-300/35 to-transparent" />
+
+                        <div className="p-4 sm:p-5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-400">
+                                Ajuste porcentual
+                              </p>
+                              <p className="text-xs text-zinc-500 mt-1">
+                                Negativo = descuento · Positivo = recargo
+                              </p>
+                            </div>
+
+                            {/* Badge dinámico */}
+                            <span
+                              className={[
+                                'inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-semibold',
+                                (Number(nuevo.ajuste_porcentual) || 0) < 0
+                                  ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-200'
+                                  : (Number(nuevo.ajuste_porcentual) || 0) > 0
+                                    ? 'border-red-400/25 bg-red-400/10 text-red-200'
+                                    : 'border-zinc-700/60 bg-zinc-800/30 text-zinc-300'
+                              ].join(' ')}
+                            >
+                              <span
+                                className={[
+                                  'h-1.5 w-1.5 rounded-full',
+                                  (Number(nuevo.ajuste_porcentual) || 0) < 0
+                                    ? 'bg-emerald-300/80'
+                                    : (Number(nuevo.ajuste_porcentual) || 0) > 0
+                                      ? 'bg-red-300/80'
+                                      : 'bg-zinc-400/70'
+                                ].join(' ')}
+                              />
+                              {(Number(nuevo.ajuste_porcentual) || 0) > 0
+                                ? '+'
+                                : ''}
+                              {Number(nuevo.ajuste_porcentual ?? 0)}%
+                            </span>
+                          </div>
+
+                          <div className="mt-4">
+                            <div className="relative">
+                              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+                                <span className="px-2 py-1 rounded-xl border border-zinc-800 bg-zinc-950/40 text-[11px] font-semibold text-zinc-300">
+                                  %
+                                </span>
+                              </div>
+
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="w-full h-11 rounded-2xl pl-14 pr-3 text-sm bg-zinc-950/40 border border-zinc-800 text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-lime-300/40 focus:border-lime-300/30"
+                                placeholder="0.00"
+                                value={nuevo.ajuste_porcentual}
+                                onChange={(e) =>
+                                  setNuevo({
+                                    ...nuevo,
+                                    ajuste_porcentual: Number.isFinite(
+                                      parseFloat(e.target.value)
+                                    )
+                                      ? parseFloat(e.target.value)
+                                      : 0
+                                  })
+                                }
+                              />
+                            </div>
+
+                            {/* Chips rápidos */}
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {[-10, -5, 0, 5, 10].map((v) => {
+                                const active =
+                                  Number(nuevo.ajuste_porcentual ?? 0) === v;
+                                return (
+                                  <button
+                                    key={v}
+                                    type="button"
+                                    onClick={() =>
+                                      setNuevo({
+                                        ...nuevo,
+                                        ajuste_porcentual: v
+                                      })
+                                    }
+                                    className={[
+                                      'px-3 py-1.5 rounded-2xl border text-xs font-semibold transition',
+                                      active
+                                        ? 'border-lime-300/40 bg-lime-300/15 text-lime-200 shadow-[0_0_22px_rgba(163,230,53,0.18)]'
+                                        : 'border-zinc-800 bg-zinc-950/30 text-zinc-300 hover:border-lime-300/25 hover:bg-zinc-900/40'
+                                    ].join(' ')}
+                                  >
+                                    {v > 0 ? `+${v}%` : `${v}%`}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
                     {/* Botones acción */}
                     <div className="flex flex-col sm:flex-row gap-2 sm:justify-end mt-2">
@@ -660,8 +816,8 @@ export default function ModalMediosPago({
                         {loading
                           ? 'Guardando...'
                           : editando
-                          ? 'Guardar cambios'
-                          : 'Crear medio'}
+                            ? 'Guardar cambios'
+                            : 'Crear medio'}
                       </button>
 
                       <button

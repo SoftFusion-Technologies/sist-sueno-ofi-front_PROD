@@ -2,12 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import Modal from 'react-modal';
 import { motion } from 'framer-motion';
-import { FaMapMarkerAlt, FaPlus } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaPlus, FaQuestionCircle } from 'react-icons/fa';
 import ButtonBack from '../../Components/ButtonBack';
 import ParticlesBackground from '../../Components/ParticlesBackground';
 import AdminActions from '../../Components/AdminActions';
 import RoleGate from '../../Components/auth/RoleGate';
-
+import { LugarGuiaModal } from '../../Components/Productos/CategoriaGuiaModal';
 Modal.setAppElement('#root');
 
 const API = 'https://api.rioromano.com.ar/lugares';
@@ -35,6 +35,9 @@ const LugaresGet = () => {
     return search.trim();
   }, [search]);
   // nota: si querés debounce real, usá useEffect con setTimeout/clearTimeout
+
+  // Abrir modal de guía rápida
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const fetchLugares = async () => {
     setLoading(true);
@@ -183,6 +186,15 @@ const LugaresGet = () => {
                 className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
               >
                 <FaPlus /> Nuevo Lugar
+              </button>
+              <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-sm font-extrabold text-slate-800 shadow-sm transition"
+                title="Guía rápida del módulo"
+              >
+                <FaQuestionCircle className="text-orange-600" />
+                Ayuda
               </button>
             </RoleGate>
           </div>
@@ -442,6 +454,7 @@ const LugaresGet = () => {
           </div>
         </Modal>
       </div>
+      <LugarGuiaModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 };

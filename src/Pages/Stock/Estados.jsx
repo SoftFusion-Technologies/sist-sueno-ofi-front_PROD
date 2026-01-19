@@ -2,12 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import Modal from 'react-modal';
 import { motion } from 'framer-motion';
-import { FaFlag, FaPlus } from 'react-icons/fa';
+import { FaFlag, FaPlus, FaQuestionCircle } from 'react-icons/fa';
 import ButtonBack from '../../Components/ButtonBack';
 import ParticlesBackground from '../../Components/ParticlesBackground';
 import AdminActions from '../../Components/AdminActions';
 import RoleGate from '../../Components/auth/RoleGate';
-
+import { EstadoGuiaModal } from '../../Components/Productos/CategoriaGuiaModal';
 Modal.setAppElement('#root');
 
 const API = 'https://api.rioromano.com.ar/estados';
@@ -32,6 +32,9 @@ const EstadosGet = () => {
 
   // Sencillo "debounce" lógico (podés hacerlo más fino si querés)
   const debouncedQ = useMemo(() => search.trim(), [search]);
+
+  // Abrir modal de guía rápida
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const fetchEstados = async () => {
     setLoading(true);
@@ -177,6 +180,15 @@ const EstadosGet = () => {
                 className="bg-pink-500 hover:bg-pink-600 px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
               >
                 <FaPlus /> Nuevo Estado
+              </button>
+              <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-sm font-extrabold text-slate-800 shadow-sm transition"
+                title="Guía rápida del módulo"
+              >
+                <FaQuestionCircle className="text-orange-600" />
+                Ayuda
               </button>
             </RoleGate>
           </div>
@@ -434,6 +446,7 @@ const EstadosGet = () => {
           </div>
         </Modal>
       </div>
+      <EstadoGuiaModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 };

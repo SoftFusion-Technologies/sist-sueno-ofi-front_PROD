@@ -14,7 +14,9 @@ import {
   FaUserPlus,
   FaBarcode,
   FaBoxOpen,
-  FaCubes
+  FaCubes,
+  FaWarehouse,
+  FaMoneyCheckAlt
 } from 'react-icons/fa';
 import ParticlesBackground from '../../Components/ParticlesBackground';
 import ModalNuevoCliente from '../../Components/Ventas/ModalNuevoCliente';
@@ -28,6 +30,8 @@ import TotalConOpciones from './Components/TotalConOpciones';
 import ModalOtrosLocales from './Components/ModalOtrosLocales';
 import { useDebouncedValue } from '../../utils/useDebouncedValue';
 import Swal from 'sweetalert2';
+import ModalConsultarCBUs from '../../Components/Bancos/ModalConsultarCBUs';
+import ModalConsultarStock from '../../Components/Productos/ModalConsultarStock';
 
 const toast = Swal.mixin({
   toast: true,
@@ -640,6 +644,9 @@ export default function PuntoVenta() {
 
   const debouncedBusqueda = useDebouncedValue(busqueda, 600); // ⬅️ pausa de 400ms
 
+  const [modalCBUsOpen, setModalCBUsOpen] = useState(false);
+  const [modalStockOpen, setModalStockOpen] = useState(false);
+
   useEffect(() => {
     let ignore = false;
     const controller = new AbortController();
@@ -675,10 +682,10 @@ export default function PuntoVenta() {
         const res = await fetch(
           `https://api.rioromano.com.ar/buscar-productos-detallado?${params.toString()}`,
           {
-            signal: controller.signal,
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('authToken') || ''}`
-            }
+            signal: controller.signal
+            // headers: {
+            //   Authorization: `Bearer ${localStorage.getItem('authToken') || ''}`
+            // }
           }
         );
 
@@ -689,8 +696,8 @@ export default function PuntoVenta() {
         const itemsLocal = Array.isArray(payload)
           ? payload
           : Array.isArray(payload.items_local)
-          ? payload.items_local
-          : [];
+            ? payload.items_local
+            : [];
 
         const itemsOtros = Array.isArray(payload?.otros_items)
           ? payload.otros_items
@@ -809,7 +816,7 @@ export default function PuntoVenta() {
         const aplicarDesc = usarDescuentoPorProducto[item.producto_id] ?? true;
 
         const nuevoPrecio = aplicarDesc
-          ? item.precio_con_descuento ?? item.precio_original
+          ? (item.precio_con_descuento ?? item.precio_original)
           : item.precio_original;
 
         // Solo actualiza si el precio cambió para evitar renders innecesarios
@@ -898,8 +905,8 @@ export default function PuntoVenta() {
       const lista = Array.isArray(payload)
         ? payload
         : Array.isArray(payload.items_local)
-        ? payload.items_local
-        : [];
+          ? payload.items_local
+          : [];
 
       setProductosModal(lista);
     } catch (error) {
@@ -994,8 +1001,8 @@ export default function PuntoVenta() {
         const stockData = Array.isArray(payload)
           ? payload
           : Array.isArray(payload.items_local)
-          ? payload.items_local
-          : [];
+            ? payload.items_local
+            : [];
 
         if (stockData.length === 0) {
           // Opcional: mostrar info si hay en otras sucursales
@@ -1440,8 +1447,8 @@ export default function PuntoVenta() {
         aplicarDescuento && descuentoPersonalizado !== ''
           ? parseFloat(descuentoPersonalizado)
           : aplicarDescuento && totalCalculado.ajuste_porcentual < 0
-          ? Math.abs(totalCalculado.ajuste_porcentual)
-          : 0,
+            ? Math.abs(totalCalculado.ajuste_porcentual)
+            : 0,
       recargo_porcentaje:
         aplicarDescuento && totalCalculado.ajuste_porcentual > 0
           ? totalCalculado.ajuste_porcentual
@@ -1640,8 +1647,8 @@ export default function PuntoVenta() {
       const warningsRaw = Array.isArray(fact?.warnings)
         ? fact.warnings
         : Array.isArray(payload?.warnings)
-        ? payload.warnings
-        : [];
+          ? payload.warnings
+          : [];
 
       const warnings = warningsRaw
         .map((w) =>
@@ -2039,8 +2046,8 @@ export default function PuntoVenta() {
                     const badge = dni
                       ? `DNI ${dni}`
                       : tel
-                      ? `Tel ${tel}`
-                      : 'Sin doc/tel';
+                        ? `Tel ${tel}`
+                        : 'Sin doc/tel';
 
                     return (
                       <li
@@ -2138,7 +2145,7 @@ export default function PuntoVenta() {
       {/* Buscador por fuera*/}
       <div className="w-full max-w-3xl mb-6 sm:mx-0 mx-auto">
         {/* Acá el truco: flex-col por defecto (mobile), flex-row en sm+ */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
           {/* Input arriba en mobile, a la izquierda en desktop */}
           <div className="relative flex-grow">
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-emerald-500 text-lg" />
@@ -2176,6 +2183,32 @@ export default function PuntoVenta() {
             </span>
           </button>
 
+          {/* NUEVO: Consultar Stock */}
+          <button
+            onClick={() => setModalStockOpen(true)}
+            className="bg-gradient-to-br from-sky-500 to-sky-600 text-white w-full sm:w-auto px-2 py-2 rounded-xl font-bold shadow-md hover:scale-105 hover:from-sky-600 hover:to-sky-700 transition-all focus:ring-2 focus:ring-sky-400 focus:outline-none"
+            type="button"
+            title="Consultar stock"
+          >
+            <span className="flex items-center gap-1">
+              <FaWarehouse className="inline -ml-1" />
+              Consultar Stock
+            </span>
+          </button>
+
+          {/* NUEVO: Consultar CBUs (previsto) */}
+          <button
+            onClick={() => setModalCBUsOpen(true)}
+            className="bg-gradient-to-br from-amber-500 to-amber-600 text-white w-full sm:w-auto px-2 py-2 rounded-xl font-bold shadow-md hover:scale-105 hover:from-amber-600 hover:to-amber-700 transition-all focus:ring-2 focus:ring-amber-400 focus:outline-none"
+            type="button"
+            title="Consultar CBUs"
+          >
+            <span className="flex items-center gap-1">
+              <FaMoneyCheckAlt className="inline -ml-1" />
+              Consultar CBUs
+            </span>
+          </button>
+
           {/* Botón escanear */}
           <button
             onClick={() => setModoEscaner(true)}
@@ -2193,6 +2226,7 @@ export default function PuntoVenta() {
           </button>
         </div>
       </div>
+
       {/* Productos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
@@ -2789,6 +2823,18 @@ export default function PuntoVenta() {
           // opcional: refrescá listados/contadores
           // loadPedidos();
         }}
+      />
+      {/* Modales */}
+      <ModalConsultarStock
+        open={modalStockOpen}
+        onClose={() => setModalStockOpen(false)}
+        API_URL={API_URL}
+      />
+
+      <ModalConsultarCBUs
+        open={modalCBUsOpen}
+        onClose={() => setModalCBUsOpen(false)}
+        API_URL={API_URL}
       />
     </div>
   );

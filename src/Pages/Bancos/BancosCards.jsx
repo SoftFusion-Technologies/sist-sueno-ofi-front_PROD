@@ -54,6 +54,11 @@ export default function BancosCards() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toDelete, setToDelete] = useState(null);
 
+  const handleClose = () => {
+    setModalOpen(false);
+    setEditing(null);
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -98,6 +103,7 @@ export default function BancosCards() {
   };
 
   const onSubmit = async (form) => {
+    // 1) Guardado (solo errores de guardado)
     try {
       if (editing?.id) {
         await updateBanco(editing.id, form);
@@ -106,10 +112,7 @@ export default function BancosCards() {
         await createBanco(form);
         await showSuccessSwal({ title: 'Creado', text: 'Banco creado' });
       }
-      await fetchData();
-      onClose();
     } catch (err) {
-      // err YA VIENE normalizado por el interceptor
       const { code, mensajeError, tips } = err || {};
 
       if (code === 'DUPLICATE') {
@@ -136,13 +139,23 @@ export default function BancosCards() {
         });
       }
 
-      // Fallback
       return showErrorSwal({
         title: 'No se pudo guardar',
         text: mensajeError || 'Ocurrió un error inesperado',
         tips
       });
     }
+
+    // 2) Post-guardado: refresh + cierre (errores NO deben decir “no se pudo guardar”)
+    try {
+      await fetchData();
+    } catch (e) {
+      console.warn('[onSubmit] Guardó OK, pero falló fetchData()', e);
+      // opcional: avisito suave, no error de guardado
+      // await showWarnSwal({ title: 'Guardado', text: 'Se guardó, pero no se pudo actualizar el listado.' });
+    }
+
+    handleClose();
   };
 
   const onToggleActivo = async (item) => {
@@ -173,31 +186,25 @@ export default function BancosCards() {
     }
   };
 
-  const onAskDelete = (item) => {
-    setToDelete(item);
-    setConfirmOpen(true);
-  };
-  const onConfirmDelete = async () => {
-    const item = toDelete;
-    setConfirmOpen(false);
-
-    // Confirmación inicial
+  const onDelete = async (item) => {
     const res = await showConfirmSwal({
       title: '¿Eliminar banco?',
       text: `Se eliminará "${item?.nombre}". Esta acción no se puede deshacer.`,
-      confirmText: 'Sí, eliminar'
+      confirmText: 'Sí, eliminar',
+      cancelText: 'Cancelar'
     });
-    if (!res.isConfirmed) return;
+
+    const confirmed = typeof res === 'boolean' ? res : !!res?.isConfirmed;
+    if (!confirmed) return;
 
     try {
-      await deleteBanco(item.id); // intento de borrado duro
+      await deleteBanco(item.id);
       setRows((r) => r.filter((x) => x.id !== item.id));
       await showSuccessSwal({ title: 'Eliminado', text: 'Banco eliminado' });
     } catch (err) {
       const { code, mensajeError, tips, details } = err || {};
 
       if (code === 'HAS_DEPENDENCIES') {
-        // Proponer desactivar
         const res2 = await showConfirmSwal({
           icon: 'warning',
           title: 'Tiene cuentas asociadas',
@@ -211,39 +218,35 @@ export default function BancosCards() {
           cancelText: 'Cancelar'
         });
 
-        if (res2.isConfirmed) {
-          try {
-            await deleteBanco(item.id, { forzar: true }); // 🔸 importante
-            // No sacamos la fila; lo marcamos inactivo
-            setRows((r) =>
-              r.map((x) => (x.id === item.id ? { ...x, activo: false } : x))
-            );
-            await showSuccessSwal({
-              title: 'Desactivado',
-              text: 'El banco fue desactivado (posee dependencias).'
-            });
-          } catch (err2) {
-            const { mensajeError: m2, tips: t2 } = err2 || {};
-            await showErrorSwal({
-              title: 'No se pudo desactivar',
-              text: m2 || 'Error al desactivar',
-              tips: t2
-            });
-          }
-        }
+        const confirmed2 =
+          typeof res2 === 'boolean' ? res2 : !!res2?.isConfirmed;
+        if (!confirmed2) return;
 
-        setToDelete(null);
+        try {
+          await deleteBanco(item.id, { forzar: true });
+          setRows((r) =>
+            r.map((x) => (x.id === item.id ? { ...x, activo: false } : x))
+          );
+          await showSuccessSwal({
+            title: 'Desactivado',
+            text: 'El banco fue desactivado (posee dependencias).'
+          });
+        } catch (err2) {
+          const { mensajeError: m2, tips: t2 } = err2 || {};
+          await showErrorSwal({
+            title: 'No se pudo desactivar',
+            text: m2 || 'Error al desactivar',
+            tips: t2
+          });
+        }
         return;
       }
 
-      // Otros errores
       await showErrorSwal({
         title: 'No se pudo eliminar',
         text: mensajeError || 'Ocurrió un error al eliminar',
         tips
       });
-    } finally {
-      setToDelete(null);
     }
   };
 
@@ -352,7 +355,7 @@ export default function BancosCards() {
                     item={it}
                     onEdit={onEdit}
                     onToggleActivo={onToggleActivo}
-                    onDelete={onAskDelete}
+                    onDelete={onDelete}
                   />
                 ))}
               </div>
@@ -370,7 +373,7 @@ export default function BancosCards() {
         onSubmit={onSubmit}
         initial={editing}
       />
-
+      {/* 
       <ConfirmDialog
         open={confirmOpen}
         title="Eliminar banco"
@@ -379,7 +382,7 @@ export default function BancosCards() {
         }
         onCancel={() => setConfirmOpen(false)}
         onConfirm={onConfirmDelete}
-      />
+      /> */}
     </>
   );
 }
