@@ -15,7 +15,9 @@ import {
   FaTicketAlt,
   FaTimes,
   FaCog,
-  FaQuestionCircle
+  FaQuestionCircle,
+  FaEye,
+  FaLayerGroup
 } from 'react-icons/fa';
 import ButtonBack from '../../Components/ButtonBack.jsx';
 import ParticlesBackground from '../../Components/ParticlesBackground.jsx';
@@ -31,11 +33,13 @@ import LocalesCantidadPicker from './Components/LocalesCantidadPicker.jsx';
 import ModalAlertasStockBajo from './Components/ModalAlertasStockBajo.jsx';
 import RoleGate from '../../Components/auth/RoleGate';
 import StockGuiaModal from '../../Components/Productos/StockGuiaModal.jsx';
+import { exportarStockAExcel } from '../../utils/exportStockExcel.js';
+
 Modal.setAppElement('#root');
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rioromano.com.ar';
 const MAX_NOMBRE = 100;
-// R1- que se puedan imprimir todas las etiquetas del mismo producto BENJAMIN ORELLANA 9/8/25 ✅
+// R1- que se puedan imprimir todas las etiquetas del mismo producto BENJAMIN ORELLANA 9/8/25
 const descargarPdf = async (pathWithQuery, filename, token) => {
   const url = `${API_BASE}${
     pathWithQuery.startsWith('/') ? '' : '/'
@@ -57,7 +61,7 @@ const descargarPdf = async (pathWithQuery, filename, token) => {
   link.remove();
   URL.revokeObjectURL(objectUrl);
 };
-// R1- que se puedan imprimir todas las etiquetas del mismo producto BENJAMIN ORELLANA 9/8/25 ✅
+// R1- que se puedan imprimir todas las etiquetas del mismo producto BENJAMIN ORELLANA 9/8/25
 
 const StockGet = () => {
   const { userLevel } = useAuth();
@@ -82,9 +86,9 @@ const StockGet = () => {
     en_exhibicion: true,
     observaciones: '',
     codigo_sku: '',
-    // 🔹 filas [{ local_id, lugar_id, estado_id, cantidad }]
+    // filas [{ local_id, lugar_id, estado_id, cantidad }]
     localesCant: [],
-    // 🔹 modo de actualización (reemplazar vs sumar)
+    // modo de actualización (reemplazar vs sumar)
     modo: 'reemplazar'
   });
   const [modalOpen, setModalOpen] = useState(false);
@@ -131,7 +135,7 @@ const StockGet = () => {
 
   const [descargandoTicket, setDescargandoTicket] = useState(false);
 
-  // R2 - permitir duplicar productos, para poder cambiar nombres BENJAMIN ORELLANA 9/8/25 ✅
+  // R2 - permitir duplicar productos, para poder cambiar nombres BENJAMIN ORELLANA 9/8/25
   const [dupOpen, setDupOpen] = useState(false);
   const [dupGroup, setDupGroup] = useState(null);
   const [dupNombre, setDupNombre] = useState('');
@@ -141,33 +145,36 @@ const StockGet = () => {
   const [dupShowPreview, setDupShowPreview] = useState(false);
   const [dupLocalesSel, setDupLocalesSel] = useState([]); // ids de locales seleccionados
   const [dupShowLocales, setDupShowLocales] = useState(false); // dropdown de locales
-  // R2 - permitir duplicar productos, para poder cambiar nombres BENJAMIN ORELLANA 9/8/25 ✅
+  // R2 - permitir duplicar productos, para poder cambiar nombres BENJAMIN ORELLANA 9/8/25
 
   // R3 - PERMITIR ASIGNAR STOCK A MAS DE UN LUGAR
   const [showLocalesPicker, setShowLocalesPicker] = useState(false);
   const [localesQuery, setLocalesQuery] = useState('');
 
-  // 🔁 Paginación / orden server-side
+  //  Paginación / orden server-side
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(6);
   const [orderBy, setOrderBy] = useState('id'); // id | created_at | updated_at | producto_nombre
   const [orderDir, setOrderDir] = useState('ASC'); // ASC | DESC
   const [meta, setMeta] = useState(null);
 
-  // 🔎 filtros server-side (y client-side fallback)
+  //  filtros server-side (y client-side fallback)
   const [q, setQ] = useState('');
   const [productoId, setProductoId] = useState('');
   const [localId, setLocalId] = useState('');
   const [lugarId, setLugarId] = useState('');
   const [estadoId, setEstadoId] = useState('');
 
-  const [showAlertasStock, setShowAlertasStock] = useState(true);
+  const [showAlertasStock, setShowAlertasStock] = useState(false);
 
   // para “debounce” lógico de búsqueda
   const debouncedQ = useMemo(() => q.trim(), [q]);
 
   // Abrir modal de guía rápida
   const [helpOpen, setHelpOpen] = useState(false);
+
+  const [modalExportOpen, setModalExportOpen] = useState(false);
+  const [exportando, setExportando] = useState(false);
 
   const fetchAll = async () => {
     try {
@@ -233,7 +240,6 @@ const StockGet = () => {
 
   useEffect(() => {
     fetchAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     page,
     limit,
@@ -317,7 +323,7 @@ const StockGet = () => {
     const isMulti = rows.length > 1;
     const hasAtLeastOne = rows.length > 0;
 
-    // ✅ Validaciones base
+    //  Validaciones base
     if (!formData.producto_id) {
       return feedback('Seleccioná un producto.', 'info');
     }
@@ -519,40 +525,37 @@ const StockGet = () => {
       verSoloStockBajo ? item.cantidad <= UMBRAL_STOCK_BAJO : true
     );
 
-  const exportarStockAExcel = (datos) => {
-    const exportData = datos.map((item) => ({
-      Producto:
-        productos.find((p) => p.id === item.producto_id)?.nombre ||
-        'Sin nombre',
-      Local: item.local_id || '-',
-      Lugar: item.lugar_id || '-',
-      Estado: item.estado_id || '-',
-      Cantidad: item.cantidad,
-      'En Exhibición': item.en_exhibicion ? 'Sí' : 'No',
-      SKU: item.codigo_sku || '',
-      'Última actualización': new Date(item.updated_at).toLocaleString('es-AR')
-    }));
+  const rows_2 = filtered || [];
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Stock');
+  const exportarTodo = async () => {
+    // Endpoint backend que devuelve TODO el stock (sin filtros)
+    const resp = await axios.get(`${API_BASE}/stock/export/all`);
 
-    const fecha = new Date();
-    const timestamp = fecha
-      .toLocaleString('es-AR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-      .replace(/[/:]/g, '-');
+    const allRows = resp.data || [];
 
-    const nombreArchivo = `stock-exportado-${timestamp}.xlsx`;
-
-    XLSX.writeFile(workbook, nombreArchivo);
+    // Reutiliza la misma función actual
+    await Promise.resolve(exportarStockAExcel(allRows));
   };
 
+  const handleExportVisualizando = async () => {
+    try {
+      setExportando(true);
+      await Promise.resolve(exportarStockAExcel(rows_2));
+      setModalExportOpen(false);
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const handleExportTodo = async () => {
+    try {
+      setExportando(true);
+      await Promise.resolve(exportarTodo());
+      setModalExportOpen(false);
+    } finally {
+      setExportando(false);
+    }
+  };
   // Si hay meta => backend ya filtró/paginó. Si no hay meta => filtrá vos (si ya lo hacías).
   const stockBase = useMemo(() => {
     if (meta) return stock;
@@ -668,11 +671,11 @@ const StockGet = () => {
     };
   }, []);
 
-  // R1- que se puedan imprimir todas las etiquetas del mismo producto BENJAMIN ORELLANA 9/8/25 ✅
+  // R1- que se puedan imprimir todas las etiquetas del mismo producto BENJAMIN ORELLANA 9/8/25
   const hayImprimiblesEnGrupo = (group) =>
     Array.isArray(group?.items) &&
     group.items.some((i) => (i.cantidad ?? 0) > 0);
-  // R1- que se puedan imprimir todas las etiquetas del mismo producto BENJAMIN ORELLANA 9/8/25 ✅
+  // R1- que se puedan imprimir todas las etiquetas del mismo producto BENJAMIN ORELLANA 9/8/25
 
   const imprimirTicketGrupo = async (group, opts = {}) => {
     if (!hayImprimiblesEnGrupo(group)) {
@@ -756,7 +759,7 @@ const StockGet = () => {
     }
   };
 
-  // R2 - permitir duplicar productos, para poder cambiar nombres BENJAMIN ORELLANA 9/8/25 ✅
+  // R2 - permitir duplicar productos, para poder cambiar nombres BENJAMIN ORELLANA 9/8/25
   const abrirDuplicar = (group) => {
     setDupGroup(group);
 
@@ -798,7 +801,7 @@ const StockGet = () => {
         copiarCantidad: dupCopiarCant,
         generarSku: true,
 
-        // ✅ MODO A: duplicar SOLO este grupo (si no eligieron locales)
+        //  MODO A: duplicar SOLO este grupo (si no eligieron locales)
         ...(!hayLocales
           ? {
               soloGrupo: true,
@@ -808,7 +811,7 @@ const StockGet = () => {
             }
           : {}),
 
-        // ✅ MODO B: duplicar por lista de locales (si eligieron en el modal)
+        //  MODO B: duplicar por lista de locales (si eligieron en el modal)
         ...(hayLocales
           ? {
               locales: dupLocalesSel
@@ -842,7 +845,7 @@ const StockGet = () => {
     }
   };
 
-  // R2 - permitir duplicar productos, para poder cambiar nombres BENJAMIN ORELLANA 9/8/25 ✅
+  // R2 - permitir duplicar productos, para poder cambiar nombres BENJAMIN ORELLANA 9/8/25
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-10 px-6 text-white">
@@ -863,7 +866,8 @@ const StockGet = () => {
                 className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
               />
               <button
-                onClick={() => exportarStockAExcel(filtered)}
+                type="button"
+                onClick={() => setModalExportOpen(true)}
                 className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 text-white"
               >
                 <FaDownload /> Exportar Excel
@@ -874,6 +878,14 @@ const StockGet = () => {
                 className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
               >
                 <FaPlus /> Nuevo
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAlertasStock(true)}
+                className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 text-white"
+                title="Ver alertas de stock bajo"
+              >
+                <FaExclamationTriangle /> Ver stock bajo
               </button>
               <button
                 type="button"
@@ -1951,9 +1963,113 @@ const StockGet = () => {
       <ModalAlertasStockBajo
         open={showAlertasStock}
         onClose={() => setShowAlertasStock(false)}
-        threshold={10} // menor o igual a 10 unidades
+        threshold={10}
       />
+
       <StockGuiaModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      {/* ---------- Modal ---------- */}
+      {modalExportOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => !exportando && setModalExportOpen(false)}
+          />
+
+          {/* Panel */}
+          <div className="relative w-full max-w-lg rounded-2xl bg-slate-900/90 ring-1 ring-white/10 shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-white/10">
+              <div>
+                <div className="text-xs uppercase tracking-widest text-white/50">
+                  Exportación
+                </div>
+                <div className="text-lg titulo uppercase font-semibold text-white">
+                  Elegí qué querés exportar
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={exportando}
+                onClick={() => setModalExportOpen(false)}
+                className="h-9 w-9 rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 flex items-center justify-center text-white/80 disabled:opacity-50"
+                aria-label="Cerrar"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {/* Opción 1: Visualizando */}
+              <button
+                type="button"
+                disabled={exportando}
+                onClick={handleExportVisualizando}
+                className="w-full rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 p-4 text-left transition disabled:opacity-50"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-cyan-500/15 ring-1 ring-cyan-400/20 flex items-center justify-center text-cyan-200">
+                    <FaEye />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-white font-semibold">
+                      Lo que estás visualizando
+                    </div>
+                    <div className="text-sm text-white/60">
+                      Exporta únicamente los registros filtrados/visibles
+                      actualmente.
+                    </div>
+                  </div>
+                  <div className="text-xs text-white/50 mt-1">
+                    {rows_2?.length ?? 0} items
+                  </div>
+                </div>
+              </button>
+
+              {/* Opción 2: Todo */}
+              <button
+                type="button"
+                disabled={exportando}
+                onClick={handleExportTodo}
+                className="w-full rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 p-4 text-left transition disabled:opacity-50"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/20 flex items-center justify-center text-emerald-200">
+                    <FaLayerGroup />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-white font-semibold">
+                      Exportar todo
+                    </div>
+                    <div className="text-sm text-white/60">
+                      Exporta el dataset completo, ignorando filtros y
+                      paginación.
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              {/* Footer */}
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={exportando}
+                  onClick={() => setModalExportOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 text-white/80 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+
+              {exportando && (
+                <div className="text-xs text-white/55 pt-1">
+                  Generando Excel…
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

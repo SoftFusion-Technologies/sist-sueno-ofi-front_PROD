@@ -10,7 +10,9 @@ import {
   FaBarcode,
   FaHashtag,
   FaMoneyBillWave,
-  FaQuestionCircle
+  FaQuestionCircle,
+  FaEye,
+  FaLayerGroup
 } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import ButtonBack from '../../Components/ButtonBack.jsx';
@@ -29,6 +31,7 @@ import RoleGate from '../../Components/auth/RoleGate';
 
 import Swal from 'sweetalert2';
 import ModalAyudaProductos from '../../Components/Productos/ModalAyudaProductos.jsx';
+import { exportarProductosAExcel } from '../../utils/exportExcel.js';
 const ACCENT = '#fc4b08';
 
 export const swalWarn = (title, text, opts = {}) => {
@@ -156,6 +159,9 @@ const ProductosGet = () => {
 
   // Abrir modal de guía rápida
   const [helpOpen, setHelpOpen] = useState(false);
+
+  const [modalExportOpen, setModalExportOpen] = useState(false);
+  const [exportando, setExportando] = useState(false);
 
   useEffect(() => {
     // Cargar proveedores activos
@@ -850,39 +856,6 @@ const ProductosGet = () => {
     }
   };
 
-  const exportarProductosAExcel = (productos) => {
-    const data = productos.map((p) => ({
-      ID: p.id,
-      Nombre: p.nombre,
-      Descripción: p.descripcion || '',
-      Precio: `$${parseFloat(p.precio).toFixed(2)}`,
-      Estado: p.estado === 'inactivo' ? 'Inactivo' : 'Activo',
-      Categoría: p.categoria?.nombre || 'Sin categoría',
-      SKU: p.codigo_sku || '',
-      'Creado el': new Date(p.created_at).toLocaleString('es-AR'),
-      'Actualizado el': new Date(p.updated_at).toLocaleString('es-AR')
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Productos');
-
-    // 🕒 Nombre de archivo dinámico con fecha
-    const fecha = new Date();
-    const timestamp = fecha
-      .toLocaleString('es-AR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-      .replace(/[/:]/g, '-');
-
-    const nombreArchivo = `productos-exportados-${timestamp}.xlsx`;
-    XLSX.writeFile(workbook, nombreArchivo);
-  };
-
   const proveedoresMap = useMemo(() => {
     const m = Object.create(null);
     for (const pr of proveedores) m[pr.id] = pr.razon_social;
@@ -1096,9 +1069,40 @@ const ProductosGet = () => {
   useEffect(() => {
     if (!modalOpen) return;
     fetchCodigoInternoSugerido();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modalOpen]);
 
+  const exportarTodo = async () => {
+    const resp = await axios.get(`${BASE_URL}/productos/export/all`);
+
+    const allRows = resp.data || [];
+
+    await exportarProductosAExcel(allRows, {
+      filename: `Productos_TODO_${new Date().toISOString().slice(0, 10)}.xlsx`
+    });
+  };
+
+  // OPCIÓN B: si vos ya tenés TODOS los rows cargados en memoria, podés pasar allRows.
+  // const allRows = useMemo(() => ..., []);
+
+  const handleExportVisualizando = async () => {
+    try {
+      setExportando(true);
+      await Promise.resolve(exportarProductosAExcel(rows));
+      setModalExportOpen(false);
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const handleExportTodo = async () => {
+    try {
+      setExportando(true);
+      await Promise.resolve(exportarTodo());
+      setModalExportOpen(false);
+    } finally {
+      setExportando(false);
+    }
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-10 px-6 text-white relative">
       <ParticlesBackground />
@@ -1130,8 +1134,9 @@ const ProductosGet = () => {
                 />
 
                 <button
-                  onClick={() => exportarProductosAExcel(rows)}
-                  className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2 text-white"
+                  type="button"
+                  onClick={() => setModalExportOpen(true)}
+                  className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-xl font-semibold flex items-center justify-center gap-2 text-white"
                 >
                   <FaDownload /> Exportar Excel
                 </button>
@@ -2921,6 +2926,109 @@ const ProductosGet = () => {
         isOpen={helpOpen}
         onClose={() => setHelpOpen(false)}
       />
+      {/* ---------- Modal ---------- */}
+      {modalExportOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => !exportando && setModalExportOpen(false)}
+          />
+
+          {/* Panel */}
+          <div className="relative w-full max-w-lg rounded-2xl bg-slate-900/90 ring-1 ring-white/10 shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-white/10">
+              <div>
+                <div className="text-xs uppercase tracking-widest text-white/50">
+                  Exportación
+                </div>
+                <div className="text-lg titulo uppercase font-semibold text-white">
+                  Elegí qué querés exportar
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={exportando}
+                onClick={() => setModalExportOpen(false)}
+                className="h-9 w-9 rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 flex items-center justify-center text-white/80 disabled:opacity-50"
+                aria-label="Cerrar"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {/* Opción 1: Visualizando */}
+              <button
+                type="button"
+                disabled={exportando}
+                onClick={handleExportVisualizando}
+                className="w-full rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 p-4 text-left transition disabled:opacity-50"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-cyan-500/15 ring-1 ring-cyan-400/20 flex items-center justify-center text-cyan-200">
+                    <FaEye />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-white font-semibold">
+                      Lo que estás visualizando
+                    </div>
+                    <div className="text-sm text-white/60">
+                      Exporta únicamente los registros filtrados/visibles
+                      actualmente.
+                    </div>
+                  </div>
+                  <div className="text-xs text-white/50 mt-1">
+                    {rows?.length ?? 0} items
+                  </div>
+                </div>
+              </button>
+
+              {/* Opción 2: Todo */}
+              <button
+                type="button"
+                disabled={exportando}
+                onClick={handleExportTodo}
+                className="w-full rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 p-4 text-left transition disabled:opacity-50"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/20 flex items-center justify-center text-emerald-200">
+                    <FaLayerGroup />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-white font-semibold">
+                      Exportar todo
+                    </div>
+                    <div className="text-sm text-white/60">
+                      Exporta el dataset completo, ignorando filtros y
+                      paginación.
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              {/* Footer */}
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={exportando}
+                  onClick={() => setModalExportOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 text-white/80 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+
+              {exportando && (
+                <div className="text-xs text-white/55 pt-1">
+                  Generando Excel…
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
