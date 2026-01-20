@@ -42,7 +42,7 @@ const chipEstado = (e = 'registrado') =>
     anulado: 'bg-zinc-100 text-zinc-700 border border-zinc-200',
     entregado: 'bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200',
     compensado: 'bg-teal-100 text-teal-700 border border-teal-200'
-  }[e] || 'bg-gray-100 text-gray-700 border border-gray-200');
+  })[e] || 'bg-gray-100 text-gray-700 border border-gray-200';
 
 export default function ChequeTransitionModal({
   open,
@@ -62,9 +62,12 @@ export default function ChequeTransitionModal({
     fecha_operacion: '',
     motivo_estado: '',
     proveedor_id: item?.proveedor_id || '',
-    destinatario: '',
+    destinatario: item?.beneficiario_nombre || '', // Benjamin Orellana - 19/01/2026 - Se pre-carga destinatario desde beneficiario_nombre si existe.
     banco_cuenta_id: ''
   });
+
+  // Benjamin Orellana - 19/01/2026 - Para ENTREGAR+EMITIDO se permite elegir entre proveedor o tercero/beneficiario.
+  const [entregaEmitidoModo, setEntregaEmitidoModo] = useState('proveedor'); // 'proveedor' | 'beneficiario'
 
   const [cuentas, setCuentas] = useState([]);
   const [bancos, setBancos] = useState([]);
@@ -90,19 +93,31 @@ export default function ChequeTransitionModal({
   const bancoNombre = (id) =>
     bancos.find((b) => Number(b.id) === Number(id))?.nombre || `Banco #${id}`;
 
+  // Benjamin Orellana - 19/01/2026 - Carga de proveedores solo si corresponde:
+  // - aplicar-a-proveedor (recibido)
+  // - entregar (emitido) SOLO si el modo es proveedor
   const shouldLoadProveedores =
     (action === 'aplicar-a-proveedor' && item?.tipo === 'recibido') ||
-    (action === 'entregar' && isEmitido);
+    (action === 'entregar' && isEmitido && entregaEmitidoModo === 'proveedor');
 
   // ───────────────────────────────── efectos: inicial
   useEffect(() => {
     if (!open) return;
 
+    // Benjamin Orellana - 19/01/2026 - Default del modo de entrega emitido:
+    // si ya tiene proveedor => proveedor; si no, habilitar tercero/beneficiario por defecto.
+    if (action === 'entregar' && isEmitido) {
+      const hasProv = Number(item?.proveedor_id || 0) > 0;
+      setEntregaEmitidoModo(hasProv ? 'proveedor' : 'beneficiario');
+    }
+
     setPayload((p) => ({
       ...p,
       fecha_operacion:
         p.fecha_operacion || new Date().toISOString().slice(0, 10),
-      banco_cuenta_id: requiereCuenta ? p.banco_cuenta_id : ''
+      banco_cuenta_id: requiereCuenta ? p.banco_cuenta_id : '',
+      // mantenemos destinatario si venía del cheque o ya estaba en edición
+      destinatario: p.destinatario || item?.beneficiario_nombre || ''
     }));
 
     // Cuentas/Bancos si hace falta
@@ -128,13 +143,13 @@ export default function ChequeTransitionModal({
         const arrC = Array.isArray(cs)
           ? cs
           : Array.isArray(cs?.data)
-          ? cs.data
-          : cs?.data?.data || [];
+            ? cs.data
+            : cs?.data?.data || [];
         const arrB = Array.isArray(bs)
           ? bs
           : Array.isArray(bs?.data)
-          ? bs.data
-          : bs?.data?.data || [];
+            ? bs.data
+            : bs?.data?.data || [];
         setCuentas(arrC);
         setBancos(arrB);
         if (arrC.length === 1) {
@@ -146,9 +161,16 @@ export default function ChequeTransitionModal({
         setLoadingCuentas(false);
       }
     })();
-  }, [open, requiereCuenta]);
+  }, [
+    open,
+    requiereCuenta,
+    action,
+    isEmitido,
+    item?.proveedor_id,
+    item?.beneficiario_nombre
+  ]);
 
-  // ───────────────────────────────── efectos: proveedores (aplicar RECIBIDO / entregar EMITIDO)
+  // ───────────────────────────────── efectos: proveedores (aplicar RECIBIDO / entregar EMITIDO modo proveedor)
   useEffect(() => {
     if (!open || !shouldLoadProveedores) return;
 
@@ -165,8 +187,8 @@ export default function ChequeTransitionModal({
         const arr = Array.isArray(res)
           ? res
           : Array.isArray(res?.data)
-          ? res.data
-          : res?.data?.data || [];
+            ? res.data
+            : res?.data?.data || [];
         setProveedores(arr);
 
         // Preselección si ya hay proveedor
@@ -191,7 +213,7 @@ export default function ChequeTransitionModal({
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, shouldLoadProveedores, item?.proveedor_id]);
+  }, [open, shouldLoadProveedores, item?.proveedor_id, entregaEmitidoModo]);
 
   // ───────────────────────────────── submit
   const submit = async (e) => {
@@ -203,17 +225,30 @@ export default function ChequeTransitionModal({
       return;
     }
 
-    // ENTREGAR (emitido): proveedor obligatorio
+    // ENTREGAR (emitido): proveedor O destinatario (beneficiario) obligatorio
     if (action === 'entregar' && isEmitido) {
       const provId = Number(payload.proveedor_id || item?.proveedor_id || 0);
-      if (!provId) {
+      const dest = (
+        payload.destinatario ||
+        item?.beneficiario_nombre ||
+        ''
+      ).trim();
+
+      // Benjamin Orellana - 19/01/2026 - Nueva validación: permitir tercero/beneficiario sin proveedor.
+      if (!provId && !dest) {
         alert(
-          'Debe seleccionar el proveedor para entregar este cheque emitido.'
+          'Debe indicar Proveedor o Destinatario (beneficiario) para entregar este cheque emitido.'
         );
         return;
       }
-      // autocompletar destinatario si falta
-      if (!payload.destinatario) {
+
+      // Si el modo es beneficiario, evitamos mandar proveedor_id vacío/incorrecto
+      if (entregaEmitidoModo === 'beneficiario') {
+        setPayload((p) => ({ ...p, proveedor_id: '' }));
+      }
+
+      // autocompletar destinatario si falta y hay proveedor
+      if (!dest && provId) {
         const pSel = proveedores.find((x) => Number(x.id) === provId);
         const nombre =
           pSel?.nombre || pSel?.razon_social || `Proveedor ${provId}`;
@@ -239,6 +274,9 @@ export default function ChequeTransitionModal({
       finalPayload.fecha_operacion = new Date().toISOString().slice(0, 10);
     }
 
+    // Benjamin Orellana - 19/01/2026 - Compatibilidad con backend: además de fecha_operacion, enviamos fecha.
+    finalPayload.fecha = finalPayload.fecha_operacion;
+
     // Aplicar a proveedor: no requiere cuenta
     if (action === 'aplicar-a-proveedor') {
       if (item?.tipo === 'emitido') {
@@ -247,6 +285,18 @@ export default function ChequeTransitionModal({
           Number(item?.proveedor_id || finalPayload.proveedor_id || 0) || null;
       }
       delete finalPayload.banco_cuenta_id;
+    }
+
+    // ENTREGAR emitido: si el modo es beneficiario, forzamos proveedor_id = null
+    if (
+      action === 'entregar' &&
+      isEmitido &&
+      entregaEmitidoModo === 'beneficiario'
+    ) {
+      // Benjamin Orellana - 19/01/2026 - Se asegura que el backend interprete entrega a tercero (sin proveedor).
+      finalPayload.proveedor_id = null;
+      finalPayload.destinatario =
+        (finalPayload.destinatario || '').trim() || null;
     }
 
     // Usuario para auditoría/log
@@ -391,36 +441,97 @@ export default function ChequeTransitionModal({
                   />
                 </div>
 
-                {/* ENTREGAR (EMITIDO): selector proveedor */}
+                {/* ENTREGAR (EMITIDO): modo proveedor/beneficiario */}
                 {action === 'entregar' && isEmitido && (
-                  <SearchableSelect
-                    label="Proveedor *"
-                    items={proveedores}
-                    value={payload.proveedor_id}
-                    onChange={(id, opt) => {
-                      const nombre = opt?.nombre || opt?.razon_social || '';
-                      setPayload((p) => ({
-                        ...p,
-                        proveedor_id: id ? Number(id) : '',
-                        destinatario: nombre || p.destinatario
-                      }));
-                      setProveedorNombre(nombre);
-                    }}
-                    getOptionLabel={(p) => p?.nombre || p?.razon_social || ''}
-                    getOptionValue={(p) => p?.id}
-                    placeholder={
-                      loadingProveedores
-                        ? 'Cargando proveedores…'
-                        : errorProveedores
-                        ? 'No se pudo cargar'
-                        : 'Seleccionar proveedor…'
-                    }
-                    disabled={loadingProveedores || !!errorProveedores}
-                    portal
-                    portalZIndex={5000}
-                    menuPlacement="auto"
-                    required
-                  />
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold">
+                      Entregar a
+                    </label>
+
+                    {/* Benjamin Orellana - 19/01/2026 - Selector de modo para no exigir proveedor cuando el cheque va a un tercero. */}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEntregaEmitidoModo('proveedor');
+                        }}
+                        className={[
+                          'flex-1 rounded-xl border px-3 py-2 text-sm font-semibold',
+                          entregaEmitidoModo === 'proveedor'
+                            ? 'bg-fuchsia-600 text-white border-fuchsia-600'
+                            : 'bg-white text-gray-700 hover:bg-gray-50'
+                        ].join(' ')}
+                      >
+                        Proveedor
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEntregaEmitidoModo('beneficiario');
+                          // si el usuario cambia a beneficiario, no obligamos ni dejamos proveedor seleccionado por error
+                          setPayload((p) => ({ ...p, proveedor_id: '' }));
+                          setProveedorNombre('');
+                        }}
+                        className={[
+                          'flex-1 rounded-xl border px-3 py-2 text-sm font-semibold',
+                          entregaEmitidoModo === 'beneficiario'
+                            ? 'bg-fuchsia-600 text-white border-fuchsia-600'
+                            : 'bg-white text-gray-700 hover:bg-gray-50'
+                        ].join(' ')}
+                      >
+                        Tercero / Beneficiario
+                      </button>
+                    </div>
+
+                    {entregaEmitidoModo === 'proveedor' ? (
+                      <SearchableSelect
+                        label="Proveedor"
+                        items={proveedores}
+                        value={payload.proveedor_id}
+                        onChange={(id, opt) => {
+                          const nombre = opt?.nombre || opt?.razon_social || '';
+                          setPayload((p) => ({
+                            ...p,
+                            proveedor_id: id ? Number(id) : '',
+                            destinatario: nombre || p.destinatario
+                          }));
+                          setProveedorNombre(nombre);
+                        }}
+                        getOptionLabel={(p) =>
+                          p?.nombre || p?.razon_social || ''
+                        }
+                        getOptionValue={(p) => p?.id}
+                        placeholder={
+                          loadingProveedores
+                            ? 'Cargando proveedores…'
+                            : errorProveedores
+                              ? 'No se pudo cargar'
+                              : 'Seleccionar proveedor…'
+                        }
+                        disabled={loadingProveedores || !!errorProveedores}
+                        portal
+                        portalZIndex={5000}
+                        menuPlacement="auto"
+                      />
+                    ) : (
+                      <div>
+                        <label className="block text-sm font-semibold">
+                          Destinatario (beneficiario)
+                        </label>
+                        <input
+                          value={payload.destinatario}
+                          onChange={(e) =>
+                            setPayload((p) => ({
+                              ...p,
+                              destinatario: e.target.value
+                            }))
+                          }
+                          className="w-full rounded-xl border px-3 py-2"
+                          placeholder="Nombre del tercero / beneficiario"
+                        />
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {/* ENTREGAR (RECIBIDO): destinatario libre */}
@@ -463,8 +574,8 @@ export default function ChequeTransitionModal({
                       loadingProveedores
                         ? 'Cargando proveedores…'
                         : errorProveedores
-                        ? 'No se pudo cargar'
-                        : 'Seleccionar proveedor…'
+                          ? 'No se pudo cargar'
+                          : 'Seleccionar proveedor…'
                     }
                     disabled={loadingProveedores || !!errorProveedores}
                     required
@@ -497,8 +608,8 @@ export default function ChequeTransitionModal({
                     loadingCuentas
                       ? 'Cargando cuentas…'
                       : errorCuentas
-                      ? 'No se pudo cargar'
-                      : 'Seleccionar cuenta…'
+                        ? 'No se pudo cargar'
+                        : 'Seleccionar cuenta…'
                   }
                   disabled={loadingCuentas || !!errorCuentas}
                   portal
