@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+// Benjamin Orellana - 19-01-2026 - Mejora: búsqueda insensible a acentos (diacríticos)
+// Permite encontrar "colchon" y "colchón" indistintamente, sin alterar el resto del componente.
+const normalizeSearch = (s = '') =>
+  String(s)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
 export default function SearchableSelect({
   label,
   items = [],
@@ -38,9 +46,10 @@ export default function SearchableSelect({
   }, [items, value, getOptionValue]);
 
   const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
+    const s = normalizeSearch(q.trim());
     if (!s) return items;
-    return items.filter((i) => getOptionLabel(i).toLowerCase().includes(s));
+
+    return items.filter((i) => normalizeSearch(getOptionLabel(i)).includes(s));
   }, [items, q, getOptionLabel]);
 
   const labelFor = (opt) => String(getOptionLabel(opt) ?? '');
@@ -157,20 +166,48 @@ export default function SearchableSelect({
   };
 
   // UI helpers
-  const renderHighlighted = (text, query) => {
-    if (!query) return text;
-    const i = text.toLowerCase().indexOf(query.toLowerCase());
-    if (i === -1) return text;
-    return (
-      <>
-        {text.slice(0, i)}
-        <mark className="bg-yellow-100 rounded px-0.5">
-          {text.slice(i, i + query.length)}
-        </mark>
-        {text.slice(i + query.length)}
-      </>
-    );
-  };
+const renderHighlighted = (text, query) => {
+  if (!query) return text;
+
+  const t = String(text || '');
+  const qn = normalizeSearch(query);
+  if (!qn) return t;
+
+  // buscamos el match en versión normalizada, pero marcamos en el texto original
+  const tn = normalizeSearch(t);
+  const start = tn.indexOf(qn);
+  if (start === -1) return t;
+
+  // Mapeo simple: recorremos el original y contamos caracteres "base" (sin diacríticos)
+  let origStart = 0;
+  let origEnd = 0;
+  let count = 0;
+
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    const base = normalizeSearch(ch); // 1 char -> base sin acento
+    if (count === start) origStart = i;
+    if (base) count += 1;
+    if (count === start + qn.length) {
+      origEnd = i + 1;
+      break;
+    }
+  }
+
+  // fallback si no pudo calcular bien
+  if (!origEnd) origEnd = Math.min(t.length, origStart + query.length);
+
+  return (
+    <>
+      {t.slice(0, origStart)}
+      <mark className="bg-yellow-100 rounded px-0.5">
+        {t.slice(origStart, origEnd)}
+      </mark>
+      {t.slice(origEnd)}
+    </>
+  );
+};
+
 
   // ───────────────────────────────── UI
   const Button = (
@@ -202,8 +239,8 @@ export default function SearchableSelect({
       ref={menuRef}
       className={`mt-2 w-full rounded-xl border border-gray-200 bg-white shadow-xl
                   ${portal ? '' : 'absolute z-50'} ${
-        placement === 'top' && !portal ? 'bottom-full mb-2' : ''
-      }`}
+                    placement === 'top' && !portal ? 'bottom-full mb-2' : ''
+                  }`}
       style={portal ? menuStyle : {}}
     >
       <div className="p-2 border-b border-gray-200 sticky top-0 bg-white">

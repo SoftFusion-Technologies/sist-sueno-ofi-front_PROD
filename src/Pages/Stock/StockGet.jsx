@@ -1379,7 +1379,7 @@ const StockGet = () => {
           isOpen={modalOpen}
           onRequestClose={() => setModalOpen(false)}
           overlayClassName="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4"
-          className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-cyan-100 overflow-hidden"
+          className="relative w-full max-w-6xl bg-white rounded-2xl shadow-2xl border border-cyan-100 overflow-hidden"
         >
           {/* Header sticky */}
           <header className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-gray-200 px-5 py-4">
