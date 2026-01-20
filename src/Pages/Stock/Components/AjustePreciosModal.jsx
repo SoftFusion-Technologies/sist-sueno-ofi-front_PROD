@@ -1,12 +1,19 @@
-import { useEffect, useState } from 'react';
+// =====================================================
+// FILE: src/Pages/Stock/Components/AjustePreciosModal.jsx
+// =====================================================
+// Benjamin Orellana - 19-01-2026 - se adiciona ajuste por proveedor
+
+import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
+import Swal from 'sweetalert2';
 import {
   FaTimes,
   FaCheck,
   FaPercentage,
   FaSpinner,
-  FaTag
+  FaTag,
+  FaTruck
 } from 'react-icons/fa';
 import { getUserId } from '../../../utils/authUtils';
 
@@ -16,7 +23,13 @@ export default function AjustePreciosModal({ open, onClose, onSuccess }) {
   const [porcentaje, setPorcentaje] = useState('');
   const [categorias, setCategorias] = useState([]);
   const [seleccionadas, setSeleccionadas] = useState([]);
+
+  // Benjamin Orellana - 19-01-2026 - Proveedores (nuevo)
+  const [proveedores, setProveedores] = useState([]);
+  const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
+
   const [loading, setLoading] = useState(false);
+  const [loadingCatalogos, setLoadingCatalogos] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -26,6 +39,24 @@ export default function AjustePreciosModal({ open, onClose, onSuccess }) {
 
   const [modo, setModo] = useState('manual');
   const [inflacion, setInflacion] = useState(null);
+
+  const esDescuento = modoAjuste === 'descuento';
+
+  // =====================================================
+  // Benjamin Orellana - 19-01-2026 - Helpers
+  // Descripción: delay intencional para dar feedback visual y reset del form post-acción
+  // =====================================================
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const resetFormPostApply = () => {
+    // Benjamin Orellana - 19-01-2026 - Luego de insertar, se limpia el form
+    setPorcentaje('');
+    setSeleccionadas([]);
+    setProveedorSeleccionado(null);
+    setModo('manual');
+    setInflacion(null);
+    setError('');
+  };
 
   useEffect(() => {
     if (modoAjuste) {
@@ -41,27 +72,173 @@ export default function AjustePreciosModal({ open, onClose, onSuccess }) {
           const ultimoMes = res.data[res.data.length - 1];
           setInflacion(ultimoMes.valor);
           setPorcentaje(ultimoMes.valor);
-        });
+        })
+        .catch(() => setInflacion(null));
     }
   }, [open, modo]);
+
+  // =====================================================
+  // Benjamin Orellana - 19-01-2026 - Normalizadores
+  // Descripción: soporta endpoints que devuelven:
+  // 1) Array directo: [...]
+  // 2) Paginado: { data: [...] }
+  // 3) Otros: fallback []
+  // =====================================================
+  const normalizeList = (payload) => {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data; // { data: [...] }
+    return [];
+  };
 
   useEffect(() => {
     if (open) {
       setError('');
       setSuccessMessage('');
-      axios.get('https://api.rioromano.com.ar/categorias').then((res) => {
-        const options = res.data.map((c) => ({
-          value: c.id,
-          label: c.nombre
-        }));
-        setCategorias(options);
-      });
+      setLoadingCatalogos(true);
+
+      const fetchCategorias = axios.get(
+        'https://api.rioromano.com.ar/categorias'
+      );
+      // Benjamin Orellana - 19-01-2026
+      // Descripción: usa el endpoint liviano /catalogo (sin paginación) para poblar dropdowns/selects.
+      const fetchProveedores = axios.get(
+        'https://api.rioromano.com.ar/proveedores/catalogo',
+        { params: { estado: 'activo' } }
+      );
+      Promise.allSettled([fetchCategorias, fetchProveedores])
+        .then((results) => {
+          const [catRes, provRes] = results;
+
+          // =========================
+          // Categorías
+          // =========================
+          if (catRes.status === 'fulfilled') {
+            const catArr = normalizeList(catRes.value?.data);
+            const options = catArr.map((c) => ({
+              value: c.id,
+              label: c.nombre
+            }));
+            setCategorias(options);
+          } else {
+            setCategorias([]);
+          }
+
+          // =========================
+          // Proveedores
+          // =========================
+          // Debug (dejamos tu log): muestra cómo viene el response
+          console.log('AjustePreciosModal.jsx:176', provRes);
+
+          if (provRes.status === 'fulfilled') {
+            // Benjamin Orellana - 19-01-2026 - Acá está el fix:
+            // provRes.value.data es {page,pageSize,total,data:[...]} => normalizeList devuelve payload.data
+            const provArr = normalizeList(provRes.value?.data);
+
+            const options = provArr.map((p) => ({
+              value: p.id,
+              // Priorizamos nombre_fantasia, luego razon_social, luego nombre, etc.
+              label:
+                p.nombre_fantasia ||
+                p.razon_social ||
+                p.nombre ||
+                p.email ||
+                `Proveedor #${p.id}`
+            }));
+
+            setProveedores(options);
+          } else {
+            setProveedores([]);
+          }
+        })
+        .finally(() => setLoadingCatalogos(false));
     }
   }, [open]);
 
+  // Benjamin Orellana - 19-01-2026 - Limpieza de timer de undo
+  useEffect(() => {
+    return () => {
+      if (undoTimer) clearTimeout(undoTimer);
+    };
+  }, [undoTimer]);
+
+  const selectStyles = useMemo(
+    () => ({
+      control: (base, state) => ({
+        ...base,
+        backgroundColor: '#1f2937',
+        borderRadius: '0.75rem',
+        borderColor: state.isFocused ? '#6366f1' : '#4b5563',
+        boxShadow: state.isFocused ? '0 0 0 1px #6366f1' : 'none',
+        color: 'white',
+        padding: '4px',
+        '&:hover': {
+          borderColor: '#6366f1'
+        }
+      }),
+      singleValue: (base) => ({
+        ...base,
+        color: 'white'
+      }),
+      input: (base) => ({
+        ...base,
+        color: 'white'
+      }),
+      placeholder: (base) => ({
+        ...base,
+        color: '#9ca3af'
+      }),
+      menuPortal: (base) => ({
+        ...base,
+        zIndex: 999999 // Benjamin Orellana - 19-01-2026 - Evitar que el menú quede "debajo" del modal
+      }),
+      menu: (base) => ({
+        ...base,
+        zIndex: 9999,
+        backgroundColor: '#111827',
+        color: 'white'
+      }),
+      // Benjamin Orellana - 19-01-2026 - Scroll asegurado en listas largas
+      menuList: (base) => ({
+        ...base,
+        maxHeight: 240,
+        overflowY: 'auto'
+      }),
+      option: (base, { isFocused, isSelected }) => ({
+        ...base,
+        backgroundColor: isSelected
+          ? '#4f46e5'
+          : isFocused
+            ? '#374151'
+            : 'transparent',
+        color: 'white',
+        cursor: 'pointer'
+      }),
+      multiValue: (styles) => ({
+        ...styles,
+        backgroundColor: '#4f46e5'
+      }),
+      multiValueLabel: (styles) => ({
+        ...styles,
+        color: 'white'
+      }),
+      multiValueRemove: (styles) => ({
+        ...styles,
+        color: 'white',
+        ':hover': {
+          backgroundColor: '#4338ca',
+          color: 'white'
+        }
+      })
+    }),
+    []
+  );
+
+  // Benjamin Orellana - 19-01-2026 - Proveedor opcional
+  // Descripción: el selector de proveedor deja de ser obligatorio. Si no se selecciona, el ajuste/descuento es global.
   const handleSubmit = async () => {
     const valor = parseFloat(porcentaje);
-    const usuario_log_id = getUserId(); // 👈 Asegurate que existe esta función y devuelve el ID
+    const usuario_log_id = getUserId();
 
     if (isNaN(valor)) {
       setError('Ingresá un porcentaje válido.');
@@ -78,58 +255,101 @@ export default function AjustePreciosModal({ open, onClose, onSuccess }) {
       return;
     }
 
+    // Benjamin Orellana - 19-01-2026 - IMPORTANTE:
+    // Se elimina la obligatoriedad del proveedor.
+    // Si no hay proveedor seleccionado => ajuste global (como antes).
+
     setLoading(true);
     setError('');
     setSuccessMessage('');
 
+    // Benjamin Orellana - 19-01-2026 - SweetAlert "Aplicando..." + delay fijo 3s
+    Swal.fire({
+      title: 'Aplicando...',
+      text: 'Por favor esperá. Esto puede tardar unos segundos.',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
     try {
+      // Benjamin Orellana - 19-01-2026 - Delay intencional para feedback visual
+      await sleep(3000);
+
       const ruta =
         modoAjuste === 'descuento'
           ? 'https://api.rioromano.com.ar/aplicar-descuento'
           : 'https://api.rioromano.com.ar/aumentar-precio';
 
+      const categoriasIds = (seleccionadas || []).map((s) => s.value);
+
+      // Benjamin Orellana - 19-01-2026 - proveedor_id opcional (solo si existe)
+      const proveedor_id = proveedorSeleccionado?.value
+        ? Number(proveedorSeleccionado.value)
+        : undefined;
+
       const payload =
         modoAjuste === 'descuento'
           ? {
               descuento: valor,
-              categorias: seleccionadas.map((s) => s.value),
-              usuario_log_id
+              categorias: categoriasIds,
+              usuario_log_id,
+              ...(proveedor_id ? { proveedor_id } : {})
             }
           : {
               porcentaje: valor,
-              categorias: seleccionadas.map((s) => s.value),
+              categorias: categoriasIds,
               usuario_log_id,
-              usarInflacion: modo === 'inflacion'
+              usarInflacion: modo === 'inflacion',
+              ...(proveedor_id ? { proveedor_id } : {})
             };
 
       const res = await axios.post(ruta, payload);
 
+      // Mensaje más claro según si hubo proveedor o no
+      const scopeTxt = proveedor_id
+        ? `al proveedor "${proveedorSeleccionado?.label}"`
+        : 'a todos los productos';
+
       setSuccessMessage(
         `✅ Se aplicó un ${
           modoAjuste === 'descuento' ? 'descuento' : 'ajuste'
-        } del ${valor}%.`
+        } del ${valor}% ${scopeTxt}.`
       );
 
       setAjusteId(res.data.ajuste_id);
 
-      const timer = setTimeout(() => {
-        setAjusteId(null);
-      }, 5 * 60 * 1000);
+      const timer = setTimeout(
+        () => {
+          setAjusteId(null);
+        },
+        5 * 60 * 1000
+      );
       setUndoTimer(timer);
 
       if (onSuccess) onSuccess();
+
+      // Benjamin Orellana - 19-01-2026 - Limpiar formulario después de aplicar
+      resetFormPostApply();
 
       setTimeout(() => {
         setSuccessMessage('');
       }, 2500);
     } catch (err) {
       console.error('❌ Error en handleSubmit:', err);
-      setError(
+
+      const msg =
+        err.response?.data?.mensajeError ||
+        err.response?.data?.detalle ||
         `Error al ${
           modoAjuste === 'descuento' ? 'aplicar descuento' : 'ajustar precios'
-        }. Intentalo nuevamente.`
-      );
+        }. Intentalo nuevamente.`;
+
+      setError(msg);
     } finally {
+      Swal.close();
       setLoading(false);
     }
   };
@@ -175,7 +395,6 @@ export default function AjustePreciosModal({ open, onClose, onSuccess }) {
 
   if (!open) return null;
 
-  const esDescuento = modoAjuste === 'descuento';
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
       <div className="absolute top-10 md:top-24 left-1/2 transform -translate-x-1/2 flex gap-2 z-50">
@@ -248,6 +467,43 @@ export default function AjustePreciosModal({ open, onClose, onSuccess }) {
           </div>
         )}
 
+        {/* Benjamin Orellana - 19-01-2026 - Proveedor selector */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-indigo-300 mb-1">
+            Proveedor (opcional)
+          </label>
+          <div className="text-xs text-white/60 mb-2 flex items-center gap-2">
+            <FaTruck className="opacity-80" />
+            <span>
+              Si no elegís categorías, se aplica a todos los productos del
+              proveedor. Si elegís categorías, se limita a esas categorías.
+            </span>
+          </div>
+
+          <Select
+            options={proveedores}
+            placeholder={
+              loadingCatalogos
+                ? 'Cargando proveedores...'
+                : 'Buscar proveedor...'
+            }
+            value={proveedorSeleccionado}
+            onChange={(selected) => setProveedorSeleccionado(selected)}
+            className="text-sm"
+            styles={selectStyles}
+            isDisabled={loadingCatalogos}
+            isClearable // Benjamin Orellana - 19-01-2026 - Permite quitar proveedor como categoría
+            menuPortalTarget={
+              typeof document !== 'undefined' ? document.body : null
+            }
+            menuPosition="fixed"
+            maxMenuHeight={240}
+            noOptionsMessage={() =>
+              loadingCatalogos ? 'Cargando...' : 'Sin proveedores'
+            }
+          />
+        </div>
+
         {/* Tipo de ajuste (manual o inflación) */}
         {!esDescuento && (
           <div className="mb-6">
@@ -286,6 +542,7 @@ export default function AjustePreciosModal({ open, onClose, onSuccess }) {
             className="w-full bg-gray-800 text-white border border-gray-600 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg"
           />
         </div>
+
         {/* Mostrar INDEC si modo === inflación */}
         {modo === 'inflacion' && inflacion && !esDescuento && (
           <div className="bg-indigo-900/20 border border-indigo-500/30 text-indigo-300 text-sm rounded-xl p-4 mb-6 shadow-sm animate-fadeIn">
@@ -303,68 +560,21 @@ export default function AjustePreciosModal({ open, onClose, onSuccess }) {
           <Select
             options={categorias}
             isMulti
-            placeholder="Buscar categorías..."
+            placeholder={
+              loadingCatalogos
+                ? 'Cargando categorías...'
+                : 'Buscar categorías...'
+            }
             value={seleccionadas}
             onChange={(selected) => setSeleccionadas(selected)}
             className="text-sm"
-            styles={{
-              control: (base, state) => ({
-                ...base,
-                backgroundColor: '#1f2937', // gris oscuro
-                borderRadius: '0.75rem',
-                borderColor: state.isFocused ? '#6366f1' : '#4b5563', // indigo al enfocar
-                boxShadow: state.isFocused ? '0 0 0 1px #6366f1' : 'none',
-                color: 'white',
-                padding: '4px',
-                '&:hover': {
-                  borderColor: '#6366f1'
-                }
-              }),
-              singleValue: (base) => ({
-                ...base,
-                color: 'white'
-              }),
-              input: (base) => ({
-                ...base,
-                color: 'white'
-              }),
-              placeholder: (base) => ({
-                ...base,
-                color: '#9ca3af' // gris claro
-              }),
-              menu: (base) => ({
-                ...base,
-                zIndex: 9999,
-                backgroundColor: '#111827',
-                color: 'white'
-              }),
-              option: (base, { isFocused, isSelected }) => ({
-                ...base,
-                backgroundColor: isSelected
-                  ? '#4f46e5'
-                  : isFocused
-                  ? '#374151'
-                  : 'transparent',
-                color: 'white',
-                cursor: 'pointer'
-              }),
-              multiValue: (styles) => ({
-                ...styles,
-                backgroundColor: '#4f46e5'
-              }),
-              multiValueLabel: (styles) => ({
-                ...styles,
-                color: 'white'
-              }),
-              multiValueRemove: (styles) => ({
-                ...styles,
-                color: 'white',
-                ':hover': {
-                  backgroundColor: '#4338ca',
-                  color: 'white'
-                }
-              })
-            }}
+            styles={selectStyles}
+            isDisabled={loadingCatalogos}
+            menuPortalTarget={
+              typeof document !== 'undefined' ? document.body : null
+            }
+            menuPosition="fixed"
+            maxMenuHeight={240}
           />
         </div>
 

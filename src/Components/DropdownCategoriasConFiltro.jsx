@@ -33,7 +33,11 @@ export default function DropdownCategoriasConFiltro({
     <div className="relative w-full" ref={dropdownRef}>
       {/* Botón estilo select */}
       <button
-        onClick={() => setOpen(!open)}
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          setOpen(!open);
+        }}
         className="w-full text-left px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded-lg flex justify-between items-center hover:bg-gray-700 transition"
       >
         {selected === null
@@ -82,6 +86,9 @@ export default function DropdownCategoriasConFiltro({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.preventDefault();
+              }}
               placeholder="Buscar categoría..."
               className="w-full px-3 py-2 rounded-md bg-gray-700 text-white placeholder-gray-400 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-rose-500"
             />

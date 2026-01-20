@@ -16,6 +16,7 @@ import { motion } from 'framer-motion';
 import ButtonBack from '../../Components/ButtonBack.jsx';
 import ParticlesBackground from '../../Components/ParticlesBackground.jsx';
 import DropdownCategoriasConFiltro from '../../Components/DropdownCategoriasConFiltro.jsx';
+import DropdownProveedoresConFiltro from '../../Components/DropdownProveedoresConFiltro.jsx';
 import BulkUploadButton from '../../Components/BulkUploadButton.jsx';
 import * as XLSX from 'xlsx';
 import AdminActions from '../../Components/AdminActions';
@@ -139,7 +140,10 @@ const ProductosGet = () => {
 
   const [showAjustePrecios, setShowAjustePrecios] = useState(false);
 
+  // Benjamin Orellana - 19-01-2026 - Filtro por proveedor
+  // Descripción: permite seleccionar un proveedor y filtrar productos por proveedor (server-side si hay meta; client-side en modo compat).
   const [proveedores, setProveedores] = useState([]);
+  const [proveedorFiltro, setProveedorFiltro] = useState(null);
   const [proveedorIdSel, setProveedorIdSel] = useState(''); // '' = NULL
 
   const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
@@ -154,16 +158,38 @@ const ProductosGet = () => {
   const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
-    // Cargar proveedores activos (podés ajustar al endpoint que uses)
-    fetch(`${BASE_URL}/proveedores`)
+    // Cargar proveedores activos
+    fetch(`${BASE_URL}/proveedores/catalogo?estado=activo`)
       .then((r) => r.json())
       .then((json) => {
+        // Benjamin Orellana - 19-01-2026 - Soporte array plano (catalogo) o paginado
         const arr = Array.isArray(json?.data)
           ? json.data
           : Array.isArray(json)
             ? json
-            : [];
-        setProveedores(arr.filter((p) => p.estado === 'activo'));
+            : Array.isArray(json?.data?.data)
+              ? json.data.data
+              : Array.isArray(json?.data)
+                ? json.data
+                : [];
+
+        const normalizados = (arr || []).map((p) => {
+          const rs = (p?.razon_social || '').trim();
+          const fantasia = (p?.nombre_fantasia || '').trim();
+
+          // fallback robusto si el backend no trae label
+          const label =
+            (p?.label && String(p.label).trim()) ||
+            (rs && fantasia
+              ? `${rs} - ${fantasia}`
+              : rs || fantasia || `Proveedor #${p?.id}`);
+
+          return { ...p, label };
+        });
+
+        setProveedores(
+          normalizados.filter((p) => (p?.estado || 'activo') === 'activo')
+        );
       })
       .catch(() => setProveedores([]));
   }, []);
@@ -186,8 +212,8 @@ const ProductosGet = () => {
             q: debouncedQ || undefined,
             estado: estadoFiltro !== 'todos' ? estadoFiltro : undefined,
             categoriaId: categoriaFiltro || undefined,
-            // si tenés proveedor seleccionado:
-            // proveedorId: proveedorIdSel || undefined,
+            // Benjamin Orellana - 19-01-2026 - Filtro proveedor
+            proveedorId: proveedorFiltro ? Number(proveedorFiltro) : undefined,
 
             //  orden servidor:
             orderBy,
@@ -233,7 +259,9 @@ const ProductosGet = () => {
     orderDir,
     debouncedQ,
     estadoFiltro,
-    categoriaFiltro /*, proveedorIdSel*/
+    categoriaFiltro /*, proveedorIdSel*/,
+    // Benjamin Orellana - 19-01-2026
+    proveedorFiltro
   ]);
 
   // Si HAY meta => el backend ya filtró/paginó. Renderizamos tal cual `productos`.
@@ -259,6 +287,13 @@ const ProductosGet = () => {
           ? true
           : p.categoria_id === parseInt(categoriaFiltro)
       )
+      // Benjamin Orellana - 19-01-2026 - Filtro proveedor
+      .filter((p) =>
+        proveedorFiltro === null
+          ? true
+          : Number(p.proveedor_preferido_id) === Number(proveedorFiltro)
+      )
+
       .filter((p) => {
         const precio = parseFloat(p.precio);
         const min = parseFloat(precioMin) || 0;
@@ -281,6 +316,8 @@ const ProductosGet = () => {
     search,
     estadoFiltro,
     categoriaFiltro,
+    // Benjamin Orellana - 19-01-2026
+    proveedorFiltro,
     precioMin,
     precioMax,
     ordenCampo,
@@ -1147,6 +1184,14 @@ const ProductosGet = () => {
             onChange={setCategoriaFiltro}
           />
 
+          {/* Benjamin Orellana - 19-01-2026 - Proveedor (Dropdown) */}
+          {/* Descripción: filtra por proveedor seleccionado. Si no hay proveedor, muestra todos. */}
+          <DropdownProveedoresConFiltro
+            proveedores={proveedores}
+            selected={proveedorFiltro ? Number(proveedorFiltro) : null}
+            onChange={(id) => setProveedorFiltro(id ? String(id) : '')}
+          />
+
           {/* Orden */}
           <select
             value={ordenCampo}
@@ -1615,47 +1660,59 @@ const ProductosGet = () => {
                             />
                           </div>
 
+                          {/* =========================
+    Benjamin Orellana - 19-01-2026
+    Descripción: Reemplazo de selects por Dropdowns con buscador + scroll,
+    manteniendo compat con el estado del form (strings) y permitiendo limpiar.
+   ========================= */}
+
                           <div>
                             <label className="block text-[12px] font-medium text-slate-700 mb-1">
                               Categoría
                             </label>
-                            <select
-                              value={formValues.categoria_id}
-                              onChange={(e) =>
+
+                            <DropdownCategoriasConFiltro
+                              categorias={categorias}
+                              selected={
+                                formValues.categoria_id
+                                  ? Number(formValues.categoria_id)
+                                  : null
+                              }
+                              onChange={(id) =>
                                 setFormValues({
                                   ...formValues,
-                                  categoria_id: e.target.value
+                                  // si id es null => "Sin categoría"
+                                  categoria_id: id ? String(id) : ''
                                 })
                               }
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                            >
-                              <option value="">Sin categoría</option>
-                              {categorias.map((cat) => (
-                                <option key={cat.id} value={cat.id}>
-                                  {cat.nombre}
-                                </option>
-                              ))}
-                            </select>
+                            />
+
+                            {/* Hint visual opcional */}
+                            <div className="mt-1 text-[11px] text-slate-500">
+                              Seleccioná una categoría o dejá “Sin categoría”.
+                            </div>
                           </div>
 
                           <div>
                             <label className="block text-[12px] font-medium text-slate-700 mb-1">
                               Proveedor
                             </label>
-                            <select
-                              value={proveedorIdSel}
-                              onChange={(e) =>
-                                setProveedorIdSel(e.target.value)
+
+                            <DropdownProveedoresConFiltro
+                              proveedores={proveedores}
+                              selected={
+                                proveedorIdSel ? Number(proveedorIdSel) : null
                               }
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                            >
-                              <option value="">(Opcional)</option>
-                              {proveedores.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.razon_social}
-                                </option>
-                              ))}
-                            </select>
+                              onChange={(id) => {
+                                // null => opcional / sin proveedor
+                                setProveedorIdSel(id ? String(id) : '');
+                              }}
+                            />
+
+                            {/* Hint visual opcional */}
+                            <div className="mt-1 text-[11px] text-slate-500">
+                              (Opcional) Podés asignar o dejar en blanco.
+                            </div>
                           </div>
 
                           <div>
