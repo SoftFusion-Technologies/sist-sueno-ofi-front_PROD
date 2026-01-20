@@ -210,6 +210,7 @@ export default function ChequeCard({
   item,
   bancoNombre,
   chequeraDesc,
+  beneficiario_nombre,
   onView,
   onEdit,
   onDelete,
@@ -277,7 +278,7 @@ export default function ChequeCard({
             >
               {fmt(monto)}
             </div>
-            <div className={`mt-1 text-sm ${txtMuted(formato)}`}>#{numero}</div>
+            <div className={`mt-1 text-sm ${txtMuted(formato)}`}>#{numero} - {beneficiario_nombre}</div>
           </div>
 
           <div className="flex items-center gap-2">

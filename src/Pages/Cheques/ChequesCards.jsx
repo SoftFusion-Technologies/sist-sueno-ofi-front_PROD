@@ -599,6 +599,7 @@ export default function ChequesCards() {
                     chequeraDesc={
                       it.chequera_id ? descChequera(it.chequera_id) : '—'
                     }
+                    beneficiario_nombre={it.beneficiario_nombre || '—'}
                     onView={(row) => {
                       setViewing(row);
                       setViewOpen(true);
