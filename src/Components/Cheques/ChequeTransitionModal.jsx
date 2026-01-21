@@ -57,6 +57,24 @@ export default function ChequeTransitionModal({
   };
   const isEmitido = item?.tipo === 'emitido';
 
+  // Benjamin Orellana - 21/01/2026 - Usamos itemId para reinicializar el estado del modal cuando cambia el cheque,
+  // evitando que queden valores "pegados" (ej: destinatario) de un cheque anterior.
+  const itemId = item?.id ?? null;
+
+  // Benjamin Orellana - 21/01/2026 - Construye el payload base SIEMPRE desde el cheque actual.
+  // Esto evita que "payload.destinatario" o "payload.proveedor_id" se hereden de aperturas anteriores.
+  const buildBasePayload = () => {
+    const today = new Date().toISOString().slice(0, 10);
+
+    return {
+      fecha_operacion: today,
+      motivo_estado: '',
+      proveedor_id: item?.proveedor_id ? Number(item.proveedor_id) : '',
+      destinatario: item?.beneficiario_nombre || '',
+      banco_cuenta_id: ''
+    };
+  };
+
   // ───────────────────────────────── state
   const [payload, setPayload] = useState({
     fecha_operacion: '',
@@ -111,14 +129,18 @@ export default function ChequeTransitionModal({
       setEntregaEmitidoModo(hasProv ? 'proveedor' : 'beneficiario');
     }
 
-    setPayload((p) => ({
-      ...p,
-      fecha_operacion:
-        p.fecha_operacion || new Date().toISOString().slice(0, 10),
-      banco_cuenta_id: requiereCuenta ? p.banco_cuenta_id : '',
-      // mantenemos destinatario si venía del cheque o ya estaba en edición
-      destinatario: p.destinatario || item?.beneficiario_nombre || ''
-    }));
+    // Benjamin Orellana - 21/01/2026 - Reinicializamos el payload desde el cheque actual al abrir el modal
+    // (y al cambiar itemId). Esto evita que se reutilice destinatario (ej: "Keko") de un cheque anterior.
+    setPayload(() => {
+      const base = buildBasePayload();
+      return {
+        ...base,
+        banco_cuenta_id: requiereCuenta ? base.banco_cuenta_id : ''
+      };
+    });
+
+    // Benjamin Orellana - 21/01/2026 - Limpia el nombre de proveedor mostrado para no arrastrarlo entre cheques.
+    setProveedorNombre('');
 
     // Cuentas/Bancos si hace falta
     (async () => {
@@ -161,14 +183,7 @@ export default function ChequeTransitionModal({
         setLoadingCuentas(false);
       }
     })();
-  }, [
-    open,
-    requiereCuenta,
-    action,
-    isEmitido,
-    item?.proveedor_id,
-    item?.beneficiario_nombre
-  ]);
+  }, [open, requiereCuenta, action, isEmitido, itemId]);
 
   // ───────────────────────────────── efectos: proveedores (aplicar RECIBIDO / entregar EMITIDO modo proveedor)
   useEffect(() => {
@@ -192,17 +207,25 @@ export default function ChequeTransitionModal({
         setProveedores(arr);
 
         // Preselección si ya hay proveedor
-        const provIdActual = Number(
-          item?.proveedor_id || payload.proveedor_id || 0
-        );
+        // Benjamin Orellana - 21/01/2026 - Tomamos el proveedor actual desde el cheque (fuente de verdad),
+        // evitando depender de payload (que puede estar en transición de setState).
+        const provIdActual = Number(item?.proveedor_id || 0);
+
         if (provIdActual) {
           setPayload((p) => ({ ...p, proveedor_id: provIdActual }));
           const pSel = arr.find((x) => Number(x.id) === provIdActual);
           const nombre =
             pSel?.nombre || pSel?.razon_social || `ID ${provIdActual}`;
           setProveedorNombre(nombre);
-          // prellenamos destinatario si no lo tiene
-          setPayload((p) => ({ ...p, destinatario: p.destinatario || nombre }));
+          // Benjamin Orellana - 21/01/2026 - Autocompleta destinatario con el nombre del proveedor
+          // solo si está vacío (no pisa lo que el usuario ya escribió manualmente).
+          setPayload((p) => {
+            const destTrim = (p.destinatario || '').trim();
+            return {
+              ...p,
+              destinatario: destTrim.length > 0 ? p.destinatario : nombre
+            };
+          });
         } else {
           setProveedorNombre('');
         }
@@ -212,8 +235,8 @@ export default function ChequeTransitionModal({
         setLoadingProveedores(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, shouldLoadProveedores, item?.proveedor_id, entregaEmitidoModo]);
+    // Benjamin Orellana - 21/01/2026 - Dependemos de itemId para garantizar recarga correcta al cambiar de cheque aunque el proveedor_id coincida.
+  }, [open, shouldLoadProveedores, itemId, entregaEmitidoModo]);
 
   // ───────────────────────────────── submit
   const submit = async (e) => {
@@ -241,19 +264,6 @@ export default function ChequeTransitionModal({
         );
         return;
       }
-
-      // Si el modo es beneficiario, evitamos mandar proveedor_id vacío/incorrecto
-      if (entregaEmitidoModo === 'beneficiario') {
-        setPayload((p) => ({ ...p, proveedor_id: '' }));
-      }
-
-      // autocompletar destinatario si falta y hay proveedor
-      if (!dest && provId) {
-        const pSel = proveedores.find((x) => Number(x.id) === provId);
-        const nombre =
-          pSel?.nombre || pSel?.razon_social || `Proveedor ${provId}`;
-        setPayload((p) => ({ ...p, destinatario: nombre }));
-      }
     }
 
     // APLICAR A PROVEEDOR (recibido): proveedor obligatorio
@@ -268,6 +278,35 @@ export default function ChequeTransitionModal({
     }
 
     const finalPayload = { ...payload };
+
+    // Benjamin Orellana - 21/01/2026 - Normalizamos el payload final en memoria (sin setState en submit),
+    // garantizando que lo que se envía al backend sea exactamente lo resuelto en esta confirmación.
+    if (action === 'entregar' && isEmitido) {
+      const provIdResolved = Number(
+        finalPayload.proveedor_id || item?.proveedor_id || 0
+      );
+
+      // Si el modo es beneficiario/tercero, forzamos proveedor_id = null.
+      if (entregaEmitidoModo === 'beneficiario') {
+        finalPayload.proveedor_id = null;
+      } else {
+        // modo proveedor: si no hay proveedor válido, mandamos null (evita strings vacíos)
+        finalPayload.proveedor_id = provIdResolved || null;
+      }
+
+      // Autocompleta destinatario si está vacío y hay proveedor (solo para mejorar trazabilidad)
+      const destTrim = (finalPayload.destinatario || '').trim();
+      if (!destTrim && provIdResolved) {
+        const pSel = proveedores.find((x) => Number(x.id) === provIdResolved);
+        const nombre =
+          pSel?.nombre || pSel?.razon_social || `Proveedor ${provIdResolved}`;
+        finalPayload.destinatario = nombre;
+      }
+
+      // Normaliza destinatario vacío a null (backend más limpio)
+      finalPayload.destinatario =
+        (finalPayload.destinatario || '').trim() || null;
+    }
 
     // Fecha por si quedó vacía
     if (!finalPayload.fecha_operacion) {
@@ -346,86 +385,115 @@ export default function ChequeTransitionModal({
     return null;
   };
 
-  return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          role="dialog"
-          aria-modal="true"
+ return (
+  <AnimatePresence>
+    {open && (
+      <motion.div
+        className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cheque-action-title"
+        aria-describedby="cheque-action-subtitle"
+        tabIndex={-1}
+        /* Benjamin Orellana - 21/01/2026 - Permite cerrar con ESC y mejora accesibilidad con ARIA (title/subtitle). */
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose?.();
+        }}
+      >
+        {/* Overlay */}
+        <div
+          className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/70 backdrop-blur-sm"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+
+        {/* Sheet / Modal */}
+        <motion.form
+          onSubmit={submit}
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 30, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 210, damping: 20 }}
+          className="relative w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl
+                     max-h-[100svh] sm:max-h-[90vh] flex flex-col overflow-hidden
+                     bg-white/90 backdrop-blur-xl ring-1 ring-black/10"
         >
-          {/* Overlay */}
+          {/* Benjamin Orellana - 21/01/2026 - Agrega grab-handle para reforzar el patrón de sheet en mobile sin afectar funcionalidad. */}
+          <div className="sm:hidden px-5 pt-3">
+            <div className="mx-auto h-1.5 w-12 rounded-full bg-black/10" />
+          </div>
+
+          {/* Header */}
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={onClose}
-          />
-
-          {/* Sheet / Modal */}
-          <motion.form
-            onSubmit={submit}
-            initial={{ y: 30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 30, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 210, damping: 20 }}
-            className="relative w-full sm:max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl
-                       max-h-[100svh] sm:max-h-[90vh] flex flex-col overflow-hidden"
+            className={`relative px-5 py-4 border-b border-white/15 bg-gradient-to-r ${meta.grad} text-white`}
           >
-            {/* Header */}
-            <div
-              className={`px-5 py-4 border-b bg-gradient-to-r ${meta.grad} text-white`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="text-2xl">
+            {/* Benjamin Orellana - 21/01/2026 - Añade halo sutil en el header para mejorar profundidad visual sin cambiar colores del gradiente. */}
+            <div className="pointer-events-none absolute inset-0 opacity-30 [background:radial-gradient(circle_at_top,rgba(255,255,255,.28),transparent_55%)]" />
+
+            <div className="relative flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/20">
+                <span className="text-xl">
                   <FaMoneyCheckAlt />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-lg truncate">
-                    {label} — Cheque #{item?.numero}
-                  </h3>
-                  <div className="text-white/90 text-sm truncate">
-                    {item?.banco?.nombre || '—'} •{' '}
-                    {item?.chequera?.descripcion || '—'}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25"
-                >
-                  Cerrar
-                </button>
+                </span>
               </div>
 
-              {/* chips contextuales */}
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span
-                  className={`px-2.5 py-1 rounded-full text-xs ${chipTipo(
-                    item?.tipo
-                  )}`}
+              <div className="flex-1 min-w-0">
+                <h3
+                  id="cheque-action-title"
+                  className="font-semibold text-[17px] leading-tight tracking-tight truncate"
                 >
-                  {item?.tipo || '—'}
-                </span>
-                <span
-                  className={`px-2.5 py-1 rounded-full text-xs ${chipEstado(
-                    item?.estado
-                  )}`}
+                  {label} — Cheque #{item?.numero}
+                </h3>
+                <div
+                  id="cheque-action-subtitle"
+                  className="text-white/90 text-sm truncate"
                 >
-                  {item?.estado || '—'}
-                </span>
+                  {item?.banco?.nombre || '—'} • {item?.chequera?.descripcion || '—'}
+                </div>
               </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 ring-1 ring-white/20
+                           transition active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-white/60"
+              >
+                Cerrar
+              </button>
             </div>
 
-            {/* Content (scrollable) */}
-            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
-              <Hint />
+            {/* chips contextuales */}
+            <div className="relative mt-3 flex flex-wrap items-center gap-2">
+              <span
+                className={`px-2.5 py-1 rounded-full text-xs ${chipTipo(
+                  item?.tipo
+                )} ring-1 ring-white/20 shadow-sm`}
+              >
+                {item?.tipo || '—'}
+              </span>
+              <span
+                className={`px-2.5 py-1 rounded-full text-xs ${chipEstado(
+                  item?.estado
+                )} ring-1 ring-white/20 shadow-sm`}
+              >
+                {item?.estado || '—'}
+              </span>
+            </div>
+          </div>
 
+          {/* Content (scrollable) */}
+          <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5 bg-gradient-to-b from-white/60 to-white">
+            <Hint />
+
+            {/* Benjamin Orellana - 21/01/2026 - Encapsula la fila en “card” para mejorar jerarquía y escaneo visual sin cambiar estructura. */}
+            <div className="rounded-2xl bg-black/[0.03] ring-1 ring-black/5 p-4">
               {/* fila 1 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold">
+                  <label className="block text-[11px] uppercase tracking-widest text-gray-600">
                     Fecha operación
                   </label>
                   <input
@@ -437,46 +505,63 @@ export default function ChequeTransitionModal({
                         fecha_operacion: e.target.value
                       }))
                     }
-                    className="w-full rounded-xl border px-3 py-2"
+                    className="mt-1 w-full rounded-2xl bg-white/80 px-3 py-2.5 text-sm text-gray-900
+                               ring-1 ring-black/10 shadow-sm
+                               focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                   />
                 </div>
 
                 {/* ENTREGAR (EMITIDO): modo proveedor/beneficiario */}
                 {action === 'entregar' && isEmitido && (
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold">
+                    <label className="block text-[11px] uppercase tracking-widest text-gray-600">
                       Entregar a
                     </label>
 
                     {/* Benjamin Orellana - 19/01/2026 - Selector de modo para no exigir proveedor cuando el cheque va a un tercero. */}
-                    <div className="flex gap-2">
+                    {/* Benjamin Orellana - 21/01/2026 - Ajusta el selector a estilo “segmented control” para mejorar claridad del estado activo. */}
+                    <div className="flex gap-2 rounded-2xl bg-black/[0.04] p-1 ring-1 ring-black/10">
                       <button
                         type="button"
                         onClick={() => {
+                          // Benjamin Orellana - 21/01/2026 - Al volver a modo Proveedor desde Beneficiario, limpiamos destinatario para evitar enviar un tercero junto a un proveedor.
+                          if (entregaEmitidoModo === 'beneficiario') {
+                            setPayload((p) => ({ ...p, destinatario: '' }));
+                          }
                           setEntregaEmitidoModo('proveedor');
                         }}
                         className={[
-                          'flex-1 rounded-xl border px-3 py-2 text-sm font-semibold',
+                          'flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-fuchsia-500/30',
                           entregaEmitidoModo === 'proveedor'
-                            ? 'bg-fuchsia-600 text-white border-fuchsia-600'
-                            : 'bg-white text-gray-700 hover:bg-gray-50'
+                            ? 'bg-fuchsia-600 text-white shadow-sm'
+                            : 'bg-transparent text-gray-700 hover:bg-white/60'
                         ].join(' ')}
                       >
                         Proveedor
                       </button>
+
                       <button
                         type="button"
                         onClick={() => {
+                          // Benjamin Orellana - 21/01/2026 - Cambia el modo a Tercero/Beneficiario y limpia proveedor_id para permitir entrega sin proveedor.
                           setEntregaEmitidoModo('beneficiario');
-                          // si el usuario cambia a beneficiario, no obligamos ni dejamos proveedor seleccionado por error
-                          setPayload((p) => ({ ...p, proveedor_id: '' }));
+                          setPayload((p) => ({
+                            ...p,
+                            proveedor_id: '',
+                            // mantenemos destinatario si ya estaba cargado; si no, intentamos precargar desde beneficiario_nombre del cheque
+                            destinatario: (
+                              p.destinatario ||
+                              item?.beneficiario_nombre ||
+                              ''
+                            ).trim()
+                          }));
                           setProveedorNombre('');
                         }}
                         className={[
-                          'flex-1 rounded-xl border px-3 py-2 text-sm font-semibold',
+                          'flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-fuchsia-500/30',
                           entregaEmitidoModo === 'beneficiario'
-                            ? 'bg-fuchsia-600 text-white border-fuchsia-600'
-                            : 'bg-white text-gray-700 hover:bg-gray-50'
+                            ? 'bg-fuchsia-600 text-white shadow-sm'
+                            : 'bg-transparent text-gray-700 hover:bg-white/60'
                         ].join(' ')}
                       >
                         Tercero / Beneficiario
@@ -497,9 +582,7 @@ export default function ChequeTransitionModal({
                           }));
                           setProveedorNombre(nombre);
                         }}
-                        getOptionLabel={(p) =>
-                          p?.nombre || p?.razon_social || ''
-                        }
+                        getOptionLabel={(p) => p?.nombre || p?.razon_social || ''}
                         getOptionValue={(p) => p?.id}
                         placeholder={
                           loadingProveedores
@@ -515,7 +598,7 @@ export default function ChequeTransitionModal({
                       />
                     ) : (
                       <div>
-                        <label className="block text-sm font-semibold">
+                        <label className="block text-[11px] uppercase tracking-widest text-gray-600">
                           Destinatario (beneficiario)
                         </label>
                         <input
@@ -526,7 +609,9 @@ export default function ChequeTransitionModal({
                               destinatario: e.target.value
                             }))
                           }
-                          className="w-full rounded-xl border px-3 py-2"
+                          className="mt-1 w-full rounded-2xl bg-white/80 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400
+                                     ring-1 ring-black/10 shadow-sm
+                                     focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                           placeholder="Nombre del tercero / beneficiario"
                         />
                       </div>
@@ -537,7 +622,7 @@ export default function ChequeTransitionModal({
                 {/* ENTREGAR (RECIBIDO): destinatario libre */}
                 {action === 'entregar' && !isEmitido && (
                   <div>
-                    <label className="block text-sm font-semibold">
+                    <label className="block text-[11px] uppercase tracking-widest text-gray-600">
                       Destinatario
                     </label>
                     <input
@@ -548,44 +633,49 @@ export default function ChequeTransitionModal({
                           destinatario: e.target.value
                         }))
                       }
-                      className="w-full rounded-xl border px-3 py-2"
+                      className="mt-1 w-full rounded-2xl bg-white/80 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400
+                                 ring-1 ring-black/10 shadow-sm
+                                 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
                       placeholder="Tercero"
                     />
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* APLICAR A PROVEEDOR (RECIBIDO): selector proveedor */}
-              {action === 'aplicar-a-proveedor' &&
-                item?.tipo === 'recibido' && (
-                  <SearchableSelect
-                    label="Proveedor *"
-                    items={proveedores}
-                    value={payload.proveedor_id}
-                    onChange={(id) =>
-                      setPayload((p) => ({
-                        ...p,
-                        proveedor_id: Number(id) || ''
-                      }))
-                    }
-                    getOptionLabel={(p) => p?.nombre || p?.razon_social || ''}
-                    getOptionValue={(p) => p?.id}
-                    placeholder={
-                      loadingProveedores
-                        ? 'Cargando proveedores…'
-                        : errorProveedores
-                          ? 'No se pudo cargar'
-                          : 'Seleccionar proveedor…'
-                    }
-                    disabled={loadingProveedores || !!errorProveedores}
-                    required
-                    portal
-                    portalZIndex={5000}
-                  />
-                )}
+            {/* APLICAR A PROVEEDOR (RECIBIDO): selector proveedor */}
+            {action === 'aplicar-a-proveedor' && item?.tipo === 'recibido' && (
+              <div className="rounded-2xl bg-black/[0.03] ring-1 ring-black/5 p-4">
+                <SearchableSelect
+                  label="Proveedor *"
+                  items={proveedores}
+                  value={payload.proveedor_id}
+                  onChange={(id) =>
+                    setPayload((p) => ({
+                      ...p,
+                      proveedor_id: Number(id) || ''
+                    }))
+                  }
+                  getOptionLabel={(p) => p?.nombre || p?.razon_social || ''}
+                  getOptionValue={(p) => p?.id}
+                  placeholder={
+                    loadingProveedores
+                      ? 'Cargando proveedores…'
+                      : errorProveedores
+                        ? 'No se pudo cargar'
+                        : 'Seleccionar proveedor…'
+                  }
+                  disabled={loadingProveedores || !!errorProveedores}
+                  required
+                  portal
+                  portalZIndex={5000}
+                />
+              </div>
+            )}
 
-              {/* Cuenta bancaria (según acción) */}
-              {requiereCuenta && (
+            {/* Cuenta bancaria (según acción) */}
+            {requiereCuenta && (
+              <div className="rounded-2xl bg-black/[0.03] ring-1 ring-black/5 p-4">
                 <SearchableSelect
                   label="Cuenta bancaria destino *"
                   items={cuentas}
@@ -616,58 +706,65 @@ export default function ChequeTransitionModal({
                   portalZIndex={5000}
                   menuPlacement="auto"
                 />
-              )}
-
-              {/* Motivo / Nota */}
-              <div>
-                <label className="block text-sm font-semibold">
-                  Motivo / Nota
-                </label>
-                <textarea
-                  value={payload.motivo_estado}
-                  onChange={(e) =>
-                    setPayload((p) => ({ ...p, motivo_estado: e.target.value }))
-                  }
-                  rows={3}
-                  className="w-full rounded-xl border px-3 py-2"
-                  placeholder="Detalle o aclaración (opcional)"
-                />
               </div>
+            )}
 
-              {/* warnings sutiles */}
-              {errorProveedores && (
-                <div className="flex items-start gap-2 text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">
-                  <FaExclamationTriangle className="mt-0.5" />
-                  <p className="text-sm">{errorProveedores}</p>
-                </div>
-              )}
-              {errorCuentas && (
-                <div className="flex items-start gap-2 text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">
-                  <FaExclamationTriangle className="mt-0.5" />
-                  <p className="text-sm">{errorCuentas}</p>
-                </div>
-              )}
+            {/* Motivo / Nota */}
+            <div className="rounded-2xl bg-black/[0.03] ring-1 ring-black/5 p-4">
+              <label className="block text-[11px] uppercase tracking-widest text-gray-600">
+                Motivo / Nota
+              </label>
+              <textarea
+                value={payload.motivo_estado}
+                onChange={(e) =>
+                  setPayload((p) => ({ ...p, motivo_estado: e.target.value }))
+                }
+                rows={3}
+                className="mt-1 w-full rounded-2xl bg-white/80 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400
+                           ring-1 ring-black/10 shadow-sm resize-none
+                           focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                placeholder="Detalle o aclaración (opcional)"
+              />
             </div>
 
-            {/* Footer */}
-            <div className="px-5 py-4 border-t bg-white sticky bottom-0 flex gap-2 justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-xl border text-gray-700 hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700"
-              >
-                Confirmar
-              </button>
-            </div>
-          </motion.form>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+            {/* warnings sutiles */}
+            {errorProveedores && (
+              <div className="flex items-start gap-2 text-rose-700 bg-rose-50 border border-rose-200 rounded-2xl p-3">
+                <FaExclamationTriangle className="mt-0.5" />
+                <p className="text-sm">{errorProveedores}</p>
+              </div>
+            )}
+            {errorCuentas && (
+              <div className="flex items-start gap-2 text-rose-700 bg-rose-50 border border-rose-200 rounded-2xl p-3">
+                <FaExclamationTriangle className="mt-0.5" />
+                <p className="text-sm">{errorCuentas}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-5 py-4 border-t border-black/10 bg-white/80 backdrop-blur-xl sticky bottom-0 flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-2xl border border-black/10 text-gray-800 hover:bg-black/[0.03]
+                         transition active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-semibold
+                         shadow-sm hover:from-emerald-700 hover:to-emerald-800 transition active:scale-[0.99]
+                         focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+            >
+              Confirmar
+            </button>
+          </div>
+        </motion.form>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
 }
