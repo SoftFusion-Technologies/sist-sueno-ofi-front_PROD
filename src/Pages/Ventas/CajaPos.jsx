@@ -45,6 +45,11 @@ import {
 } from '../../utils/utils.js';
 // Microcomponente Glass Card
 import Swal from 'sweetalert2';
+// Benjamin Orellana - 22 / 01 / 2026 - Se extrae la grilla de KPIs a un componente reutilizable
+import CajaKpiGrid from './Components/CajaKpiGrid.jsx';
+import CajaCatalogosModal from '../Caja/components/CajaCatalogosModal.jsx';
+// Benjamin Orellana - 23 / 01 / 2026 - Modal movimiento manual
+import CajaMovimientoManualModal from './Components/CajaMovimientoManualModal.jsx';
 
 const toast = Swal.mixin({
   toast: true,
@@ -126,11 +131,20 @@ export default function CajaPOS() {
   const [movimientos, setMovimientos] = useState([]);
   const [saldoInicial, setSaldoInicial] = useState('');
   const [cargando, setCargando] = useState(true);
+  // Benjamin Orellana - 23/01/2026 - Se incorporan rubro_id/cuenta_id al movimiento manual y estados para catálogos de Caja.
   const [nuevoMovimiento, setNuevoMovimiento] = useState({
     tipo: 'ingreso',
     monto: '',
-    descripcion: ''
+    descripcion: '',
+    rubro_id: '', // string para <select>
+    cuenta_id: '' // string para <select>
   });
+  // Benjamin Orellana - 23/01/2026 - Catálogos necesarios para clasificar movimientos (rubros y cuentas dependientes por rubro).
+  const [rubrosCaja, setRubrosCaja] = useState([]);
+  const [cuentasCaja, setCuentasCaja] = useState([]);
+  const [loadingRubrosCaja, setLoadingRubrosCaja] = useState(false);
+  const [loadingCuentasCaja, setLoadingCuentasCaja] = useState(false);
+
   const [historial, setHistorial] = useState([]);
   const [showHistorial, setShowHistorial] = useState(false);
 
@@ -168,6 +182,12 @@ export default function CajaPOS() {
     saldo_actual: 0,
     meta: { include_c2: false, canal: 'C1' }
   });
+
+  const [openCatalogos, setOpenCatalogos] = useState(false);
+  const [openMovManual, setOpenMovManual] = useState(false);
+
+  const canManageCatalogos = ['socio', 'administrativo'].includes(userLevel);
+
   const buildCanalParams = (forcedIncludeC2) => {
     const params = new URLSearchParams();
 
@@ -203,7 +223,7 @@ export default function CajaPOS() {
         headers: { 'X-User-Id': String(userId ?? '') }
       });
 
-      setMovsCaja(Array.isArray(res.data) ? res.data : res.data?.data ?? []);
+      setMovsCaja(Array.isArray(res.data) ? res.data : (res.data?.data ?? []));
     } catch (e) {
       setErrorMovs(
         e?.response?.data?.mensajeError ||
@@ -243,7 +263,7 @@ export default function CajaPOS() {
       headers: { 'X-User-Id': String(userId ?? '') }
     });
 
-    const rows = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+    const rows = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
     setMovimientos(rows);
     return rows;
   };
@@ -402,6 +422,143 @@ export default function CajaPOS() {
     setShowHistorial(true);
   };
 
+  // Benjamin Orellana - 23/01/2026 - Helpers para cargar catálogos de Caja (rubros y cuentas permitidas por rubro).
+  const fetchRubrosCaja = async () => {
+    setLoadingRubrosCaja(true);
+    try {
+      const { data } = await axios.get(`${BASE_URL}/caja/rubros`);
+      const arr = Array.isArray(data) ? data : (data?.data ?? []);
+
+      // Normaliza "activo" y ordena
+      const norm = arr
+        .map((r) => ({
+          ...r,
+          activo: r?.activo != null ? Number(r.activo) : 1
+        }))
+        .filter((r) => Number(r.activo) === 1)
+        .sort((a, b) => {
+          const ao = a?.orden ?? 9999;
+          const bo = b?.orden ?? 9999;
+          if (ao !== bo) return Number(ao) - Number(bo);
+          return String(a?.nombre ?? '').localeCompare(String(b?.nombre ?? ''));
+        });
+
+      setRubrosCaja(norm);
+    } catch (err) {
+      setRubrosCaja([]);
+      console.warn('[fetchRubrosCaja] error:', err?.message);
+    } finally {
+      setLoadingRubrosCaja(false);
+    }
+  };
+
+  const fetchCuentasByRubro = async (rubroId) => {
+    if (!rubroId) {
+      setCuentasCaja([]);
+      return;
+    }
+
+    setLoadingCuentasCaja(true);
+    try {
+      const { data } = await axios.get(
+        `${BASE_URL}/caja/rubros/${rubroId}/cuentas`
+      );
+      const arr = Array.isArray(data) ? data : (data?.data ?? []);
+
+      const norm = arr
+        .map((c) => ({
+          ...c,
+          activo: c?.activo != null ? Number(c.activo) : 1
+        }))
+        .filter((c) => Number(c.activo) === 1)
+        .sort((a, b) => {
+          const ao = a?.orden ?? 9999;
+          const bo = b?.orden ?? 9999;
+          if (ao !== bo) return Number(ao) - Number(bo);
+          return String(a?.nombre ?? '').localeCompare(String(b?.nombre ?? ''));
+        });
+
+      setCuentasCaja(norm);
+    } catch (err) {
+      setCuentasCaja([]);
+      console.warn('[fetchCuentasByRubro] error:', err?.message);
+    } finally {
+      setLoadingCuentasCaja(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRubrosCaja();
+  }, []);
+
+  // Benjamin Orellana - 23/01/2026 - Cachea catálogos de Caja (rubros y cuentas) para mostrar nombres en el detalle de movimiento.
+  const [cajaRubrosById, setCajaRubrosById] = useState({});
+  const [cajaCuentasById, setCajaCuentasById] = useState({});
+
+  const fetchCajaCatalogos = async () => {
+    try {
+      const headers = { 'X-User-Id': String(userId ?? '') };
+
+      const [rubrosRes, cuentasRes] = await Promise.all([
+        axios.get(`${BASE_URL}/caja/rubros`, { headers }),
+        axios.get(`${BASE_URL}/caja/cuentas`, { headers })
+      ]);
+
+      const rubrosArr = Array.isArray(rubrosRes.data)
+        ? rubrosRes.data
+        : (rubrosRes.data?.data ?? []);
+
+      const cuentasArr = Array.isArray(cuentasRes.data)
+        ? cuentasRes.data
+        : (cuentasRes.data?.data ?? []);
+
+      const rubrosMap = {};
+      rubrosArr.forEach((r) => {
+        const id = Number(r?.id);
+        if (Number.isFinite(id)) rubrosMap[id] = r;
+      });
+
+      const cuentasMap = {};
+      cuentasArr.forEach((c) => {
+        const id = Number(c?.id);
+        if (Number.isFinite(id)) cuentasMap[id] = c;
+      });
+
+      setCajaRubrosById(rubrosMap);
+      setCajaCuentasById(cuentasMap);
+    } catch (e) {
+      console.warn('[CajaPos] fetchCajaCatalogos no crítico:', e?.message);
+    }
+  };
+
+  // Benjamin Orellana - 23/01/2026 - Pre-carga catálogos al abrir el detalle para resolver rubro/cuenta por nombre.
+  useEffect(() => {
+    if (!openDetalle) return;
+
+    const needsRubros =
+      !cajaRubrosById || Object.keys(cajaRubrosById).length === 0;
+    const needsCuentas =
+      !cajaCuentasById || Object.keys(cajaCuentasById).length === 0;
+
+    if (needsRubros || needsCuentas) {
+      fetchCajaCatalogos();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openDetalle]);
+
+  // Benjamin Orellana - 23/01/2026 - Helpers para resolver etiquetas de rubro/cuenta desde cache (fallback por ID).
+  const getRubroLabel = (mov) => {
+    const id = mov?.rubro_id != null ? Number(mov.rubro_id) : null;
+    if (!id) return null;
+    return cajaRubrosById?.[id]?.nombre ?? `#${id}`;
+  };
+
+  const getCuentaLabel = (mov) => {
+    const id = mov?.cuenta_id != null ? Number(mov.cuenta_id) : null;
+    if (!id) return null;
+    return cajaCuentasById?.[id]?.nombre ?? `#${id}`;
+  };
+
   const abrirCaja = async () => {
     if (
       saldoInicial === '' ||
@@ -549,25 +706,50 @@ export default function CajaPOS() {
     }
   };
 
-  const registrarMovimiento = async () => {
+  const registrarMovimiento = async (override = null) => {
     // 1) Verificar en backend si sigue abierta
     const verif = await ensureCajaAbierta({ notify: true, refreshMovs: false });
-    if (!verif.ok || !verif.caja?.id) return;
+    if (!verif.ok || !verif.caja?.id) return false;
 
-    // Aseguramos usar la caja del server (por si cambió)
     const cajaId = verif.caja.id;
 
+    // Fuente de datos: modal override o state local
+    const src = override ?? nuevoMovimiento;
+
+    const descripcion = String(src.descripcion || '').trim();
+    const monto = Number(src.monto);
+
+    const rubro_id =
+      src.rubro_id === '' || src.rubro_id == null ? null : Number(src.rubro_id);
+    const cuenta_id =
+      src.cuenta_id === '' || src.cuenta_id == null
+        ? null
+        : Number(src.cuenta_id);
+
     // 2) Validaciones
-    if (
-      !nuevoMovimiento.descripcion ||
-      !nuevoMovimiento.monto ||
-      isNaN(Number(nuevoMovimiento.monto))
-    ) {
+    if (!descripcion || !Number.isFinite(monto) || monto <= 0) {
       await swalError(
         'Datos incompletos',
         'Completá descripción y monto válido.'
       );
-      return;
+      return false;
+    }
+
+    // Regla UX + backend
+    if (rubro_id != null && (Number.isNaN(rubro_id) || rubro_id <= 0)) {
+      await swalError('Rubro inválido', 'Seleccioná un rubro válido.');
+      return false;
+    }
+    if (cuenta_id != null && (Number.isNaN(cuenta_id) || cuenta_id <= 0)) {
+      await swalError('Cuenta inválida', 'Seleccioná una cuenta válida.');
+      return false;
+    }
+    if (rubro_id != null && cuenta_id == null) {
+      await swalError(
+        'Cuenta requerida',
+        'Si elegís un rubro, debés elegir una cuenta permitida para ese rubro.'
+      );
+      return false;
     }
 
     try {
@@ -575,29 +757,36 @@ export default function CajaPOS() {
 
       await axios.post(`${BASE_URL}/movimientos_caja`, {
         caja_id: cajaId,
-        tipo: nuevoMovimiento.tipo,
-        descripcion: nuevoMovimiento.descripcion,
-        monto: Number(nuevoMovimiento.monto),
+        tipo: src.tipo,
+        descripcion,
+        monto,
         usuario_id: userId,
-        canal: 'C1' // manual = oficial
+        canal: 'C1', // manual = oficial
+        rubro_id,
+        cuenta_id
       });
 
-      // 3) Refrescar movimientos (y por ende saldo UI)
       await refreshCajaUI(cajaId);
 
-      setNuevoMovimiento({ tipo: 'ingreso', monto: '', descripcion: '' });
+      setNuevoMovimiento({
+        tipo: 'ingreso',
+        monto: '',
+        descripcion: '',
+        rubro_id: '',
+        cuenta_id: ''
+      });
 
       Swal.close();
       toast.fire({ icon: 'success', title: 'Movimiento registrado' });
+      return true;
     } catch (err) {
       Swal.close();
       await swalError(
         'Error al registrar movimiento',
         err.response?.data?.mensajeError || 'No se pudo registrar el movimiento'
       );
-
-      // Opcional: si el backend falló por caja cerrada, refrescamos estado
       await ensureCajaAbierta({ notify: true, refreshMovs: true });
+      return false;
     }
   };
 
@@ -683,6 +872,17 @@ export default function CajaPOS() {
     detalleCaja?.saldo_final_total ?? saldoFinalC1 + saldoFinalC2
   );
 
+  // Benjamin Orellana - 23/01/2026 - Resuelve nombre de Rubro/Cuenta desde cache; si no existe, usa fallback por ID.
+  const rubroLabel = movSel?.rubro_id
+    ? (cajaRubrosById?.[Number(movSel.rubro_id)]?.nombre ??
+      `#${movSel.rubro_id}`)
+    : null;
+
+  const cuentaLabel = movSel?.cuenta_id
+    ? (cajaCuentasById?.[Number(movSel.cuenta_id)]?.nombre ??
+      `#${movSel.cuenta_id}`)
+    : null;
+
   // RESPONSIVE & GLASS
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#101016] via-[#181A23] to-[#11192b] px-2 py-8">
@@ -696,15 +896,32 @@ export default function CajaPOS() {
         transition={{ duration: 0.5 }}
       >
         <GlassCard className="shadow-2xl">
-          <div className="flex items-center gap-2">
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${
-                includeC2 ? 'bg-red-500' : 'bg-emerald-400'
-              }`}
-            />
-            <h1 className="flex gap-3 items-center text-2xl md:text-3xl font-bold text-emerald-400 tracking-wider">
-              <FaCashRegister className="text-emerald-400 text-3xl" /> CAJA
-            </h1>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${includeC2 ? 'bg-red-500' : 'bg-emerald-400'}`}
+              />
+              <h1 className="titulo flex gap-3 items-center text-2xl md:text-3xl font-bold text-emerald-400 tracking-wider">
+                <FaCashRegister className="text-emerald-400 text-3xl" /> CAJA
+              </h1>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setOpenCatalogos(true)}
+              disabled={!canManageCatalogos}
+              className={[
+                'px-3 py-2 rounded-lg border text-xs font-semibold transition',
+                canManageCatalogos
+                  ? 'border-white/50 text-gray-100 hover:bg-white/5'
+                  : 'border-white/5 text-gray-500 cursor-not-allowed'
+              ].join(' ')}
+              title={
+                canManageCatalogos ? 'Administrar catálogos' : 'Sin permisos'
+              }
+            >
+              Rubros / Cuentas
+            </button>
           </div>
 
           {cargando ? (
@@ -715,56 +932,27 @@ export default function CajaPOS() {
             </div>
           ) : cajaActual ? (
             <>
-              <div className="flex flex-col md:flex-row md:justify-between gap-3 mb-3 text-sm">
+              <div className="mt-3 flex flex-col md:flex-row md:justify-between gap-3 mb-3 text-sm">
                 <span>
-                  <b className="text-white">Caja abierta</b> #{cajaActual.id}
+                  <b className="text-white ">Caja abierta</b>
+                  <span className="ml-1 text-amber-300">#{cajaActual.id}</span>
                 </span>
-                <span className="text-emerald-200">
+                <span className="text-emerald-400">
                   Apertura:{' '}
                   {new Date(cajaActual.fecha_apertura).toLocaleString()}
                 </span>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-                <div className="bg-black/30 rounded-lg px-4 py-2 flex flex-col items-center">
-                  <span className="text-xs text-gray-300">Saldo inicial</span>
-                  <span className="font-bold text-emerald-300 text-lg">
-                    {formatearPeso(cajaActual.saldo_inicial)}
-                  </span>
-                </div>
 
-                <div className="bg-black/30 rounded-lg px-4 py-2 flex flex-col items-center">
-                  <span className="text-xs text-gray-300">
-                    {includeC2 ? 'Ingresos (Total)' : 'Ingresos (C1)'}
-                  </span>
-                  <span className="font-bold text-green-400 text-lg">
-                    +{formatearPeso(totalIngresosUI)}
-                  </span>
-                </div>
-
-                <div className="bg-black/30 rounded-lg px-4 py-2 flex flex-col items-center">
-                  <span className="text-xs text-gray-300">
-                    {includeC2 ? 'Egresos (Total)' : 'Egresos (C1)'}
-                  </span>
-                  <span className="font-bold text-red-400 text-lg">
-                    -{formatearPeso(totalEgresosUI)}
-                  </span>
-                </div>
-
-                <div className="bg-black/40 rounded-lg px-4 py-2 flex flex-col items-center border border-emerald-700 shadow-inner">
-                  <span className="text-xs text-gray-300">
-                    {includeC2 ? 'Saldo total (C1 + C2)' : 'Saldo actual (C1)'}
-                  </span>
-                  <span className="font-bold text-emerald-400 text-xl">
-                    {formatearPeso(saldoActualUI)}
-                  </span>
-
-                  {/* opcional: micro-indicador */}
-                  <span className="text-[10px] text-gray-400 mt-0.5">
-                    {includeC2 ? 'Auditoría (F10)' : 'Normal'}
-                  </span>
-                </div>
-              </div>
-
+              {/* Benjamin Orellana - 22 / 01 / 2026 - KPIs de caja extraídos a CajaKpiGrid */}
+              <CajaKpiGrid
+                cajaActual={cajaActual}
+                includeC2={includeC2}
+                totalIngresosUI={totalIngresosUI}
+                totalEgresosUI={totalEgresosUI}
+                saldoActualUI={saldoActualUI}
+                formatearPeso={formatearPeso}
+              />
+              {/* ===== Movimientos ===== */}
               <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a1f25] to-[#222832] p-3 shadow-xl">
                 {/* Título */}
                 <h2 className="text-white text-lg font-semibold mb-2">
@@ -834,19 +1022,23 @@ export default function CajaPOS() {
                       const Icono = venta
                         ? FaCashRegister
                         : ingreso
-                        ? FaPlus
-                        : FaMinus;
+                          ? FaPlus
+                          : FaMinus;
 
                       const rowTheme = venta
                         ? 'from-emerald-950/60 to-emerald-900/40 hover:from-emerald-900/60 hover:to-emerald-800/50'
                         : egreso
-                        ? 'from-red-950/60 to-red-900/40 hover:from-red-900/60 hover:to-red-800/50'
-                        : 'from-green-950/60 to-green-900/40 hover:from-green-900/60 hover:to-green-800/50';
+                          ? 'from-red-950/60 to-red-900/40 hover:from-red-900/60 hover:to-red-800/50'
+                          : 'from-green-950/60 to-green-900/40 hover:from-green-900/60 hover:to-green-800/50';
 
                       const amountColor = ingreso
                         ? 'text-emerald-300'
                         : 'text-red-300';
                       const sign = ingreso ? '+' : '-';
+
+                      // Benjamin Orellana - 23/01/2026 - Labels rubro/cuenta para chips (resueltos desde cache).
+                      const rubroLabel = getRubroLabel(m);
+                      const cuentaLabel = getCuentaLabel(m);
 
                       return (
                         <motion.div
@@ -855,7 +1047,7 @@ export default function CajaPOS() {
                             setMovSel(m);
                             setOpenDetalle(true);
                           }}
-                          className={`rounded-xl  outline-1 outline-white/5 bg-gradient-to-r ${rowTheme} p-3 mb-2 transition cursor-pointer`}
+                          className={`rounded-xl outline-1 outline-white/5 bg-gradient-to-r ${rowTheme} p-3 mb-2 transition cursor-pointer`}
                           initial={{ opacity: 0, x: 30 }}
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0 }}
@@ -869,8 +1061,8 @@ export default function CajaPOS() {
                                   ingreso
                                     ? 'text-emerald-300'
                                     : egreso
-                                    ? 'text-red-300'
-                                    : 'text-emerald-300'
+                                      ? 'text-red-300'
+                                      : 'text-emerald-300'
                                 }
                               />
                               <div className="flex-1 min-w-0">
@@ -886,30 +1078,31 @@ export default function CajaPOS() {
                                 <div className="mt-1 flex items-center gap-2 flex-wrap">
                                   <span
                                     className={`text-[10px] px-2 py-0.5 rounded-full border
-                      ${
-                        ingreso
-                          ? 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30'
-                          : egreso
-                          ? 'bg-red-400/10 text-red-300 border-red-400/30'
-                          : 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30'
-                      }`}
+                        ${
+                          ingreso
+                            ? 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30'
+                            : egreso
+                              ? 'bg-red-400/10 text-red-300 border-red-400/30'
+                              : 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30'
+                        }`}
                                   >
                                     {venta
                                       ? 'Venta'
                                       : ingreso
-                                      ? 'Ingreso'
-                                      : 'Egreso'}
+                                        ? 'Ingreso'
+                                        : 'Egreso'}
                                   </span>
                                   <span className="text-[11px] text-gray-300 font-mono tabular-nums">
                                     {fechaCorta(m.fecha)} · {horaCorta(m.fecha)}
                                   </span>
+
                                   {ingreso &&
                                     m.referencia &&
                                     /^\d+$/.test(m.referencia) && (
                                       <button
                                         type="button"
                                         onClick={(e) => {
-                                          e.stopPropagation(); // 👈 evita abrir el modal de movimiento
+                                          e.stopPropagation(); // evita abrir el modal de movimiento
                                           mostrarDetalleVenta(
                                             Number(m.referencia)
                                           );
@@ -921,6 +1114,34 @@ export default function CajaPOS() {
                                       </button>
                                     )}
                                 </div>
+
+                                {/* Benjamin Orellana - 23/01/2026 - Chips de rubro/cuenta en lista (mobile) para identificar clasificación sin abrir detalle. */}
+                                {(m.rubro_id || m.cuenta_id) && (
+                                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    {m.rubro_id && (
+                                      <span
+                                        className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-gray-200"
+                                        title={rubroLabel || ''}
+                                      >
+                                        Rubro:{' '}
+                                        <span className="font-semibold text-gray-100">
+                                          {rubroLabel}
+                                        </span>
+                                      </span>
+                                    )}
+                                    {m.cuenta_id && (
+                                      <span
+                                        className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-gray-200"
+                                        title={cuentaLabel || ''}
+                                      >
+                                        Cuenta:{' '}
+                                        <span className="font-semibold text-gray-100">
+                                          {cuentaLabel}
+                                        </span>
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
 
                               {/* Importe a la derecha */}
@@ -941,8 +1162,8 @@ export default function CajaPOS() {
                                   ingreso
                                     ? 'text-emerald-300'
                                     : egreso
-                                    ? 'text-red-300'
-                                    : 'text-emerald-300'
+                                      ? 'text-red-300'
+                                      : 'text-emerald-300'
                                 }
                               />
                             </span>
@@ -954,22 +1175,45 @@ export default function CajaPOS() {
                               >
                                 {m.descripcion}
                               </span>
+
                               <span
                                 className={`text-[10px] px-2 py-0.5 rounded-full border
-                  ${
-                    ingreso
-                      ? 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30'
-                      : egreso
-                      ? 'bg-red-400/10 text-red-300 border-red-400/30'
-                      : 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30'
-                  }`}
+                    ${
+                      ingreso
+                        ? 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30'
+                        : egreso
+                          ? 'bg-red-400/10 text-red-300 border-red-400/30'
+                          : 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30'
+                    }`}
                               >
                                 {venta
                                   ? 'Venta'
                                   : ingreso
-                                  ? 'Ingreso'
-                                  : 'Egreso'}
+                                    ? 'Ingreso'
+                                    : 'Egreso'}
                               </span>
+
+                              {/* Benjamin Orellana - 23/01/2026 - Chips rubro/cuenta en desktop para lectura rápida en lista. */}
+                              {(m.rubro_id || m.cuenta_id) && (
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {m.rubro_id && (
+                                    <span
+                                      className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-gray-200 truncate max-w-[160px]"
+                                      title={rubroLabel || ''}
+                                    >
+                                      {rubroLabel}
+                                    </span>
+                                  )}
+                                  {m.cuenta_id && (
+                                    <span
+                                      className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-gray-200 truncate max-w-[180px]"
+                                      title={cuentaLabel || ''}
+                                    >
+                                      {cuentaLabel}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
 
                             <div
@@ -990,7 +1234,7 @@ export default function CajaPOS() {
                                 <button
                                   type="button"
                                   onClick={(e) => {
-                                    e.stopPropagation(); // 👈 importante
+                                    e.stopPropagation(); // importante
                                     mostrarDetalleVenta(Number(m.referencia));
                                   }}
                                   className="text-emerald-300 text-xs font-semibold underline hover:text-emerald-200"
@@ -1009,61 +1253,44 @@ export default function CajaPOS() {
                   )}
                 </div>
               </div>
-              {/* Registrar movimiento manual */}
+
+              {/* Registrar movimiento manual (ahora por modal) */}
               {userLevel !== 'contador' && (
                 <div className="mt-8">
-                  <h3 className="font-bold mb-3 flex gap-2 items-center text-lg text-white">
-                    <FaPlus /> Registrar movimiento manual
-                  </h3>
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <select
-                      value={nuevoMovimiento.tipo}
-                      onChange={(e) =>
-                        setNuevoMovimiento({
-                          ...nuevoMovimiento,
-                          tipo: e.target.value
-                        })
-                      }
-                      className="rounded-lg p-2 bg-[#232323] text-white border border-emerald-500 focus:ring-emerald-500"
-                    >
-                      <option value="ingreso">Ingreso</option>
-                      <option value="egreso">Egreso</option>
-                    </select>
-                    <input
-                      type="number"
-                      min={0}
-                      value={nuevoMovimiento.monto}
-                      onChange={(e) =>
-                        setNuevoMovimiento({
-                          ...nuevoMovimiento,
-                          monto: e.target.value
-                        })
-                      }
-                      placeholder="Monto"
-                      className="rounded-lg p-2 bg-[#232323] text-white border border-emerald-500 focus:ring-emerald-500"
-                    />
-                    <input
-                      type="text"
-                      value={nuevoMovimiento.descripcion}
-                      onChange={(e) =>
-                        setNuevoMovimiento({
-                          ...nuevoMovimiento,
-                          descripcion: e.target.value
-                        })
-                      }
-                      placeholder="Descripción"
-                      className="rounded-lg p-2 bg-[#232323] text-white border border-emerald-500 focus:ring-emerald-500"
-                      maxLength={70}
-                    />
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <h3 className="font-bold flex gap-2 items-center text-lg text-white titulo uppercase">
+                      <FaPlus /> Movimientos
+                    </h3>
+
                     <button
-                      onClick={registrarMovimiento}
-                      className="bg-emerald-600 px-4 py-2 rounded-lg hover:bg-emerald-700 font-bold shadow-lg transition"
+                      type="button"
+                      onClick={() => setOpenMovManual(true)}
+                      className="px-4 py-2 rounded-xl font-extrabold text-sm border
+                   bg-emerald-500/15 text-emerald-200 border-emerald-400/25
+                   hover:bg-emerald-500/20 transition shadow-lg"
                     >
-                      <FaPlus />
+                      Registrar movimiento manual
                     </button>
+                  </div>
+
+                  <div className="text-xs text-gray-400 mt-2">
+                    Se registrará en canal C1. Podés clasificar por Rubro y
+                    Cuenta.
                   </div>
                 </div>
               )}
+
+              <CajaMovimientoManualModal
+                open={openMovManual}
+                onClose={() => setOpenMovManual(false)}
+                baseUrl={BASE_URL}
+                userId={userId}
+                onSubmit={async (payload) => {
+                  const ok = await registrarMovimiento(payload);
+                  // si ok, el modal se cierra solo desde el componente (por retorno true)
+                  return ok;
+                }}
+              />
 
               {userLevel !== 'contador' && (
                 <button
@@ -1484,7 +1711,6 @@ export default function CajaPOS() {
                 <h3 className="text-2xl font-black text-emerald-400 tracking-tight flex items-center gap-2 drop-shadow">
                   <FaMoneyBillWave /> Caja #{detalleCaja.id}
                 </h3>
-               
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5 text-[15px]">
@@ -1637,14 +1863,14 @@ export default function CajaPOS() {
                 const bar = ingreso
                   ? 'from-emerald-500 to-emerald-400'
                   : egreso
-                  ? 'from-red-500 to-red-400'
-                  : 'from-emerald-500 to-emerald-400';
+                    ? 'from-red-500 to-red-400'
+                    : 'from-emerald-500 to-emerald-400';
 
                 const chip = ingreso
                   ? 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/30'
                   : egreso
-                  ? 'bg-red-400/10 text-red-300 border border-red-400/30'
-                  : 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/30';
+                    ? 'bg-red-400/10 text-red-300 border border-red-400/30'
+                    : 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/30';
 
                 const amountColor = ingreso
                   ? 'text-emerald-400'
@@ -1664,7 +1890,7 @@ export default function CajaPOS() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3
                             id="detalle-mov-title"
-                            className="text-lg font-bold"
+                            className="text-lg font-bold titulo uppercase"
                           >
                             Detalle de movimiento
                             {movSel.id ? ` #${movSel.id}` : ''}
@@ -1679,6 +1905,28 @@ export default function CajaPOS() {
                         <p className="mt-1 text-sm text-gray-200 whitespace-pre-wrap break-words">
                           {movSel.descripcion || '—'}
                         </p>
+                        {/* Benjamin Orellana - 23/01/2026 - Muestra rubro y cuenta asociados al movimiento (si existen) para mayor trazabilidad. */}
+                        {(rubroLabel || cuentaLabel) && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            {rubroLabel && (
+                              <span className="text-[11px] px-2 py-1 rounded-full bg-white/10 border border-white/10 text-gray-200">
+                                Rubro:{' '}
+                                <span className="font-semibold text-gray-100">
+                                  {rubroLabel}
+                                </span>
+                              </span>
+                            )}
+
+                            {cuentaLabel && (
+                              <span className="text-[11px] px-2 py-1 rounded-full bg-white/10 border border-white/10 text-gray-200">
+                                Cuenta:{' '}
+                                <span className="font-semibold text-gray-100">
+                                  {cuentaLabel}
+                                </span>
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <button
@@ -1904,8 +2152,8 @@ export default function CajaPOS() {
                     m.tipo === 'ingreso'
                       ? 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30'
                       : m.tipo === 'egreso'
-                      ? 'bg-red-400/10 text-red-300 border-red-400/30'
-                      : 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30'
+                        ? 'bg-red-400/10 text-red-300 border-red-400/30'
+                        : 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30'
                   }`}
                       >
                         {m.tipo}
@@ -1936,6 +2184,12 @@ export default function CajaPOS() {
           </motion.div>
         )}
       </AnimatePresence>
+      <CajaCatalogosModal
+        open={openCatalogos}
+        onClose={() => setOpenCatalogos(false)}
+        baseUrl={BASE_URL}
+        userId={userId}
+      />
     </div>
   );
 }
