@@ -96,6 +96,50 @@ export default function ChequesCards() {
   const [kpisLoading, setKpisLoading] = useState(false);
   const [kpisError, setKpisError] = useState('');
 
+  // Benjamin Orellana - 23/01/2026 - Estado y helpers para navegación mensual (periodo_mes=YYYY-MM-01) para filtrar/exportar por mes.
+  const [periodoMes, setPeriodoMes] = useState(''); // '' = Todos los meses
+
+  const toPeriodoMes = (dateObj) => {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}-01`;
+  };
+
+  const periodoMesToDate = (periodo) => {
+    // periodo esperado: YYYY-MM-01
+    if (!periodo) return null;
+    const [y, m] = String(periodo).split('-').map(Number);
+    if (!y || !m) return null;
+    return new Date(y, m - 1, 1);
+  };
+
+  const labelPeriodo = (periodo) => {
+    const d = periodoMesToDate(periodo);
+    if (!d) return 'TODOS LOS MESES';
+    return d
+      .toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+      .toUpperCase();
+  };
+
+  const movePeriodo = (deltaMonths) => {
+    setPage(1);
+    const base =
+      periodoMesToDate(periodoMes) ||
+      new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const next = new Date(base.getFullYear(), base.getMonth() + deltaMonths, 1);
+    setPeriodoMes(toPeriodoMes(next));
+  };
+
+  const setPeriodoActual = () => {
+    setPage(1);
+    setPeriodoMes(toPeriodoMes(new Date()));
+  };
+
+  const clearPeriodo = () => {
+    setPage(1);
+    setPeriodoMes('');
+  };
+
   // handler
   const handleImagenes = (row) => {
     setChequeImagen(row);
@@ -146,6 +190,9 @@ export default function ChequesCards() {
 
     // formato
     if (formato) params.formato = formato;
+
+    // Benjamin Orellana - 23/01/2026 - Se agrega periodo_mes para filtrar por mes (cheques_periodos).
+    if (periodoMes) params.periodo_mes = periodoMes;
 
     return params;
   };
@@ -200,7 +247,18 @@ export default function ChequesCards() {
   useEffect(() => {
     fetchData();
     fetchKpis();
-  }, [dq, bancoId, chequeraId, tipo, estado, from, to, page, formato]);
+  }, [
+    dq,
+    bancoId,
+    chequeraId,
+    tipo,
+    estado,
+    from,
+    to,
+    page,
+    formato,
+    periodoMes
+  ]);
 
   const nombreBanco = (id) =>
     bancos.find((b) => Number(b.id) === Number(id))?.nombre ||
@@ -477,6 +535,8 @@ export default function ChequesCards() {
       if (from) params.set('cobro_from', from);
       if (to) params.set('cobro_to', to);
       if (formato) params.set('formato', formato);
+      // Benjamin Orellana - 23/01/2026 - Se agrega periodo_mes al export para respetar el mes seleccionado.
+      if (periodoMes) params.set('periodo_mes', periodoMes);
 
       // endpoint backend
       const url = `https://api.rioromano.com.ar/cheques/export/excel${params.toString() ? `?${params.toString()}` : ''}`;
@@ -676,7 +736,91 @@ export default function ChequesCards() {
                 </button>
               </div>
             </div>
+            {/* Benjamin Orellana - 23/01/2026 - Navegación mensual para filtrar/exportar por periodo_mes */}
+            <div className="mb-4 mt-6">
+              <div className="relative rounded-2xl border border-white/15 bg-white/10 backdrop-blur-xl shadow-[0_10px_40px_-20px_rgba(0,0,0,0.6)] overflow-hidden">
+                {/* Glow / Accent */}
+                <div className="pointer-events-none absolute inset-0">
+                  <div className="absolute -top-24 -left-24 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl" />
+                  <div className="absolute -bottom-24 -right-24 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0" />
+                </div>
+
+                <div className="relative p-3 sm:p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                  {/* Left: Month Selector */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => movePeriodo(-1)}
+                        className="group inline-flex items-center justify-center h-11 w-11 rounded-2xl bg-white/80 hover:bg-white ring-1 ring-white/25 shadow-sm
+                       transition-all active:scale-[0.98]"
+                        title="Mes anterior"
+                      >
+                        <span className="text-emerald-900/80 group-hover:text-emerald-900 text-lg font-black">
+                          ‹
+                        </span>
+                      </button>
+
+                      <div
+                        className="relative px-4 sm:px-5 h-11 flex items-center rounded-2xl bg-white/90 ring-1 ring-white/25 shadow-sm"
+                        title="Período seleccionado"
+                      >
+                        <div className="absolute inset-0 rounded-2xl ring-1 ring-emerald-500/15 pointer-events-none" />
+                        <div className="flex items-center gap-2">
+                          <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_6px_rgba(16,185,129,0.12)]" />
+                          <div className="text-[12px] sm:text-[13px] font-extrabold tracking-[0.12em] text-emerald-950 uppercase">
+                            {labelPeriodo(periodoMes)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => movePeriodo(1)}
+                        className="group inline-flex items-center justify-center h-11 w-11 rounded-2xl bg-white/80 hover:bg-white ring-1 ring-white/25 shadow-sm
+                       transition-all active:scale-[0.98]"
+                        title="Mes siguiente"
+                      >
+                        <span className="text-emerald-900/80 group-hover:text-emerald-900 text-lg font-black">
+                          ›
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right: Actions */}
+                  <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                    <button
+                      type="button"
+                      onClick={setPeriodoActual}
+                      className="inline-flex items-center justify-center gap-2 h-11 px-4 rounded-2xl
+                     bg-emerald-600 text-white font-semibold hover:bg-emerald-700
+                     shadow-[0_10px_30px_-18px_rgba(16,185,129,0.8)]
+                     ring-1 ring-emerald-300/25 transition-all active:scale-[0.98]"
+                      title="Ir al mes actual"
+                    >
+                      <span className="h-2 w-2 rounded-full bg-white/90 shadow-[0_0_0_6px_rgba(255,255,255,0.12)]" />
+                      Mes actual
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={clearPeriodo}
+                      className="inline-flex items-center justify-center gap-2 h-11 px-4 rounded-2xl
+                     bg-white/90 text-emerald-900 font-semibold hover:bg-white
+                     ring-1 ring-white/25 shadow-sm transition-all active:scale-[0.98]"
+                      title="Ver todos los meses"
+                    >
+                      <span className="text-emerald-700 font-black">↺</span>
+                      Todos
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
             <ChequesKpisBar
               kpis={kpis}
