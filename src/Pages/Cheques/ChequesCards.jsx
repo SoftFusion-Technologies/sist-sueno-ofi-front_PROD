@@ -6,12 +6,13 @@ import '../../Styles/staff/background.css';
 import ParticlesBackground from '../../Components/ParticlesBackground';
 import ButtonBack from '../../Components/ButtonBack';
 import { motion } from 'framer-motion';
-import { FaPlus, FaSearch } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaFileExcel } from 'react-icons/fa';
 
 import { listBancos } from '../../api/bancos';
 import { listChequeras } from '../../api/chequeras';
 import { listBancoCuentas } from '../../api/bancoCuentas';
 import {
+  getChequesKpis,
   listCheques,
   createCheque,
   updateCheque,
@@ -35,6 +36,8 @@ import ChequeImagesManager from '../../Components/Cheques/ChequeImagesManager';
 
 import Swal from 'sweetalert2';
 import ScrollToTop from '../../Components/ScrollToTop';
+
+import ChequesKpisBar from '../../Components/Cheques/ChequesKpisBar';
 
 const useDebounce = (value, ms = 400) => {
   const [deb, setDeb] = useState(value);
@@ -87,6 +90,12 @@ export default function ChequesCards() {
   // abrir para ver imagenes
   const [imagenesOpen, setImagenesOpen] = useState(false);
   const [chequeImagen, setChequeImagen] = useState(null);
+
+  // Benjamin Orellana - 23/01/2026 - Estados para KPIs del listado (mismos filtros) y control de carga/error sin afectar el fetch principal.
+  const [kpis, setKpis] = useState(null);
+  const [kpisLoading, setKpisLoading] = useState(false);
+  const [kpisError, setKpisError] = useState('');
+
   // handler
   const handleImagenes = (row) => {
     setChequeImagen(row);
@@ -120,28 +129,56 @@ export default function ChequesCards() {
     })().catch(() => {});
   }, []);
 
+  // Benjamin Orellana - 23/01/2026 - Helper que construye los params de filtros para reutilizar entre listado y KPIs sin duplicar lógica.
+  const buildFilterParams = () => {
+    const params = {
+      q: dq || ''
+    };
+
+    if (bancoId) params.banco_id = bancoId;
+    if (chequeraId) params.chequera_id = chequeraId;
+    if (tipo) params.tipo = tipo;
+    if (estado) params.estado = estado;
+
+    // fechas de cobro prevista
+    if (from) params.cobro_from = from;
+    if (to) params.cobro_to = to;
+
+    // formato
+    if (formato) params.formato = formato;
+
+    return params;
+  };
+
+  // Benjamin Orellana - 23/01/2026 - Fetch de KPIs agregados para el panel debajo de filtros, usando exactamente los mismos filtros del listado.
+  const fetchKpis = async () => {
+    setKpisLoading(true);
+    setKpisError('');
+    try {
+      const params = buildFilterParams();
+      const resp = await getChequesKpis(params);
+      setKpis(resp?.kpis || null);
+    } catch (e) {
+      console.error(e);
+      setKpis(null);
+      setKpisError(e?.mensajeError || e?.message || 'Error cargando KPIs');
+    } finally {
+      setKpisLoading(false);
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
+      const filterParams = buildFilterParams();
+
       const params = {
         page,
         limit,
-        q: dq || '',
+        ...filterParams,
         orderBy: 'created_at',
         orderDir: 'DESC'
       };
-
-      if (bancoId) params.banco_id = bancoId;
-      if (chequeraId) params.chequera_id = chequeraId;
-      if (tipo) params.tipo = tipo;
-      if (estado) params.estado = estado;
-
-      // ✅ usar los nombres que entiende el backend:
-      if (from) params.cobro_from = from;
-      if (to) params.cobro_to = to;
-
-      // ✅ NUEVO: formato (fisico | echeq)
-      if (formato) params.formato = formato;
 
       const data = await listCheques(params);
       if (Array.isArray(data)) {
@@ -159,9 +196,10 @@ export default function ChequesCards() {
     }
   };
 
-  // ✅ incluir "formato" como dependencia
+  //  incluir "formato" como dependencia
   useEffect(() => {
-    fetchData(); /* eslint-disable-next-line */
+    fetchData();
+    fetchKpis();
   }, [dq, bancoId, chequeraId, tipo, estado, from, to, page, formato]);
 
   const nombreBanco = (id) =>
@@ -425,6 +463,58 @@ export default function ChequesCards() {
     );
   }, [meta]);
 
+  // Benjamin Orellana - 23/01/2026 - Descarga el Excel del endpoint de exportación usando los filtros actuales.
+  const onExportExcel = async () => {
+    try {
+      const params = new URLSearchParams();
+
+      // mismos params que fetchData (filtros vigentes)
+      if (dq) params.set('q', dq);
+      if (bancoId) params.set('banco_id', bancoId);
+      if (chequeraId) params.set('chequera_id', chequeraId);
+      if (tipo) params.set('tipo', tipo);
+      if (estado) params.set('estado', estado);
+      if (from) params.set('cobro_from', from);
+      if (to) params.set('cobro_to', to);
+      if (formato) params.set('formato', formato);
+
+      // endpoint backend
+      const url = `https://api.rioromano.com.ar/cheques/export/excel${params.toString() ? `?${params.toString()}` : ''}`;
+
+      // fetch binario
+      const resp = await fetch(url, { method: 'GET' });
+      if (!resp.ok) throw new Error('No se pudo generar el Excel');
+
+      const blob = await resp.blob();
+      const disposition = resp.headers.get('content-disposition') || '';
+      const match = disposition.match(/filename="([^"]+)"/i);
+      const filename = match?.[1] || `cheques_export_${Date.now()}.xlsx`;
+
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(link.href);
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Excel generado',
+        timer: 1200,
+        showConfirmButton: false
+      });
+    } catch (e) {
+      console.error(e);
+      Swal.fire({
+        icon: 'error',
+        title: 'No se pudo exportar',
+        text: 'Revisá el endpoint /cheques/export/excel y los permisos.',
+        confirmButtonText: 'Entendido'
+      });
+    }
+  };
+
   return (
     <>
       <NavbarStaff />
@@ -569,15 +659,30 @@ export default function ChequesCards() {
                 />
               </div>
 
-              <div className="flex items-center gap-2 lg:col-span-1">
+              <div className="flex items-center gap-2 lg:col-span-2">
                 <button
                   onClick={onNew}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 w-full"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 w-full"
                 >
                   <FaPlus /> Nuevo
                 </button>
+
+                <button
+                  onClick={onExportExcel}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/90 text-emerald-800 font-semibold hover:bg-white w-full ring-1 ring-white/30"
+                  title="Exportar Excel (respeta filtros)"
+                >
+                  <FaFileExcel className="text-emerald-700" /> Exportar
+                </button>
               </div>
             </div>
+          </div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+            <ChequesKpisBar
+              kpis={kpis}
+              loading={kpisLoading}
+              error={kpisError}
+            />
           </div>
           {/* Grid */}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -647,6 +752,7 @@ export default function ChequesCards() {
             )}
             {Pager}
           </div>
+          {/* KPIs */}
         </div>
       </section>
 

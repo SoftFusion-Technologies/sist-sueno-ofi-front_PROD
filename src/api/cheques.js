@@ -4,6 +4,13 @@ import { client } from './bancos'; // trae baseURL e interceptores
 // Helper fino para acortar
 const ok = (p) => p.then((r) => r.data);
 
+// Benjamin Orellana - 23/01/2026 - Se agrega función para obtener KPIs agregados de cheques desde GET /cheques/kpis usando los mismos filtros del listado.
+
+export const getChequesKpis = async (params = {}) => {
+  const { data } = await client.get('/cheques/kpis', { params });
+  return data; // esperado: { kpis: {...} }
+};
+
 // Listado (filtros opcionales)
 export const listCheques = (params = {}) =>
   ok(client.get('/cheques', { params }));
