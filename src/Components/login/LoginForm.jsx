@@ -23,6 +23,8 @@ import { motion } from 'framer-motion';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import VideoLogin from '../../Images/staff/videoBienvenida.mp4';
 import ParticlesBackground from '../ParticlesBackground';
+import SoftFusionIntroModal from '../SoftFusionIntroModal';
+
 Modal.setAppElement('#root');
 
 const LoginForm = () => {
@@ -39,6 +41,9 @@ const LoginForm = () => {
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+
+  const [showIntro, setShowIntro] = useState(false);
+  const [postLoginRoute, setPostLoginRoute] = useState(null);
 
   useEffect(() => {
     const element = document.getElementById('login');
@@ -73,6 +78,7 @@ const LoginForm = () => {
         })
         .then((res) => {
           setLoading(false);
+
           if (res.data.message === 'Success') {
             login(
               res.data.token,
@@ -84,11 +90,15 @@ const LoginForm = () => {
               res.data.es_reemplazante
             );
 
-            if (res.data.rol === 'vendedor') {
-              navigate('/dashboard/ventas/pos');
-            } else {
-              navigate('/dashboard');
-            }
+            const rol = String(res.data.rol || '').toLowerCase();
+
+            // Benjamin Orellana - 23/01/2026 - Se evita navegar inmediatamente tras el login.
+            // Motivo: si hacemos navigate aquí, el componente se desmonta y no llega a renderizar SoftFusionIntroModal.
+            // Flujo correcto: guardar ruta de destino, mostrar Intro, y recién navegar cuando onFinish se dispare.
+            const route = '/dashboard'; // política actual: vendedor también puede ir a dashboard
+
+            setPostLoginRoute(route);
+            setShowIntro(true);
           } else {
             setModalMessage('Usuario o contraseña incorrectos');
             setIsModalOpen(true);
@@ -102,6 +112,19 @@ const LoginForm = () => {
         });
     }
   };
+
+  if (showIntro) {
+    return (
+      <SoftFusionIntroModal
+        onFinish={() => {
+          setShowIntro(false);
+          if (postLoginRoute) {
+            navigate(postLoginRoute, { replace: true });
+          }
+        }}
+      />
+    );
+  }
 
   return (
     <div className="relative h-screen w-full overflow-hidden flex items-center justify-center bg-black loginbg">

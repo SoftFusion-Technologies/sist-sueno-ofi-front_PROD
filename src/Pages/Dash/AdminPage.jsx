@@ -33,6 +33,7 @@ import {
   FaUserFriends
 } from 'react-icons/fa';
 import RoleGate from '../../Components/auth/RoleGate';
+
 // --------- Tile genérico de módulo ----------
 const DashboardTile = ({ title, description, to, icon: Icon, delay = 0 }) => {
   return (
@@ -82,17 +83,24 @@ const DashboardTile = ({ title, description, to, icon: Icon, delay = 0 }) => {
 const AdminPage = () => {
   const { userLevel, userName } = useAuth();
 
-  const nivel = String(userLevel || '').toLowerCase();
+  const role = String(userLevel || '').toLowerCase();
+  const isVendedor = role === 'vendedor';
+
   const nivelLabel =
-    nivel === 'admin'
+    role === 'admin'
       ? 'Administrador'
-      : nivel === 'supervisor'
-      ? 'Supervisor'
-      : nivel === 'vendedor'
-      ? 'Vendedor'
-      : nivel === 'cajero'
-      ? 'Cajero'
-      : userLevel || 'Usuario';
+      : role === 'supervisor'
+        ? 'Supervisor'
+        : role === 'vendedor'
+          ? 'Vendedor'
+          : role === 'cajero'
+            ? 'Cajero'
+            : userLevel || 'Usuario';
+
+  // Benjamin Orellana - 23/01/2026 - Ajuste de visibilidad por rol en Dashboard: el vendedor puede ingresar al panel,
+  // pero solo visualiza accesos a Stock y Ventas; el resto de módulos queda oculto para ese rol. Además, para "Ventas"
+  // el vendedor va directo al POS (/dashboard/ventas/pos), mientras que otros roles mantienen /dashboard/ventas.
+  const ventasTo = isVendedor ? '/dashboard/ventas/pos' : '/dashboard/ventas';
 
   return (
     <>
@@ -114,6 +122,9 @@ const AdminPage = () => {
                 >
                   Panel principal
                 </motion.h1>
+
+                {/* Benjamin Orellana - 23/01/2026 - Ajuste de copy según rol:
+      el vendedor no ve módulos administrativos, por lo tanto se muestra un mensaje específico para Stock/Ventas. */}
                 <motion.p
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -122,8 +133,9 @@ const AdminPage = () => {
                 >
                   Hola{' '}
                   <span className="font-semibold">{userName || 'equipo'}</span>,
-                  elegí un módulo para gestionar stock, compras, ventas,
-                  facturación y tesorería.
+                  {isVendedor
+                    ? ' accedé a los módulos de Stock y Ventas para operar en tu local asignado.'
+                    : ' elegí un módulo para gestionar stock, compras, ventas, facturación y tesorería.'}
                 </motion.p>
               </div>
 
@@ -146,17 +158,17 @@ const AdminPage = () => {
 
             {/* GRID DE MÓDULOS */}
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {userLevel != 'vendedor' && (
-                <DashboardTile
-                  title="Stock"
-                  description="Control de stock en tiempo real por local, estado y ubicación."
-                  to="/dashboard/stock"
-                  icon={FaBoxes}
-                  delay={0.1}
-                />
-              )}
+              {/* Stock: ahora también visible para vendedor */}
+              <DashboardTile
+                title="Stock"
+                description="Control de stock en tiempo real por local, estado y ubicación."
+                to="/dashboard/stock"
+                icon={FaBoxes}
+                delay={0.1}
+              />
 
-              {userLevel != 'vendedor' && (
+              {/* Compras: oculto para vendedor */}
+              {!isVendedor && (
                 <DashboardTile
                   title="Compras"
                   description="Gestión de órdenes de compra, recepción y cuentas por pagar."
@@ -166,25 +178,30 @@ const AdminPage = () => {
                 />
               )}
 
+              {/* Ventas: vendedor va directo al POS */}
               <DashboardTile
                 title="Ventas"
                 description="Punto de venta, facturación y seguimiento de operaciones."
-                to="/dashboard/ventas"
+                to={ventasTo}
                 icon={FaCashRegister}
                 delay={0.14}
               />
 
-              <RoleGate allow={['administrativo', 'socio', 'contador']}>
-                <DashboardTile
-                  title="ARCA / Facturación"
-                  description="Empresas, puntos de venta y comprobantes fiscales electrónicos."
-                  to="/dashboard/arca"
-                  icon={FaFileInvoiceDollar}
-                  delay={0.16}
-                />
-              </RoleGate>
+              {/* ARCA: se mantiene con RoleGate; además oculto para vendedor */}
+              {!isVendedor && (
+                <RoleGate allow={['administrativo', 'socio', 'contador']}>
+                  <DashboardTile
+                    title="ARCA / Facturación"
+                    description="Empresas, puntos de venta y comprobantes fiscales electrónicos."
+                    to="/dashboard/arca"
+                    icon={FaFileInvoiceDollar}
+                    delay={0.16}
+                  />
+                </RoleGate>
+              )}
 
-              {userLevel != 'vendedor' && (
+              {/* Proveedores: oculto para vendedor */}
+              {!isVendedor && (
                 <DashboardTile
                   title="Proveedores"
                   description="Altas, bajas y administración de proveedores comerciales."
@@ -194,7 +211,8 @@ const AdminPage = () => {
                 />
               )}
 
-              {userLevel != 'vendedor' && (
+              {/* Pedidos stock: oculto para vendedor */}
+              {!isVendedor && (
                 <DashboardTile
                   title="Pedidos de stock"
                   description="Pedidos internos entre sucursales y logística de reposición."
@@ -204,25 +222,32 @@ const AdminPage = () => {
                 />
               )}
 
-              <DashboardTile
-                title="Vendedores"
-                description="Gestión del equipo comercial, metas y asignación de ventas."
-                to="/dashboard/vendedores"
-                icon={FaUsers}
-                delay={0.22}
-              />
-
-              <RoleGate allow={['administrativo', 'socio', 'contador']}>
+              {/* Vendedores: oculto para vendedor */}
+              {!isVendedor && (
                 <DashboardTile
-                  title="Bancos"
-                  description="Cuentas bancarias, movimientos y conciliación financiera."
-                  to="/dashboard/bancos"
-                  icon={FaUniversity}
-                  delay={0.24}
+                  title="Vendedores"
+                  description="Gestión del equipo comercial, metas y asignación de ventas."
+                  to="/dashboard/vendedores"
+                  icon={FaUsers}
+                  delay={0.22}
                 />
-              </RoleGate>
+              )}
 
-              {userLevel != 'vendedor' && (
+              {/* Bancos: se mantiene con RoleGate; además oculto para vendedor */}
+              {!isVendedor && (
+                <RoleGate allow={['administrativo', 'socio', 'contador']}>
+                  <DashboardTile
+                    title="Bancos"
+                    description="Cuentas bancarias, movimientos y conciliación financiera."
+                    to="/dashboard/bancos"
+                    icon={FaUniversity}
+                    delay={0.24}
+                  />
+                </RoleGate>
+              )}
+
+              {/* Cheques: oculto para vendedor */}
+              {!isVendedor && (
                 <DashboardTile
                   title="Cheques"
                   description="Cheques recibidos y emitidos, historial de usos y estados."
@@ -231,7 +256,9 @@ const AdminPage = () => {
                   delay={0.26}
                 />
               )}
-              {userLevel != 'vendedor' && (
+
+              {/* Tesorería: oculto para vendedor */}
+              {!isVendedor && (
                 <DashboardTile
                   title="Tesorería"
                   description="Flujo de fondos, caja central y visión global de tesorería."
@@ -240,7 +267,9 @@ const AdminPage = () => {
                   delay={0.28}
                 />
               )}
-              {userLevel != 'vendedor' && (
+
+              {/* Clientes: oculto para vendedor */}
+              {!isVendedor && (
                 <DashboardTile
                   title="Clientes"
                   description="ABM de clientes, Fisicos y Jurídicos, ver ultimas compras."
