@@ -262,6 +262,58 @@ export default function ModalConsultarStock({ open, onClose, API_URL }) {
   const [lugares, setLugares] = useState([]);
   const [estados, setEstados] = useState([]);
 
+  // Normaliza cualquier id a string para evitar descalces number vs string
+  const idKey = (v) => (v === undefined || v === null ? '' : String(v));
+
+  // Maps para lookup O(1) (evita find en cada row)
+  const productosById = useMemo(() => {
+    return new Map((productos || []).map((p) => [idKey(p?.id), p]));
+  }, [productos]);
+
+  const localesById = useMemo(() => {
+    return new Map((locales || []).map((l) => [idKey(l?.id), l]));
+  }, [locales]);
+
+  const lugaresById = useMemo(() => {
+    return new Map((lugares || []).map((lu) => [idKey(lu?.id), lu]));
+  }, [lugares]);
+
+  const estadosById = useMemo(() => {
+    return new Map((estados || []).map((e) => [idKey(e?.id), e]));
+  }, [estados]);
+
+  // Resolver entidad: primero busca embebido (si algún día tu backend incluye include),
+  // si no existe, hace lookup por *_id contra catálogo.
+  const getProductoResolved = (row) =>
+    getProducto(row) ?? productosById.get(idKey(row?.producto_id)) ?? null;
+
+  const getLocalResolved = (row) =>
+    getLocal(row) ?? localesById.get(idKey(row?.local_id)) ?? null;
+
+  const getLugarResolved = (row) =>
+    getLugar(row) ?? lugaresById.get(idKey(row?.lugar_id)) ?? null;
+
+  const getEstadoResolved = (row) =>
+    getEstado(row) ?? estadosById.get(idKey(row?.estado_id)) ?? null;
+
+  // Seleccionados (para mostrar nombre en filtros)
+  const productoSel = useMemo(
+    () => (productoId ? productosById.get(idKey(productoId)) : null),
+    [productoId, productosById]
+  );
+  const localSel = useMemo(
+    () => (localId ? localesById.get(idKey(localId)) : null),
+    [localId, localesById]
+  );
+  const lugarSel = useMemo(
+    () => (lugarId ? lugaresById.get(idKey(lugarId)) : null),
+    [lugarId, lugaresById]
+  );
+  const estadoSel = useMemo(
+    () => (estadoId ? estadosById.get(idKey(estadoId)) : null),
+    [estadoId, estadosById]
+  );
+
   const loadCatalogs = useCallback(async () => {
     if (!API_URL) return;
 
@@ -742,10 +794,10 @@ export default function ModalConsultarStock({ open, onClose, API_URL }) {
                   {rows.map((r) => {
                     const id = r?.id;
 
-                    const prod = getProducto(r);
-                    const loc = getLocal(r);
-                    const lug = getLugar(r);
-                    const est = getEstado(r);
+                    const prod = getProductoResolved(r);
+                    const loc = getLocalResolved(r);
+                    const lug = getLugarResolved(r);
+                    const est = getEstadoResolved(r);
 
                     const prodNombre =
                       prod?.nombre || `Producto #${r?.producto_id ?? '—'}`;
