@@ -32,7 +32,9 @@ import { useDebouncedValue } from '../../utils/useDebouncedValue';
 import Swal from 'sweetalert2';
 import ModalConsultarCBUs from '../../Components/Bancos/ModalConsultarCBUs';
 import ModalConsultarStock from '../../Components/Productos/ModalConsultarStock';
-
+// Benjamin Orellana - 24-01-2026
+// Se adiciona componente para vista previa de factura A4
+import FacturaA4Modal from '../../Components/Ventas/FacturaA4Modal';
 const toast = Swal.mixin({
   toast: true,
   position: 'top-end',
@@ -2718,13 +2720,22 @@ export default function PuntoVenta() {
         mediosPago={mediosPago}
         setMediosPago={setMediosPago}
       />
-      {ventaFinalizada && (
+      {/* {ventaFinalizada && (
         <TicketVentaModal
           venta={ventaFinalizada}
           onClose={() => setVentaFinalizada(null)}
           mostrarValorTicket={mostrarValorTicket}
         />
+      )} */}
+      {ventaFinalizada && (
+        <FacturaA4Modal
+          open={!!ventaFinalizada}
+          venta={ventaFinalizada}
+          onClose={() => setVentaFinalizada(null)}
+          // logoUrl no hace falta pasarlo: FacturaA4Modal lo resuelve solo por local (ticket-config)
+        />
       )}
+
       <ModalNuevoCliente
         open={modalNuevoClienteOpen}
         onClose={() => setModalNuevoClienteOpen(false)}

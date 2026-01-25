@@ -88,7 +88,7 @@ import ComprasImpuestosPage from './Pages/Compras/ComprasImpuestosPage';
 import ImpuestosConfigPage from './Pages/Compras/ImpuestosConfigPage';
 import ScrollToTop from './Components/ScrollToTop';
 import OrdenesCompraListado from './Pages/Compras/OrdenesCompraListado';
-
+import AdminPageCajaDash from './Pages/Caja/AdminPageCajaDash';
 // -------------------------
 // MÓDULO ARCA  - 08-12-2025 Benjamin Orellana
 // -------------------------
@@ -267,7 +267,16 @@ function AppContent() {
             }
           />
           <Ruta
-            path="/dashboard/ventas/caja"
+            path="/dashboard/caja"
+            element={
+              <ProtectedRoute>
+                {' '}
+                <AdminPageCajaDash />{' '}
+              </ProtectedRoute>
+            }
+          />
+          <Ruta
+            path="/dashboard/caja/caja"
             element={
               <ProtectedRoute>
                 {' '}
@@ -276,7 +285,7 @@ function AppContent() {
             }
           />
           <Ruta
-            path="/dashboard/ventas/cajas-abiertas"
+            path="/dashboard/caja/cajas-abiertas"
             element={
               <ProtectedRoute>
                 <AdminCajasAbiertas />
@@ -431,7 +440,7 @@ function AppContent() {
             }
           />
           <Ruta
-            path="/dashboard/ventas/resumen"
+            path="/dashboard/caja/resumen"
             element={
               <ProtectedRoute>
                 {' '}

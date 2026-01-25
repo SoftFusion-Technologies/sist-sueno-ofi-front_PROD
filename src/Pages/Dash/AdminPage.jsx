@@ -30,7 +30,8 @@ import {
   FaMoneyCheckAlt,
   FaPiggyBank,
   FaFileInvoiceDollar, // <-- ARCA / Facturación
-  FaUserFriends
+  FaUserFriends,
+  FaRegMoneyBillAlt
 } from 'react-icons/fa';
 import RoleGate from '../../Components/auth/RoleGate';
 
@@ -186,7 +187,18 @@ const AdminPage = () => {
                 icon={FaCashRegister}
                 delay={0.14}
               />
-
+              {/* ARCA: se mantiene con RoleGate; además oculto para vendedor */}
+              {!isVendedor && (
+                <RoleGate allow={['administrativo', 'socio', 'contador']}>
+                  <DashboardTile
+                    title="CAJA"
+                    description="Ver caja actual, cajas abiertas por local, resumenes globales de caja."
+                    to="/dashboard/caja"
+                    icon={FaRegMoneyBillAlt}
+                    delay={0.16}
+                  />
+                </RoleGate>
+              )}
               {/* ARCA: se mantiene con RoleGate; además oculto para vendedor */}
               {!isVendedor && (
                 <RoleGate allow={['administrativo', 'socio', 'contador']}>

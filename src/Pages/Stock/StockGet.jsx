@@ -1272,12 +1272,12 @@ const StockGet = () => {
 
                 {/* FOOTER: Acciones */}
                 <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between gap-2">
-                  <p className="text-[0.7rem] text-gray-400">
+                  {/* <p className="text-[0.7rem] text-gray-400">
                     Registros en grupo:{' '}
                     <span className="font-semibold text-gray-200">
                       {group.items.length}
                     </span>
-                  </p>
+                  </p> */}
 
                   {(userLevel === 'socio' ||
                     userLevel === 'administrativo') && (
