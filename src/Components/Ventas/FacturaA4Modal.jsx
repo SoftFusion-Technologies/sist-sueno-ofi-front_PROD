@@ -5,6 +5,112 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 
+// Benjamin Orellana - 2026-01-26 - Opción B: footer solo al final (print/PDF). No repetir por hoja.
+const A4_FOOTER_MODE = 'last';
+
+// Benjamin Orellana - 2026-01-26 - CSS dedicado para impresión/PDF A4: agrega soporte para salto dinámico de footer.
+const A4_PRINT_CSS = `
+  :root { --a4-margin-mm: 10mm; --a4-footer-mm: 12mm; }
+  [data-a4-root="1"] { box-sizing: border-box; }
+
+  .a4-row, .a4-avoid-break { break-inside: avoid; page-break-inside: avoid; }
+
+  /* Benjamin Orellana - 2026-01-26 - Blindaje extra: display: table mejora que Chrome respete avoid-break en print. */
+  .a4-footer-block{
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    display: table !important;
+    width: 100% !important;
+  }
+  .a4-print-footer-fixed, .a4-print-footer-end { display: none !important; }
+
+  [data-a4-root="1"].a4-exporting .a4-spacer { display: none !important; }
+  [data-a4-root="1"].a4-exporting .a4-items {
+    flex: 0 0 auto !important;
+    min-height: auto !important;
+    height: auto !important;
+  }
+
+  /* Benjamin Orellana - 2026-01-26 - En export (html2canvas) también respetamos el salto forzado si aplica. */
+  [data-a4-root="1"].a4-exporting .a4-force-break {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+    /* Benjamin Orellana - 2026-01-26 - Clase que el JS aplica si el footer NO entra: fuerza el salto antes del bloque. */
+    .a4-force-break {
+      break-before: page !important;
+      page-break-before: always !important;
+    }
+  @media print {
+    @page { size: A4 portrait; margin: var(--a4-margin-mm); }
+
+    html, body { height: auto !important; overflow: visible !important; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; }
+
+    .a4-modal-overlay, .a4-modal-panel, .a4-modal-scroll {
+      position: static !important;
+      inset: auto !important;
+      max-height: none !important;
+      height: auto !important;
+      overflow: visible !important;
+    }
+
+    body * { visibility: hidden !important; }
+    [data-a4-root="1"], [data-a4-root="1"] * { visibility: visible !important; }
+
+   /* Benjamin Orellana - 2026-01-26 - Root a 100% del área imprimible (evita auto-scaling y desfasajes de paginación). */
+    [data-a4-root="1"] {
+      width: 100% !important;
+      min-height: auto !important;
+      margin: 0 !important;
+      padding: 10mm !important;
+      box-shadow: none !important;
+      background: #fff !important;
+      color: #000 !important;
+      overflow: visible !important;
+    }
+
+    [data-a4-root="1"] .a4-items {
+      flex: 0 0 auto !important;
+      min-height: auto !important;
+      height: auto !important;
+    }
+
+    [data-a4-root="1"] .a4-spacer { display: none !important; }
+
+    /* Benjamin Orellana - 2026-01-26 - Footer SOLO al final: no se repite y no se corta. */
+    [data-a4-root="1"][data-footer-mode="last"] .a4-print-footer-end {
+      display: block !important;
+      position: static !important;
+      margin-top: 6mm;
+      font-size: 10px;
+      line-height: 1.2;
+      border-top: 1px solid #000;
+      padding-top: 3mm;
+      color: #000;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+
+
+
+    /* Benjamin Orellana - 2026-01-26 - Compactación leve del QR para que “entre” más fácil en la última hoja. */
+    .a4-qrblock {
+      margin-top: 2mm !important;
+      padding-top: 2mm !important;
+    }
+
+    /* Benjamin Orellana - 2026-01-26 - En esta variante, deshabilitamos repeat explícitamente. */
+    [data-a4-root="1"][data-footer-mode="repeat"] .a4-print-footer-fixed { display: none !important; }
+  }
+`;
+
+// Benjamin Orellana - 2026-01-26 - Altura reservada del footer en PDF (pt) para evitar cortes/solapamientos al paginar.
+const PDF_FOOTER_H_PTS = 20;
+
+// Benjamin Orellana - 2026-01-26 - Márgenes internos del PDF (pt). Un margen real evita que impresoras/visores recorten el borde.
+const PDF_MARGIN_PTS = 24;
+
 // Benjamin Orellana - 24-01-2026 - FacturaA4Modal
 // Se agrega resolución de ticket-config por local para reutilizar logo/datos del encabezado, igual que TicketVentaModal.
 
@@ -31,6 +137,76 @@ export default function FacturaA4Modal({
   // Benjamin Orellana - 24-01-2026 - Estado para renderizar QR fiscal (AFIP/ARCA) como PNG y asegurar compatibilidad con html2canvas/jsPDF.
   const [qrImg, setQrImg] = useState(null);
   const [qrHref, setQrHref] = useState(null);
+
+  // Benjamin Orellana - 2026-01-26 - Medimos el alto imprimible real en px usando mm (evita desfasajes por zoom/escala y corrige el salto dinámico).
+  const getPrintablePageHeightPx = (root) => {
+    const probe = document.createElement('div');
+    probe.style.position = 'absolute';
+    probe.style.visibility = 'hidden';
+    probe.style.pointerEvents = 'none';
+    // A4 (297mm) menos márgenes @page (2 * --a4-margin-mm)
+    probe.style.height = 'calc(297mm - (2 * var(--a4-margin-mm)))';
+    probe.style.width = '1px';
+    root.appendChild(probe);
+    const h = probe.getBoundingClientRect().height;
+    root.removeChild(probe);
+    return h;
+  };
+
+  // Benjamin Orellana - 2026-01-26 - Si un bloque de cierre (totales/QR o pie remito) no entra en la hoja actual, forzamos salto para que aparezca completo en la siguiente.
+  useEffect(() => {
+    const pxPerMm = 96 / 25.4; // conversión CSS estándar aproximada
+    const marginMm = 10; // debe coincidir con @page margin / --a4-margin-mm
+    const a4H_mm = 297;
+
+    const handleBeforePrint = () => {
+      const root = document.querySelector('[data-a4-root="1"]');
+      if (!root) return;
+
+      const printableH_px = getPrintablePageHeightPx(root);
+
+      // Limpiar estado previo
+      root.querySelectorAll('.a4-footer-block').forEach((el) => {
+        el.classList.remove('a4-force-break');
+      });
+
+      const rootRect = root.getBoundingClientRect();
+
+      root.querySelectorAll('.a4-footer-block').forEach((block) => {
+        const r = block.getBoundingClientRect();
+
+        const top_px = r.top - rootRect.top;
+        const h_px = r.height;
+
+        // Posición dentro de su página actual (aprox)
+        const offsetInPage_px =
+          ((top_px % printableH_px) + printableH_px) % printableH_px;
+
+        // margen de seguridad por redondeos del motor de impresión
+        const safety_px = 14;
+
+        if (offsetInPage_px + h_px > printableH_px - safety_px) {
+          block.classList.add('a4-force-break');
+        }
+      });
+    };
+
+    const handleAfterPrint = () => {
+      const root = document.querySelector('[data-a4-root="1"]');
+      if (!root) return;
+      root.querySelectorAll('.a4-footer-block').forEach((el) => {
+        el.classList.remove('a4-force-break');
+      });
+    };
+
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
 
   // Benjamin Orellana - 25-01-2026 - Normaliza initialView para soportar aliases ('remitos', mayúsculas, espacios) sin caer a 'factura' por error.
   const normalizedInitialView = useMemo(() => {
@@ -64,7 +240,6 @@ export default function FacturaA4Modal({
       : venta;
 
   // Benjamin Orellana - 25-01-2026 - Resolver robusto de remito: el backend puede devolver "remito" (singular)
-
   const remitoActivo = useMemo(() => {
     const one =
       ventaForRemito?.remito && typeof ventaForRemito.remito === 'object'
@@ -403,222 +578,343 @@ export default function FacturaA4Modal({
     total
   ]);
 
-  const blobToDataURL = (blob) =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+  // Benjamin Orellana - 2026-01-26 - Label del documento para el footer del PDF (se usa en buildPdfFromA4). Mapea cbteTipo a nombre y formatea PV-NRO.
+  const A4_DOC_LABEL = (() => {
+    try {
+      // Prioridad: comprobanteFiscal (ARCA) -> ventaData
+      const doc = cf || ventaData?.comprobanteFiscal || {};
 
-  const normalizeImgSrc = async (src) => {
-    if (!src) return null;
+      const cbteTipoNum = Number(
+        doc?.tipo_comprobante ??
+          ventaData?.cbte_tipo_solicitado ??
+          ventaData?.tipo_comprobante ??
+          NaN
+      );
 
-    // Si ya es data URL, perfecto
-    if (String(src).startsWith('data:')) return src;
+      const letra = String(doc?.letra ?? ventaData?.cbte_letra_solicitada ?? '')
+        .toUpperCase()
+        .trim();
 
-    // Si es blob:, lo convertimos a data URL (html2canvas suele fallar con blob en clone)
-    if (String(src).startsWith('blob:')) {
-      try {
-        const blob = await fetch(src).then((r) => r.blob());
-        return await blobToDataURL(blob);
-      } catch {
-        return src; // fallback
-      }
+      const pvNum = Number(doc?.puntoVenta?.numero ?? NaN);
+      const nroNum = Number(
+        doc?.numero_comprobante ??
+          ventaData?.nro_comprobante ??
+          doc?.numero ??
+          NaN
+      );
+
+      const docNameByTipo = (t) => {
+        // AFIP/ARCA (más usados)
+        const map = {
+          1: 'FACTURA A',
+          6: 'FACTURA B',
+          11: 'FACTURA C',
+          3: 'NOTA DE CRÉDITO A',
+          8: 'NOTA DE CRÉDITO B',
+          13: 'NOTA DE CRÉDITO C',
+          2: 'NOTA DE DÉBITO A',
+          7: 'NOTA DE DÉBITO B',
+          12: 'NOTA DE DÉBITO C'
+        };
+        return map[t] || (letra ? `COMPROBANTE ${letra}` : 'COMPROBANTE');
+      };
+
+      const docName = docNameByTipo(cbteTipoNum);
+
+      // Formato fiscal estándar: 0004-00000103
+      const pvFmt = Number.isFinite(pvNum)
+        ? String(pvNum).padStart(4, '0')
+        : '';
+      const nroFmt = Number.isFinite(nroNum)
+        ? String(nroNum).padStart(8, '0')
+        : '';
+      const fullNumber =
+        pvFmt && nroFmt ? `${pvFmt}-${nroFmt}` : String(nroNum || '').trim();
+
+      return fullNumber ? `${docName} · ${fullNumber}` : docName;
+    } catch {
+      return 'COMPROBANTE';
     }
-
-    // http(s) o relativo: lo dejamos (requiere CORS si es externo)
-    return src;
-  };
-
-  const waitForImgReady = async (img) => {
-    if (!img || !img.src) return;
-
-    // decode() es lo más confiable (incluye data URLs)
-    if (typeof img.decode === 'function') {
-      try {
-        await img.decode();
-        return;
-      } catch {
-        // seguimos con fallback
-      }
-    }
-
-    // fallback load/complete
-    if (img.complete && img.naturalWidth > 0) return;
-
-    await new Promise((resolve) => {
-      const done = () => resolve();
-      img.onload = done;
-      img.onerror = done;
-      // timeout defensivo
-      setTimeout(done, 2500);
-    });
-  };
-
-  const ensureImagesLoaded = async (root) => {
-    const imgs = Array.from(root.querySelectorAll('img'));
-    await Promise.all(imgs.map(waitForImgReady));
-  };
+  })();
 
   const buildPdfFromA4 = async () => {
-    const node = a4Ref.current;
-    if (!node) throw new Error('No se encontró el nodo A4 para exportar.');
+    const node = document.querySelector('[data-a4-root="1"]');
+    if (!node)
+      throw new Error('No se encontró el contenedor A4 (data-a4-root="1").');
 
-    // Benjamin Orellana - 24-01-2026 - Normalizamos el QR para que html2canvas lo capture en el PDF (especialmente si viene como blob:).
-    let qrDataUrl = qrImg || null;
-    if (qrDataUrl && String(qrDataUrl).startsWith('blob:')) {
-      try {
-        const blob = await fetch(qrDataUrl).then((r) => r.blob());
-        qrDataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-      } catch {
-        // best-effort: si falla, seguimos con el src original
-      }
-    }
+    // Guardamos y forzamos modo footer (por si en UI se cambia)
+    const prevFooterMode = node.getAttribute('data-footer-mode');
+    node.setAttribute('data-footer-mode', A4_FOOTER_MODE);
 
-    // Benjamin Orellana - 24-01-2026 - Esperamos que las imágenes del A4 (logo/QR) estén listas antes de snapshot.
-    const imgs = Array.from(node.querySelectorAll('img'));
-    await Promise.all(
-      imgs.map(async (img) => {
-        try {
-          if (typeof img.decode === 'function') await img.decode();
-        } catch {
-          // fallback silencioso
-        }
+    // 1) Normalizamos layout para export (sin flex/spacers)
+    node.classList.add('a4-exporting');
+    await nextPaint();
+
+    // 2) Medimos filas y bloques "no fragmentables" en DOM (antes del snapshot)
+    const rootRect = node.getBoundingClientRect();
+
+    const domRows = Array.from(node.querySelectorAll('.a4-row'));
+    const domRowBottoms = domRows
+      .map((el) => el.getBoundingClientRect().bottom - rootRect.top)
+      .filter((v) => Number.isFinite(v));
+
+    // Importante: incluimos explícitamente a4-footer-block aunque falte a4-avoid-break
+    const domAvoid = Array.from(
+      node.querySelectorAll('.a4-avoid-break, .a4-footer-block')
+    )
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        return { top: r.top - rootRect.top, bottom: r.bottom - rootRect.top };
       })
-    );
+      .filter(
+        (b) =>
+          Number.isFinite(b.top) &&
+          Number.isFinite(b.bottom) &&
+          b.bottom - b.top > 2
+      );
 
-    // html2canvas escala 2 para nitidez
+    // 3) Snapshot (html2canvas)
+    const exportScale = 2; // 2 = buena calidad/costo
     const canvas = await html2canvas(node, {
-      scale: 2,
-      useCORS: true,
+      scale: exportScale,
       backgroundColor: '#ffffff',
-
-      // Benjamin Orellana - 24-01-2026 - Fix de exportación PDF cuando Tailwind genera colores OKLCH.
-      // html2canvas no soporta OKLCH (error: "Attempting to parse an unsupported color function \"oklch\"").
-      // Además, reinyectamos el src del QR en el DOM clonado para asegurar que se renderice en el PDF.
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
       onclone: (clonedDoc) => {
-        try {
-          const root = clonedDoc.querySelector('[data-a4-root="1"]');
-          if (!root) return;
+        const clonedNode = clonedDoc.querySelector('[data-a4-root="1"]');
 
-          // 1) Reinyectar QR en el DOM clonado
-          if (qrDataUrl) {
-            const qrEl = clonedDoc.querySelector('img[data-qr-img="1"]');
-            if (qrEl) {
-              qrEl.setAttribute('src', qrDataUrl);
-              qrEl.setAttribute('crossorigin', 'anonymous');
-            }
+        // Ajustes de print/export en clone
+        clonedNode?.classList.add('a4-exporting');
+        clonedNode?.setAttribute('data-footer-mode', A4_FOOTER_MODE);
+
+        // Quitar spacers (si existen) para que no "empujen" páginas extra
+        clonedDoc.querySelectorAll('.a4-spacer').forEach((el) => {
+          el.style.display = 'none';
+          el.style.height = '0';
+        });
+
+        // --- Fix de colores Tailwind con oklch() (html2canvas no los interpreta bien) ---
+        const convertOklchToRgb = (value) => {
+          try {
+            const match = value.match(/oklch\(([^)]+)\)/);
+            if (!match) return value;
+
+            const parts = match[1].trim().split(/\s+/);
+            if (parts.length < 3) return value;
+
+            const L = parseFloat(parts[0]);
+            const C = parseFloat(parts[1]);
+            let H = parseFloat(parts[2]);
+            if (isNaN(L) || isNaN(C) || isNaN(H)) return value;
+
+            H = (H * Math.PI) / 180;
+            const a = C * Math.cos(H);
+            const b = C * Math.sin(H);
+
+            const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+            const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+            const s_ = L - 0.0894841775 * a - 1.291485548 * b;
+
+            const l = l_ ** 3;
+            const m = m_ ** 3;
+            const s = s_ ** 3;
+
+            let r = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+            let g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+            let b2 = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
+
+            const srgb = (x) =>
+              x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
+
+            r = Math.min(255, Math.max(0, Math.round(srgb(r) * 255)));
+            g = Math.min(255, Math.max(0, Math.round(srgb(g) * 255)));
+            b2 = Math.min(255, Math.max(0, Math.round(srgb(b2) * 255)));
+
+            return `rgb(${r}, ${g}, ${b2})`;
+          } catch {
+            return value;
           }
+        };
 
-          // 2) Normalizar OKLCH -> fallback hex
-          const win = clonedDoc.defaultView;
-          if (!win?.getComputedStyle) return;
+        clonedDoc.querySelectorAll('*').forEach((el) => {
+          const style = clonedDoc.defaultView.getComputedStyle(el);
+          const bg = style.backgroundColor;
+          const color = style.color;
+          const border = style.borderColor;
 
-          const parseL = (value) => {
-            const m = String(value || '').match(/oklch\(\s*([0-9.]+)\s*(%?)/i);
-            if (!m) return null;
-            let L = Number(m[1]);
-            if (!Number.isFinite(L)) return null;
-            if (m[2] === '%') L = L / 100;
-            return L;
-          };
-
-          const fallbackFromL = (value, darkHex, lightHex) => {
-            const L = parseL(value);
-            if (L == null) return darkHex;
-            return L > 0.7 ? lightHex : darkHex;
-          };
-
-          const fixEl = (el) => {
-            const cs = win.getComputedStyle(el);
-            if (!cs) return;
-
-            // color
-            if (String(cs.color || '').includes('oklch(')) {
-              el.style.color = fallbackFromL(cs.color, '#111827', '#ffffff');
-            }
-
-            // background
-            if (String(cs.backgroundColor || '').includes('oklch(')) {
-              el.style.backgroundColor = fallbackFromL(
-                cs.backgroundColor,
-                '#000000',
-                '#ffffff'
-              );
-            }
-
-            // borders
-            const borderProps = [
-              'borderTopColor',
-              'borderRightColor',
-              'borderBottomColor',
-              'borderLeftColor'
-            ];
-            for (const prop of borderProps) {
-              const v = cs[prop];
-              if (String(v || '').includes('oklch(')) {
-                el.style[prop] = fallbackFromL(v, '#000000', '#ffffff');
-              }
-            }
-          };
-
-          fixEl(root);
-          root.querySelectorAll('*').forEach(fixEl);
-        } catch {
-          // best-effort: preferimos no romper exportación
-        }
+          if (bg?.includes('oklch'))
+            el.style.backgroundColor = convertOklchToRgb(bg);
+          if (color?.includes('oklch'))
+            el.style.color = convertOklchToRgb(color);
+          if (border?.includes('oklch'))
+            el.style.borderColor = convertOklchToRgb(border);
+        });
       }
     });
 
-    const imgData = canvas.toDataURL('image/png');
+    // 4) PDF base
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'pt',
+      format: 'a4'
+    });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
 
-    // A4 en pt: 595.28 x 841.89
-    const pdf = new jsPDF('p', 'pt', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = PDF_MARGIN_PTS;
+    const footerH = PDF_FOOTER_H_PTS;
 
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const contentW = pageW - margin * 2;
+    const contentH = pageH - margin * 2 - footerH;
 
-    let heightLeft = imgHeight;
-    let position = 0;
+    // Canvas -> tamaño proporcional (en puntos)
+    const imgHeight = (canvas.height * contentW) / canvas.width;
+    const ptPerCanvasPx = imgHeight / canvas.height;
+    const pxPerPt = canvas.height / imgHeight;
 
-    pdf.addImage(
-      imgData,
-      'PNG',
-      0,
-      position,
-      imgWidth,
-      imgHeight,
-      undefined,
-      'FAST'
-    );
-    heightLeft -= pageHeight;
+    // 5) Convertimos mediciones DOM -> PT (con exportScale)
+    const rowBottomsPt = Array.from(
+      new Set(domRowBottoms.map((v) => v * exportScale * ptPerCanvasPx))
+    )
+      .filter((v) => Number.isFinite(v) && v > 0)
+      .sort((a, b) => a - b);
 
-    // Benjamin Orellana - 24-01-2026 - Evitamos hoja en blanco por restos mínimos de altura (redondeo canvas→pt).
-    const EPS_PTS = 6;
+    const avoidBlocksPt = domAvoid
+      .map((b) => ({
+        top: b.top * exportScale * ptPerCanvasPx,
+        bottom: b.bottom * exportScale * ptPerCanvasPx
+      }))
+      .filter(
+        (b) =>
+          Number.isFinite(b.top) &&
+          Number.isFinite(b.bottom) &&
+          b.bottom > b.top
+      )
+      .sort((a, b) => a.top - b.top);
 
-    while (heightLeft > EPS_PTS) {
-      position -= pageHeight;
-      pdf.addPage();
-      pdf.addImage(
-        imgData,
-        'PNG',
+    // 6) Paginación inteligente
+    const SAFE_GAP = 6; // pt
+    const MIN_ADV = 24; // pt
+    const EPS = 0.5;
+
+    const pickCut = (yStart, boundary) => {
+      // Evitar cortar dentro de bloques "no fragmentables"
+      let forcedBoundary = boundary;
+
+      for (const b of avoidBlocksPt) {
+        if (b.top < forcedBoundary && b.bottom > forcedBoundary) {
+          forcedBoundary = Math.max(yStart + MIN_ADV, b.top - 1);
+          break;
+        }
+      }
+
+      // Preferir cortes por filas si existen
+      const maxRow = rowBottomsPt.length
+        ? rowBottomsPt.filter((v) => v <= forcedBoundary - SAFE_GAP).pop()
+        : null;
+
+      const cut = maxRow ?? forcedBoundary;
+      return Math.min(Math.max(cut, yStart + MIN_ADV), boundary);
+    };
+
+    const yStarts = [0];
+    while (true) {
+      const y = yStarts[yStarts.length - 1];
+      if (y + MIN_ADV >= imgHeight - EPS) break;
+
+      const boundary = Math.min(y + contentH, imgHeight);
+      let cut = pickCut(y, boundary);
+
+      // Si por seguridad no avanzamos lo suficiente, caemos al boundary
+      if (cut <= y + MIN_ADV) cut = boundary;
+
+      // Si ya estamos al final, no agregamos otra página
+      if (cut >= imgHeight - EPS) break;
+
+      yStarts.push(cut);
+    }
+
+    const totalPages = yStarts.length;
+
+    // 7) Render por página (CLAVE: recortamos el canvas por página para que NUNCA "asome" contenido en el área de footer)
+    const pageCanvas = document.createElement('canvas');
+    pageCanvas.width = canvas.width;
+
+    const footerTopY = margin + contentH + 2;
+    const footerTextY = pageH - margin - 6;
+
+    for (let i = 0; i < totalPages; i++) {
+      const yStart = yStarts[i];
+      const yEnd = i === totalPages - 1 ? imgHeight : yStarts[i + 1];
+
+      const slicePt = Math.max(1, yEnd - yStart);
+      const sy = Math.max(0, Math.round(yStart * pxPerPt));
+      const sh = Math.max(1, Math.round(slicePt * pxPerPt));
+
+      // Ajuste por redondeo (no salir del canvas)
+      const maxSh = Math.max(1, canvas.height - sy);
+      const realSh = Math.min(sh, maxSh);
+
+      pageCanvas.height = realSh;
+      let ctx = pageCanvas.getContext('2d');
+
+      // Fondo blanco
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+
+      // Recorte exacto desde el canvas completo
+      ctx.drawImage(
+        canvas,
         0,
-        position,
-        imgWidth,
-        imgHeight,
+        sy,
+        canvas.width,
+        realSh,
+        0,
+        0,
+        pageCanvas.width,
+        pageCanvas.height
+      );
+
+      const pageImg = pageCanvas.toDataURL('image/png');
+
+      if (i > 0) pdf.addPage();
+
+      // Alto real en pt (capado a contentH para que jamás invada el footer del PDF)
+      const slicePtReal = Math.min(
+        contentH,
+        (realSh / canvas.height) * imgHeight
+      );
+
+      pdf.addImage(
+        pageImg,
+        'PNG',
+        margin,
+        margin,
+        contentW,
+        slicePtReal,
         undefined,
         'FAST'
       );
-      heightLeft -= pageHeight;
+
+      // Footer PDF (numeración)
+      pdf.setDrawColor(0);
+      pdf.setLineWidth(0.8);
+      pdf.line(margin, footerTopY, pageW - margin, footerTopY);
+
+      pdf.setFontSize(9);
+      pdf.setTextColor(0);
+      pdf.text(
+        `${A4_DOC_LABEL}  ·  Página ${i + 1}/${totalPages}`,
+        margin,
+        footerTextY
+      );
     }
+
+    // 8) Restaurar estado UI
+    node.classList.remove('a4-exporting');
+    if (prevFooterMode == null) node.removeAttribute('data-footer-mode');
+    else node.setAttribute('data-footer-mode', prevFooterMode);
 
     return pdf;
   };
@@ -742,6 +1038,7 @@ export default function FacturaA4Modal({
       setRemitoExporting(false);
     }
   };
+
   // Benjamin Orellana - 24-01-2026 - Logo final para Factura A4
   // Prioridad: prop logoUrl (si lo pasan) > ticketConfig.logo_path (si existe)
   const logoUrlFinal = useMemo(() => {
@@ -790,10 +1087,18 @@ export default function FacturaA4Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div
+      // Benjamin Orellana - 2026-01-26 - Hook de CSS para neutralizar overflow/max-height del modal al imprimir.
+      className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 a4-modal-overlay"
+    >
+      <style>{A4_PRINT_CSS}</style>
+
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
 
-      <div className="relative w-full sm:max-w-6xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden">
+      <div
+        // Benjamin Orellana - 2026-01-26 - Hook de CSS para evitar clipping del panel al imprimir.
+        className="relative w-full sm:max-w-6xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden a4-modal-panel"
+      >
         {/* Header acciones */}
         <div className="sticky top-0 z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 border-b bg-white">
           <div className="text-sm">
@@ -863,19 +1168,23 @@ export default function FacturaA4Modal({
         </div>
 
         {/* Preview */}
-        <div className="bg-gray-100 p-3 sm:p-6 overflow-auto max-h-[85vh]">
+        <div
+          // Benjamin Orellana - 2026-01-26 - Hook de CSS para imprimir sin recorte por overflow/max-height.
+          className="bg-gray-100 p-3 sm:p-6 overflow-auto max-h-[85vh] a4-modal-scroll"
+        >
           {/* A4: 794 x 1123 aprox (96dpi). Se renderiza como hoja. */}
           <div
             ref={a4Ref}
             data-a4-root="1"
+            // Benjamin Orellana - 2026-01-26 - Permite alternar footer repetido vs solo al final en print/PDF.
+            data-footer-mode={A4_FOOTER_MODE}
             className="mx-auto bg-white text-black shadow"
             style={{ width: 794, minHeight: 1123, padding: 22 }}
           >
             {a4View === 'factura' ? (
               <>
-                {/* Benjamin Orellana - 24-01-2026 - Ajuste de espaciados para que el encabezado no quede excesivamente alto en A4. */}
                 {/* Encabezado factura (estilo clásico) */}
-                <div className="grid grid-cols-[1.4fr_0.2fr_1.4fr] gap-3">
+                <div className="grid grid-cols-[1.4fr_0.2fr_1.4fr] gap-3 a4-avoid-break">
                   {/* Izquierda: Logo + datos comerciales */}
                   <div className="border border-black p-6">
                     <div className="flex items-start gap-6">
@@ -900,15 +1209,12 @@ export default function FacturaA4Modal({
                     <div className="mt-2 text-[13px] leading-5">
                       <div className="font-semibold">{nombreTiendaVisible}</div>
                       <div>{direccionVisible}</div>
-                      {/* Benjamin Orellana - 25-01-2026 - Local visible desde ventaData para soportar ventas parciales del listado. */}
                       <div>{ventaData?.locale?.nombre || '—'}</div>
                       <div>Tel. {telefonoVisible}</div>
                     </div>
                   </div>
 
                   {/* Centro: Letra */}
-                  {/* Centro: Letra */}
-                  {/* Benjamin Orellana - 24-01-2026 - Separación visual: evitamos que la letra grande pise el código del comprobante. */}
                   <div
                     className="border border-black flex flex-col items-center justify-between px-2 py-3"
                     style={{ minHeight: 132 }}
@@ -929,7 +1235,6 @@ export default function FacturaA4Modal({
 
                   {/* Derecha: Datos fiscales + numeración */}
                   <div className="border border-black p-6">
-                    {/* Benjamin Orellana - 25-01-2026 - UX: el título del modal refleja la vista actual (factura/remito). */}
                     <div className="font-semibold text-black titulo">
                       {a4View === 'remito' ? 'REMITO' : tipoComprobanteLabel}
                     </div>
@@ -942,7 +1247,6 @@ export default function FacturaA4Modal({
 
                       <div className="flex gap-2">
                         <div className="w-32 font-semibold">Fecha Fact.:</div>
-                        {/* Benjamin Orellana - 25-01-2026 - Fallback de fecha usando ventaData (OBR). */}
                         <div>
                           {fmtDate(cf?.fecha_emision || ventaData?.fecha)}
                         </div>
@@ -952,11 +1256,6 @@ export default function FacturaA4Modal({
                         <div className="w-32 font-semibold">C.U.I.T.:</div>
                         <div>{empresa?.cuit || '—'}</div>
                       </div>
-
-                      {/* <div className="flex gap-2">
-                    <div className="w-32 font-semibold">IIBB:</div>
-                    <div>{empresa?.iibb || '—'}</div>
-                  </div> */}
 
                       <div className="flex gap-2">
                         <div className="w-32 font-semibold">Inicio Act.:</div>
@@ -977,9 +1276,8 @@ export default function FacturaA4Modal({
                   </div>
                 </div>
 
-                {/* Benjamin Orellana - 24-01-2026 - Ajuste de padding para mejorar legibilidad y compactar el layout A4. */}
                 {/* Datos del cliente */}
-                <div className="border border-black mt-3 p-6 text-[14px] leading-6">
+                <div className="border border-black mt-3 p-6 text-[14px] leading-6 a4-avoid-break">
                   <div className="grid grid-cols-1 sm:grid-cols-[1.2fr_0.8fr] gap-2">
                     <div>
                       <div>
@@ -1024,7 +1322,6 @@ export default function FacturaA4Modal({
                         <span className="font-semibold">DNI/CUIT:</span>{' '}
                         {cliente?.cuit_cuil || cliente?.dni || '—'}
                       </div>
-                      {/* Remito lo dejamos vacío por ahora */}
                       <div>
                         <span className="font-semibold">Remito:</span>{' '}
                         {remitoActivo?.numero_full
@@ -1039,7 +1336,7 @@ export default function FacturaA4Modal({
 
                 {/* Tabla ítems */}
                 <div className="border border-black mt-3 flex-1 flex flex-col">
-                  <div className="grid grid-cols-[0.18fr_0.52fr_0.1fr_0.1fr_0.1fr] border-b border-black text-[14px] font-semibold px-2 py-1">
+                  <div className="grid grid-cols-[0.18fr_0.52fr_0.1fr_0.1fr_0.1fr] border-b border-black text-[14px] font-semibold px-2 py-1 a4-avoid-break">
                     <div>Código</div>
                     <div>Descripción</div>
                     <div className="text-right">Cant.</div>
@@ -1048,7 +1345,8 @@ export default function FacturaA4Modal({
                   </div>
 
                   {/* Benjamin Orellana - 24-01-2026 - Layout A4: en vez de spacer fijo, usamos flex para que el bloque de CAE no quede cortado. */}
-                  <div className="text-[14px] flex flex-col flex-1">
+                  {/* Benjamin Orellana - 2026-01-26 - Marcamos área de ítems para neutralizar flex-1 en print/export (evita páginas en blanco). */}
+                  <div className="text-[14px] flex flex-col flex-1 a4-items">
                     {/* Benjamin Orellana - 25-01-2026 - Ítems: usamos ventaData para asegurar detalles completos en impresión/export (ClientesGet). */}
                     {(ventaData?.detalles || []).map((it) => {
                       const prod = it?.stock?.producto || {};
@@ -1082,13 +1380,19 @@ export default function FacturaA4Modal({
                     })}
 
                     {/* Espacio para que visualmente quede como factura clásica */}
-                    <div style={{ height: 390 }} />
+                    {/* Benjamin Orellana - 2026-01-26 - Spacer visual: marcado para ocultarlo en print/PDF y evitar hojas en blanco. */}
+                    <div
+                      style={{ height: 390 }}
+                      className="a4-spacer"
+                      aria-hidden="true"
+                    />
                   </div>
                 </div>
 
                 {/* Totales + CAE */}
                 {/* Benjamin Orellana - 24-01-2026 - Ajuste de pie de factura: se elimina mt-auto para evitar overflow (hoja en blanco) y se compacta el bloque para que no se corte en PDF. */}
-                <div className="border border-black mt-3 p-4">
+                {/* Benjamin Orellana - 2026-01-26 - Marcamos bloque de cierre para que si no entra, salte completo a la próxima hoja (sin cortarse). */}
+                <div className="border border-black mt-3 p-4 a4-footer-block a4-avoid-break">
                   <div className="grid grid-cols-[1fr_1fr] gap-3 items-start">
                     {/* Izquierda: vendedor + CAE */}
                     <div className="text-[12px] leading-4">
@@ -1154,7 +1458,7 @@ export default function FacturaA4Modal({
 
                   {/* Benjamin Orellana - 24-01-2026 - Bloque QR fiscal + marca ARCA: se muestra sólo si existe CAE (venta con comprobante). */}
                   {cf?.cae && (
-                    <div className="mt-4 pt-4 border-t border-black flex items-end justify-between gap-6">
+                    <div className="mt-4 pt-4 border-t border-black flex items-end justify-between gap-6 a4-qrblock">
                       {/* QR */}
                       <div className="flex items-end gap-3">
                         {qrImg ? (
@@ -1200,16 +1504,28 @@ export default function FacturaA4Modal({
                         </div>
                       </div>
 
-                      {/* “Logo” ARCA (como en el ejemplo, en texto para evitar CORS/imagenes externas) */}
-                      <div className="text-right leading-none">
-                        <div className="text-[28px] font-black tracking-wide text-gray-500">
+                      {/* “Logo” ARCA */}
+                      <div className="text-right">
+                        <div
+                          className="text-[28px] font-black tracking-wide text-gray-500"
+                          style={{ lineHeight: '1' }}
+                        >
                           ARCA
                         </div>
-                        <div className="text-[9px] tracking-widest text-gray-500">
-                          AGENCIA DE RECAUDACIÓN
-                        </div>
-                        <div className="text-[9px] tracking-widest text-gray-500">
-                          Y CONTROL ADUANERO
+
+                        <div className="mt-[2px]">
+                          <div
+                            className="text-[9px] tracking-widest text-gray-500"
+                            style={{ lineHeight: '1.35' }}
+                          >
+                            AGENCIA DE RECAUDACIÓN
+                          </div>
+                          <div
+                            className="text-[9px] tracking-widest text-gray-500"
+                            style={{ lineHeight: '1.35' }}
+                          >
+                            Y CONTROL ADUANERO
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1390,7 +1706,8 @@ export default function FacturaA4Modal({
                             return (
                               <div
                                 key={`${it?.stock_id || it?.producto_id || idx}`}
-                                className="grid grid-cols-[0.18fr_0.52fr_0.10fr_0.10fr_0.10fr] px-2 py-1"
+                                // Benjamin Orellana - 2026-01-26 - Agregamos clase a4-row para cortes seguros entre páginas (evita cortar filas en print/PDF).
+                                className="grid grid-cols-[0.18fr_0.52fr_0.10fr_0.10fr_0.10fr] px-2 py-1 a4-row"
                               >
                                 <div className="pr-2">{it?.codigo || '—'}</div>
                                 <div className="pr-2">{it?.nombre || '—'}</div>
@@ -1406,12 +1723,19 @@ export default function FacturaA4Modal({
                           })}
 
                           {/* espacio visual tipo hoja */}
-                          <div style={{ height: 520 }} />
+                          {/* Benjamin Orellana - 2026-01-26 - Marcamos spacer para excluirlo en print/PDF y evitar cortes/páginas vacías. */}
+                          {/* Benjamin Orellana - 2026-01-26 - Spacer visual (Remito): marcado para ocultarlo en print/PDF y evitar hojas en blanco. */}
+                          <div
+                            style={{ height: 520 }}
+                            className="a4-spacer"
+                            aria-hidden="true"
+                          />
                         </div>
                       </div>
 
                       {/* Pie Remito */}
-                      <div className="border border-black mt-3 p-6">
+                      {/* Benjamin Orellana - 2026-01-26 - Evitamos que el pie/firma se corte entre páginas (bloque crítico). */}
+                      <div className="border border-black mt-3 p-6 a4-footer-block a4-avoid-break">
                         <div className="grid grid-cols-2 gap-6 items-start">
                           <div className="text-[13px] leading-6">
                             <div>
