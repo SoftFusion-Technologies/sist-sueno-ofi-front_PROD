@@ -785,13 +785,38 @@ export default function PuntoVenta() {
     const disponible = Math.max(0, toNum(item?.cantidad_disponible, 0));
     if (disponible <= 0) return; // no agregues si no hay stock
 
-    // Coerción y fallbacks de precios
+    // Benjamin Orellana - 2026-02-02 - Detecta ítem de combo y preserva precio_lista (precio real) para cobrar "extras" correctamente.
+    const isComboItem = !!item?.is_combo_item || !!item?.combo_id;
+
+    // Precio real/lista (NO proporcional). Para combos debe venir en item.precio_lista.
+    const precioLista = toNum(
+      item?.precio_lista ??
+        item?.precio_real ??
+        item?.precio_original_real ??
+        item?.precio_original ??
+        item?.precio,
+      0
+    );
+
+    // Precio proporcional del combo (unitario)
+    const precioComboUnit = toNum(item?.precio, 0);
+
+    // Coerción y fallbacks de precios (modo normal)
     const precioBase = toNum(item?.precio, 0);
     const precioDesc = toNum(item?.precio_con_descuento, precioBase);
-    const descPct = usarDesc ? toNum(item?.descuento_porcentaje, 0) : 0;
 
-    // Precio unitario efectivo según usarDesc
-    const precioUnit = usarDesc ? precioDesc : precioBase;
+    // % descuento solo si NO es combo
+    const descPct =
+      !isComboItem && usarDesc ? toNum(item?.descuento_porcentaje, 0) : 0;
+
+    // Precio unitario efectivo:
+    // - Combo: SIEMPRE el proporcional (precioComboUnit)
+    // - Normal: según usarDesc
+    const precioUnit = isComboItem
+      ? precioComboUnit
+      : usarDesc
+        ? precioDesc
+        : precioBase;
 
     setCarrito((prev) => {
       const idx = prev.findIndex((i) => i.stock_id === stockId);
@@ -801,13 +826,24 @@ export default function PuntoVenta() {
 
       if (idx !== -1) {
         const linea = prev[idx];
+
         const nuevaCant = Math.min(
           disponible,
           toNum(linea.cantidad, 0) + delta
         );
         if (nuevaCant === linea.cantidad) return prev; // ya está al tope
 
-        const nuevaLinea = { ...linea, cantidad: nuevaCant };
+        // Benjamin Orellana - 2026-02-02 - No perder precio_lista / flags de combo al incrementar.
+        const nuevaLinea = {
+          ...linea,
+          cantidad: nuevaCant,
+          // preservo siempre el precio real/lista si existe
+          precio_lista: toNum(linea?.precio_lista, 0) || precioLista,
+          // preservo flags combo si ya estaban
+          is_combo_item: !!linea?.is_combo_item || isComboItem,
+          combo_id: linea?.combo_id ?? item?.combo_id ?? null
+        };
+
         const copia = prev.slice();
         copia[idx] = nuevaLinea;
         return copia;
@@ -820,16 +856,34 @@ export default function PuntoVenta() {
         stock_id: stockId,
         producto_id: item.producto_id,
         nombre: item.nombre,
-        // guardo snapshot de precios en el momento de agregar
-        precio_original: precioBase,
-        precio_con_descuento: precioDesc,
+
+        // Benjamin Orellana - 2026-02-02 - Snapshot completo:
+        // precio_original / precio_lista = PRECIO REAL (no proporcional), usado para cobrar extras fuera de combo.
+        precio_lista: precioLista,
+        precio_original: precioLista,
+
+        // precio_con_descuento (solo aplica a ítems normales)
+        precio_con_descuento: !isComboItem
+          ? toNum(item?.precio_con_descuento, precioLista)
+          : precioLista,
+
+        // precio efectivo unitario:
+        // - combo => proporcional
+        // - normal => (desc o no desc)
         precio: precioUnit,
+
+        // compatibilidad: guardo ambos nombres (hay código que usa snake y otro camel)
+        descuento_porcentaje: descPct,
         descuentoPorcentaje: descPct,
+
+        // flags combo
+        is_combo_item: isComboItem,
+        combo_id: item?.combo_id ?? null,
+
         cantidad_disponible: disponible,
         cantidad: cantInicial,
         codigo_sku: item.codigo_sku,
         categoria_id: item.categoria_id,
-        // opcionalmente, si lo tenés:
         local_id: item.local_id ?? undefined
       };
 
@@ -848,6 +902,9 @@ export default function PuntoVenta() {
   useEffect(() => {
     setCarrito((prev) =>
       prev.map((item) => {
+        // Benjamin Orellana - 2026-02-02 - En ítems de combo NO recalculamos precio por descuento.
+        if (item?.is_combo_item || item?.combo_id) return item;
+
         const aplicarDesc = usarDescuentoPorProducto[item.producto_id] ?? true;
 
         const nuevoPrecio = aplicarDesc
@@ -875,13 +932,16 @@ export default function PuntoVenta() {
             ? {
                 ...it,
                 cantidad: Math.max(
-                  1,
-                  Math.min(it.cantidad + delta, it.cantidad_disponible)
+                  0,
+                  Math.min(
+                    toNum(it.cantidad, 0) + toNum(delta, 0),
+                    toNum(it.cantidad_disponible, 0)
+                  )
                 )
               }
             : it
         )
-        .filter((it) => it.cantidad > 0)
+        .filter((it) => toNum(it.cantidad, 0) > 0)
     );
 
   const quitarProducto = (stockId) =>
@@ -1061,10 +1121,17 @@ export default function PuntoVenta() {
           stock_id: s.stock_id,
           producto_id: s.producto_id,
           nombre: s.nombre,
-          // override: usar el precio proporcional del combo
+
+          // precio visible para el armado del combo (proporcional)
           precio: Number(precioUnitProporcional),
           precio_con_descuento: Number(precioUnitProporcional),
           descuento_porcentaje: 0,
+          // Benjamin Orellana - 2026-02-02 - Precio real para extras (si el usuario aumenta cantidad)
+          precio_lista: Number(s.precio_lista ?? s.precio ?? 0),
+          // NUEVO: flags informativos (opcionales pero útiles)
+          is_combo_item: true,
+          combo_id: combo.id,
+
           cantidad_disponible: Number(s.cantidad_disponible || 0),
           codigo_sku: s.codigo_sku,
           categoria_id: s.categoria_id,
@@ -1103,7 +1170,10 @@ export default function PuntoVenta() {
         ...prev,
         {
           combo_id: combo.id,
+          // Benjamin Orellana - 2026-02-02 - Alias para compatibilidad: guardamos precio_fijo además de precio_combo para activar comboMode en el backend.
           precio_combo: Number(combo.precio_fijo),
+          precio_fijo: Number(combo.precio_fijo),
+          cantidad: 1,
           productos: usados
         }
       ]);
@@ -1279,7 +1349,6 @@ export default function PuntoVenta() {
   useEffect(() => {
     const calcularTotal = async () => {
       if (!medioPago || carrito.length === 0) return;
-
       const precio_base = carrito.reduce(
         (acc, item) => acc + item.precio * item.cantidad,
         0
@@ -1301,7 +1370,7 @@ export default function PuntoVenta() {
         payload.descuento_personalizado = Number(descuentoPersonalizado);
       }
 
-      // Benjamin Orellana - 2026-01-28 - Envia redondeo final (1000, floor) y solicita previews de 3 medios (contado + tarjeta top + alternativa) para mostrar sugerencias al vendedor.
+      // Benjamin Orellana - 2026-01-28 - Envia redondeo final (1000, floor) y solicita previews.
       payload.redondeo_step = 1000;
       payload.redondeo_mode = 'floor';
 
@@ -1309,6 +1378,29 @@ export default function PuntoVenta() {
         const n = parseFloat(String(v ?? '0').replace(',', '.'));
         return Number.isFinite(n) ? n : 0;
       };
+
+      // Benjamin Orellana - 2026-02-02 - En comboMode enviamos el detalle del combo (precio_fijo + stock_ids) para que el backend compute unidades y extras correctamente.
+      const hasCombo =
+        Array.isArray(combosSeleccionados) && combosSeleccionados.length > 0;
+
+      if (hasCombo) {
+        payload.combos = combosSeleccionados.map((c) => ({
+          combo_id: c?.combo_id ?? c?.id ?? null,
+          precio_fijo: Number(
+            c?.precio_fijo ?? c?.precio_combo ?? c?.precioCombo ?? 0
+          ),
+          cantidad: Number(c?.cantidad ?? 1) || 1,
+          productos: Array.isArray(c?.productos)
+            ? c.productos.map((p) => ({ stock_id: Number(p?.stock_id) }))
+            : []
+        }));
+
+        payload.combo_precio_fijo_total = payload.combos.reduce((acc, c) => {
+          const p = Number(c?.precio_fijo || 0) || 0;
+          const q = Number(c?.cantidad || 1) || 1;
+          return acc + p * q;
+        }, 0);
+      }
 
       const activos = Array.isArray(mediosPago)
         ? mediosPago.filter((m) => Number(m?.activo) === 1)
@@ -1331,9 +1423,31 @@ export default function PuntoVenta() {
         ? positivos.find((m) => m._pct < top._pct) || positivos[1] || null
         : positivos[0] || null;
 
-      payload.preview_medios_pago_ids = [contado?.id, top?.id, alt?.id].filter(
-        Boolean
-      );
+      // Benjamin Orellana - 2026-02-02 - En comboMode: pedimos previews de EFECTIVO + 1 TARJETA para evitar sugerencias infladas (+40/+20).
+      const isEfectivoLike = (m) => {
+        const n = String(m?.nombre || '').toLowerCase();
+        return n.includes('efectivo') || n.includes('contado');
+      };
+
+      const efectivo =
+        activos.find(isEfectivoLike) ||
+        activos.find((m) => m?.id === 1) ||
+        null;
+
+      if (hasCombo) {
+        const tarjetaRef = top || alt || positivos[0] || null;
+
+        payload.preview_medios_pago_ids = [efectivo?.id, tarjetaRef?.id].filter(
+          Boolean
+        );
+      } else {
+        // Modo normal (sin combo): 3 previews (contado + tarjeta top + alternativa)
+        payload.preview_medios_pago_ids = [
+          contado?.id,
+          top?.id,
+          alt?.id
+        ].filter(Boolean);
+      }
 
       try {
         const res = await axios.post(
@@ -1345,16 +1459,15 @@ export default function PuntoVenta() {
         console.error('Error al calcular total', err);
       }
     };
-
     calcularTotal();
-    // Ahora dependé también de estos estados
   }, [
     carrito,
     medioPago,
     cuotasSeleccionadas,
     aplicarDescuento,
     descuentoPersonalizado,
-    mediosPago // Benjamin Orellana - 2026-01-28 - Necesario para construir preview_medios_pago_ids
+    mediosPago,
+    combosSeleccionados // Benjamin Orellana - 2026-02-02 - Recalcula totales cuando cambia el combo.
   ]);
 
   const cuotasUnicas = Array.from(
@@ -2388,15 +2501,10 @@ export default function PuntoVenta() {
               </div>
             </div>
 
-            {/* Hint/legend (opcional) */}
-            <div className="hidden sm:flex items-center gap-2 text-[12px] text-slate-300/70">
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                Disponible
-              </span>
+            <div className="hidden sm:flex items-center gap-2 text-[10px] text-slate-300/70">
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur">
                 <span className="h-2 w-2 rounded-full bg-rose-400" />
-                Sin stock
+                Desarrollado por SOFTFUSION +54 9 3815 43-0503
               </span>
             </div>
           </div>

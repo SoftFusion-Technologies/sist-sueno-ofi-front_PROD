@@ -11,70 +11,160 @@ function TotalConOpciones({
   setMedioPago,
   medioPago,
   redondeoStep = 1000,
-  userLevel // se agrega para ocultar el precio al vendedor Bene Orellana - 29-01-2026
+  userLevel // se agrega para ocultar el precio al vendedor Benjamin Orellana - 29-01-2026
 }) {
-  // Benjamin Orellana - 2026-01-28 - Helpers para sugerir 2 precios (tarjeta mayor recargo y tarjeta menor recargo) usando previews del backend (incluye cuotas + redondeo real).
   const parsePct = (v) => {
     const n = parseFloat(String(v ?? '0').replace(',', '.'));
     return Number.isFinite(n) ? n : 0;
   };
 
-  // Fallback visual si en algún caso no viniera el redondeo aplicado del backend
   const roundToStep = (value, step = 1000) => {
     const v = Number(value) || 0;
     const s = Number(step) || 1;
-    return Math.floor(v / s) * s; // floor para “bajar a 0” (534002 -> 534000)
+    return Math.floor(v / s) * s;
   };
 
   const previews = Array.isArray(totalCalculado?.previews)
     ? totalCalculado.previews
     : [];
 
-  // 1) Preferimos previews del backend (totales reales con cuotas y redondeo)
-  const previewPositivos = previews
-    .map((p) => ({
-      ...p,
-      _pct: parsePct(p?.ajuste_porcentual)
-    }))
-    .filter((p) => p._pct > 0);
+  // Benjamin Orellana - 2026-02-02 - Detecta modo combo desde backend (pricing_mode) o por señal auxiliar (combo_precio_fijo_total).
+  const isComboMode =
+    String(totalCalculado?.pricing_mode || '').toLowerCase() === 'combo' ||
+    String(totalCalculado?.pricing_mode || '')
+      .toLowerCase()
+      .includes('combo') ||
+    Number(totalCalculado?.combo_precio_fijo_total || 0) > 0;
 
-  let topPreview = null;
-  let lowPreview = null;
+  const isEfectivoLikeName = (name) => {
+    const n = String(name || '').toLowerCase();
+    return n.includes('efectivo') || n.includes('contado');
+  };
 
-  if (previewPositivos.length > 0) {
-    topPreview = previewPositivos.reduce(
-      (acc, p) => (!acc || p._pct > acc._pct ? p : acc),
-      null
-    );
-
-    lowPreview = previewPositivos.reduce(
-      (acc, p) => (!acc || p._pct < acc._pct ? p : acc),
-      null
-    );
-  }
-
-  // 2) Fallback si no vienen previews (calcula aproximado en front)
-  const activos = Array.isArray(mediosPago)
-    ? mediosPago.filter((m) => Number(m?.activo) === 1)
-    : [];
-
-  const positivosFront = activos
-    .map((m) => ({ ...m, _pct: parsePct(m?.ajuste_porcentual) }))
-    .filter((m) => m._pct > 0)
-    .sort((a, b) => b._pct - a._pct || (a?.orden ?? 9999) - (b?.orden ?? 9999));
-
-  const topFront = positivosFront[0] || null;
-  const lowFront = positivosFront.length
-    ? positivosFront[positivosFront.length - 1]
-    : null;
-
-  const precioBase = Number(totalCalculado?.precio_base ?? 0) || 0;
-  const precioContado =
-    Number(totalCalculado?.precio_contado ?? 0) || precioBase;
-  const totalFinal = Number(totalCalculado?.total ?? 0) || 0;
-
+  // 1) Sugerencias:
+  // - Normal: 2 tarjetas (mayor % y menor %)
+  // - Combo: 2 opciones claras: Tarjeta (precio fijo combo) + Efectivo (con ajuste del medio)
+  // IMPORTANTE: en combo NO hay fallback front, para evitar que reaparezca +40/+20.
   const suggestions = (() => {
-    // Benjamin Orellana - 2026-01-28 - Sugiere 2 tarjetas: mayor % y menor % (si son distintas). Prioriza previews (backend).
+    // =========================
+    // MODO COMBO (solo previews)
+    // =========================
+    if (isComboMode) {
+      if (!previews.length) return [];
+
+      // preferimos: 1 efectivo + 1 tarjeta (no efectivo)
+      const prevEfectivo = previews.find((p) => isEfectivoLikeName(p?.nombre));
+      const prevTarjeta = previews.find((p) => !isEfectivoLikeName(p?.nombre));
+
+      const items = [];
+
+      if (prevTarjeta) {
+        items.push({
+          key: 'tarjeta',
+          label: `${prevTarjeta.nombre || 'Tarjeta'} (Precio fijo combo)`,
+          medioId: prevTarjeta.medio_pago_id,
+          pct: parsePct(prevTarjeta?.ajuste_porcentual), // debería ser 0 en tarjeta cuando comboMode pisa recargos
+          total: Number(prevTarjeta.total ?? 0) || 0,
+          tag: 'combo'
+        });
+      }
+
+      if (
+        prevEfectivo &&
+        prevEfectivo.medio_pago_id !== prevTarjeta?.medio_pago_id
+      ) {
+        items.push({
+          key: 'efectivo',
+          label: `${prevEfectivo.nombre || 'Efectivo'} (Con ajuste del medio)`,
+          medioId: prevEfectivo.medio_pago_id,
+          pct: parsePct(prevEfectivo?.ajuste_porcentual), // acá debería venir -10 si efectivo tiene descuento
+          total: Number(prevEfectivo.total ?? 0) || 0,
+          tag: 'combo'
+        });
+      }
+
+      // Fallback interno SOLO con previews: elegimos 2 extremos (menor y mayor total)
+      if (items.length === 0) {
+        const sorted = [...previews].sort(
+          (a, b) => Number(a?.total || 0) - Number(b?.total || 0)
+        );
+        const min = sorted[0];
+        const max = sorted[sorted.length - 1];
+
+        if (min) {
+          items.push({
+            key: 'min',
+            label: `${min.nombre || 'Opción'} (Menor total)`,
+            medioId: min.medio_pago_id,
+            pct: parsePct(min?.ajuste_porcentual),
+            total: Number(min.total ?? 0) || 0,
+            tag: 'combo'
+          });
+        }
+
+        if (max && max.medio_pago_id !== min?.medio_pago_id) {
+          items.push({
+            key: 'max',
+            label: `${max.nombre || 'Opción'} (Mayor total)`,
+            medioId: max.medio_pago_id,
+            pct: parsePct(max?.ajuste_porcentual),
+            total: Number(max.total ?? 0) || 0,
+            tag: 'combo'
+          });
+        }
+      }
+
+      return items.slice(0, 2);
+    }
+
+    // =========================
+    // MODO NORMAL (tu lógica)
+    // =========================
+    const previewPositivos = previews
+      .map((p) => ({
+        ...p,
+        _pct: parsePct(p?.ajuste_porcentual)
+      }))
+      .filter((p) => p._pct > 0);
+
+    let topPreview = null;
+    let lowPreview = null;
+
+    if (previewPositivos.length > 0) {
+      topPreview = previewPositivos.reduce(
+        (acc, p) => (!acc || p._pct > acc._pct ? p : acc),
+        null
+      );
+
+      lowPreview = previewPositivos.reduce(
+        (acc, p) => (!acc || p._pct < acc._pct ? p : acc),
+        null
+      );
+    }
+
+    const activos = Array.isArray(mediosPago)
+      ? mediosPago.filter((m) => Number(m?.activo) === 1)
+      : [];
+
+    const positivosFront = activos
+      .map((m) => ({ ...m, _pct: parsePct(m?.ajuste_porcentual) }))
+      .filter((m) => m._pct > 0)
+      .sort(
+        (a, b) => b._pct - a._pct || (a?.orden ?? 9999) - (b?.orden ?? 9999)
+      );
+
+    const topFront = positivosFront[0] || null;
+    const lowFront = positivosFront.length
+      ? positivosFront[positivosFront.length - 1]
+      : null;
+
+    const precioBase = Number(totalCalculado?.precio_base ?? 0) || 0;
+
+    const baseConDescuento = aplicarDescuento
+      ? precioBase * (1 - Number(descuentoPersonalizado || 0) / 100)
+      : precioBase;
+
+    // Preferimos previews del backend
     if (topPreview && lowPreview) {
       const items = [];
 
@@ -99,11 +189,7 @@ function TotalConOpciones({
       return items;
     }
 
-    // Fallback front (no incluye cuotas/redondeo real; solo útil si previews no llegan)
-    const baseConDescuento = aplicarDescuento
-      ? precioBase * (1 - Number(descuentoPersonalizado || 0) / 100)
-      : precioBase;
-
+    // Fallback front (solo modo normal)
     const items = [];
 
     if (topFront) {
@@ -128,6 +214,18 @@ function TotalConOpciones({
 
     return items;
   })();
+
+  const precioBase = Number(totalCalculado?.precio_base ?? 0) || 0;
+  const precioContado =
+    Number(totalCalculado?.precio_contado ?? 0) || precioBase;
+  const totalFinal = Number(totalCalculado?.total ?? 0) || 0;
+
+  const pctLabel = (pct) => {
+    const p = Number(pct ?? 0) || 0;
+    if (p > 0) return `+${p}% por método`;
+    if (p < 0) return `${Math.abs(p)}% de descuento`;
+    return 'Sin recargo';
+  };
 
   return (
     <>
@@ -172,7 +270,7 @@ function TotalConOpciones({
         )}
       </div>
 
-      {/* Benjamin Orellana - 2026-01-28 - Panel compacto de 2 precios sugeridos (tarjeta mayor % y tarjeta menor %) alimentado por previews del backend. */}
+      {/* Panel sugerencias */}
       {suggestions.length > 0 && (
         <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-3 mb-3">
           <div className="flex items-center justify-between gap-2 mb-2">
@@ -189,7 +287,6 @@ function TotalConOpciones({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {suggestions.map((s) => {
-              // Si viene de previews, ya está redondeado por backend. Si no, aplicamos floor visual.
               const totalShow = previews.length
                 ? Number(s.total || 0)
                 : roundToStep(s.total, redondeoStep);
@@ -218,8 +315,16 @@ function TotalConOpciones({
                   </div>
 
                   <div className="mt-0.5 text-[11px] text-white/60">
-                    {s.pct > 0 ? `+${s.pct}% por método` : 'Sin recargo'}
-                    {aplicarDescuento ? ' · desc. sobre contado' : ''}
+                    {typeof s.sub === 'string'
+                      ? s.sub
+                      : s.pct > 0
+                        ? `+${s.pct}% por método`
+                        : s.pct < 0
+                          ? `${Math.abs(s.pct)}% de descuento`
+                          : 'Sin recargo'}
+                    {!isComboMode && aplicarDescuento
+                      ? ' · desc. sobre contado'
+                      : ''}
                   </div>
                 </button>
               );
@@ -234,14 +339,15 @@ function TotalConOpciones({
         </div>
       )}
 
-      {/* Total (ahora muestra contado y final separados, evitando “pegote” de números) */}
+      {/* Total */}
       {totalCalculado && totalFinal >= 0 && (
         <div className="text-right text-white space-y-1">
           <div className="flex justify-end gap-6">
             {userLevel !== 'vendedor' && (
               <div className="text-right">
                 <div className="text-[12px] text-white/60">
-                  Contado{aplicarDescuento ? ' (con desc.)' : ''}
+                  Precio cargado en Prod.
+                  {aplicarDescuento ? ' (con desc.)' : ''}
                 </div>
                 <div className="text-[14px] font-semibold text-white/85">
                   {formatearPrecio(precioContado || precioBase)}
