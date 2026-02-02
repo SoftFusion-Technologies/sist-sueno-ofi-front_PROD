@@ -34,7 +34,7 @@ import ModalAlertasStockBajo from './Components/ModalAlertasStockBajo.jsx';
 import RoleGate from '../../Components/auth/RoleGate';
 import StockGuiaModal from '../../Components/Productos/StockGuiaModal.jsx';
 import { exportarStockAExcel } from '../../utils/exportStockExcel.js';
-
+import StockDetalleModal from './Components/StockDetalleModal.jsx';
 Modal.setAppElement('#root');
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rioromano.com.ar';
@@ -175,6 +175,21 @@ const StockGet = () => {
 
   const [modalExportOpen, setModalExportOpen] = useState(false);
   const [exportando, setExportando] = useState(false);
+
+  // Benjamin Orellana - 2026-02-02 - Modal de detalle full para ver producto + distribución completa del stock del grupo.
+  const [detalleOpen, setDetalleOpen] = useState(false);
+  const [detalleGroup, setDetalleGroup] = useState(null);
+
+  const abrirDetalle = (group) => {
+    setDetalleGroup(group);
+    setDetalleOpen(true);
+  };
+
+  const cerrarDetalle = () => {
+    setDetalleOpen(false);
+    // opcional: limpiar luego de animación
+    setTimeout(() => setDetalleGroup(null), 200);
+  };
 
   const fetchAll = async () => {
     try {
@@ -419,38 +434,6 @@ const StockGet = () => {
     );
     console.error(err);
   }
-
-  const handleDelete = async (id) => {
-    const confirmado = window.confirm(
-      '¿Estás seguro de eliminar este stock? Esta acción no se puede deshacer.'
-    );
-    if (!confirmado) return;
-
-    try {
-      await axios.delete(`https://api.rioromano.com.ar/stock/${id}`, {
-        data: {
-          usuario_log_id: getUserId()
-        }
-      });
-
-      fetchAll();
-
-      setModalFeedbackMsg('Stock eliminado correctamente.');
-      setModalFeedbackType('success');
-      setModalFeedbackOpen(true);
-    } catch (err) {
-      setModalFeedbackMsg(
-        err.response?.data?.mensajeError ||
-          err.response?.data?.message ||
-          err.message ||
-          'Ocurrió un error al eliminar el stock. Intenta de nuevo.'
-      );
-      setModalFeedbackType('error');
-      setModalFeedbackOpen(true);
-
-      console.error('Error al eliminar stock:', err);
-    }
-  };
 
   // handler SIN parámetro, usa el estado actual
   const handleDeleteGroup = async () => {
@@ -851,7 +834,6 @@ const StockGet = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-10 px-6 text-white">
       <ParticlesBackground />
       <ButtonBack />
-
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <h1 className="text-3xl font-bold text-cyan-300 flex items-center gap-2 uppercase">
@@ -1279,6 +1261,28 @@ const StockGet = () => {
                     </span>
                   </p> */}
 
+                  {/* Benjamin Orellana - 2026-02-02 - Acción "Ver" (FaEye) visible para todos: abre modal full con detalle completo. */}
+                  <div className="relative group">
+                    <button
+                      type="button"
+                      onClick={() => abrirDetalle(group)}
+                      className="
+      h-8 px-3 rounded-lg
+      border border-white/10 bg-white/5 text-white/85
+      hover:bg-white/10 active:scale-[0.98]
+      flex items-center gap-2 transition
+    "
+                      aria-label="Ver detalle"
+                    >
+                      <FaEye className="text-white/80 text-sm" />
+                      <span className="text-[12px] font-semibold">Ver</span>
+                    </button>
+
+                    <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full bg-gray-900 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap opacity-0 group-hover:opacity-100 transition-none z-[2000]">
+                      Ver detalle completo
+                    </span>
+                  </div>
+
                   {(userLevel === 'socio' ||
                     userLevel === 'administrativo') && (
                     <div className="flex items-center gap-2">
@@ -1583,7 +1587,6 @@ const StockGet = () => {
           </div>
         </div>
       )}
-
       {dupOpen && (
         <div
           className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
@@ -1958,14 +1961,12 @@ const StockGet = () => {
         msg={modalFeedbackMsg}
         type={modalFeedbackType}
       />
-
       <ToastContainer />
       <ModalAlertasStockBajo
         open={showAlertasStock}
         onClose={() => setShowAlertasStock(false)}
         threshold={10}
       />
-
       <StockGuiaModal open={helpOpen} onClose={() => setHelpOpen(false)} />
       {/* ---------- Modal ---------- */}
       {modalExportOpen && (
@@ -2070,8 +2071,16 @@ const StockGet = () => {
           </div>
         </div>
       )}
+       {/* Benjamin Orellana - 2026-02-02 - Se pasa el stock global para poder
+      mostrar "Otros locales" del mismo producto. */}
+      <StockDetalleModal
+        open={detalleOpen}
+        onClose={cerrarDetalle}
+        group={detalleGroup}
+        stockAll={stock}
+      />
     </div>
   );
-};
+};;
 
 export default StockGet;
