@@ -1,4 +1,4 @@
-import Logotipo from '../../public/Logotipo.svg';
+import Logotipo from '../../src/Logotipo.svg';
 
 const Footer = () => {
   return (

@@ -101,7 +101,7 @@ export default function PuntoVenta() {
   const [loadingMediosPago, setLoadingMediosPago] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [medioPago, setMedioPago] = useState(null);
-  const { userId, userLocalId, userIsReemplazante } = useAuth();
+  const { userId, userLocalId, userIsReemplazante, userLevel } = useAuth();
   const [modalNuevoClienteOpen, setModalNuevoClienteOpen] = useState(false);
   const [aplicarDescuento, setAplicarDescuento] = useState(true);
   const [descuentoPersonalizado, setDescuentoPersonalizado] = useState('');
@@ -124,6 +124,8 @@ export default function PuntoVenta() {
   const [comboSeleccionado, setComboSeleccionado] = useState(null);
   const [combosSeleccionados, setCombosSeleccionados] = useState([]);
 
+  const finalizarVentaLockRef = useRef(false);
+  const [finalizandoVenta, setFinalizandoVenta] = useState(false);
   // =========================
   // ARCA: Comprobante solicitado (F10 / F11) - FRONT ONLY
   // =========================
@@ -623,12 +625,43 @@ export default function PuntoVenta() {
 
   useEffect(() => {
     if (!loadingMediosPago && mediosPago.length > 0 && medioPago == null) {
-      // Busca el medio de pago con id === 1 (efectivo)
-      const efectivo = mediosPago.find((m) => m.id === 1);
-      if (efectivo) setMedioPago(efectivo.id);
+      // Benjamin Orellana - 2026-01-28 - Selecciona por defecto el medio de pago ACTIVO con mayor ajuste_porcentual; si empatan, prioriza menor orden y luego menor id.
+      // Busca el medio de pago activo con mayor ajuste_porcentual (antes: se buscaba id === 1 "efectivo")
+      const mejor = mediosPago
+        .filter((m) => Number(m.activo) === 1)
+        .reduce((acc, m) => {
+          const pct = parseFloat(m?.ajuste_porcentual ?? '0') || 0;
+
+          if (!acc) return { m, pct };
+
+          // 1) Mayor porcentaje gana
+          if (pct > acc.pct) return { m, pct };
+          if (pct < acc.pct) return acc;
+
+          // 2) Empate: menor orden gana
+          const ordA = Number.isFinite(+m?.orden)
+            ? +m.orden
+            : Number.MAX_SAFE_INTEGER;
+          const ordB = Number.isFinite(+acc.m?.orden)
+            ? +acc.m.orden
+            : Number.MAX_SAFE_INTEGER;
+          if (ordA < ordB) return { m, pct };
+          if (ordA > ordB) return acc;
+
+          // 3) Empate final: menor id gana
+          const idA = Number.isFinite(+m?.id) ? +m.id : Number.MAX_SAFE_INTEGER;
+          const idB = Number.isFinite(+acc.m?.id)
+            ? +acc.m.id
+            : Number.MAX_SAFE_INTEGER;
+          if (idA < idB) return { m, pct };
+
+          return acc;
+        }, null)?.m;
+
+      if (mejor) setMedioPago(mejor.id);
       else setMedioPago(mediosPago[0].id); // fallback: primero de la lista
     }
-  }, [loadingMediosPago, mediosPago]);
+  }, [loadingMediosPago, mediosPago, medioPago]);
 
   const [busqueda, setBusqueda] = useState('');
   const [productos, setProductos] = useState([]); // Productos agrupados con talles
@@ -1258,6 +1291,7 @@ export default function PuntoVenta() {
         medio_pago_id: medioPago,
         cuotas: cuotasSeleccionadas
       };
+
       // Si hay descuento personalizado y se está aplicando, incluilo
       if (
         aplicarDescuento &&
@@ -1266,6 +1300,40 @@ export default function PuntoVenta() {
       ) {
         payload.descuento_personalizado = Number(descuentoPersonalizado);
       }
+
+      // Benjamin Orellana - 2026-01-28 - Envia redondeo final (1000, floor) y solicita previews de 3 medios (contado + tarjeta top + alternativa) para mostrar sugerencias al vendedor.
+      payload.redondeo_step = 1000;
+      payload.redondeo_mode = 'floor';
+
+      const parsePct = (v) => {
+        const n = parseFloat(String(v ?? '0').replace(',', '.'));
+        return Number.isFinite(n) ? n : 0;
+      };
+
+      const activos = Array.isArray(mediosPago)
+        ? mediosPago.filter((m) => Number(m?.activo) === 1)
+        : [];
+
+      const positivos = activos
+        .map((m) => ({ ...m, _pct: parsePct(m?.ajuste_porcentual) }))
+        .filter((m) => m._pct > 0)
+        .sort(
+          (a, b) => b._pct - a._pct || (a?.orden ?? 9999) - (b?.orden ?? 9999)
+        );
+
+      const contado =
+        activos.find((m) => parsePct(m?.ajuste_porcentual) === 0) ||
+        activos.find((m) => m?.id === 1) ||
+        null;
+
+      const top = positivos[0] || null;
+      const alt = top
+        ? positivos.find((m) => m._pct < top._pct) || positivos[1] || null
+        : positivos[0] || null;
+
+      payload.preview_medios_pago_ids = [contado?.id, top?.id, alt?.id].filter(
+        Boolean
+      );
 
       try {
         const res = await axios.post(
@@ -1285,7 +1353,8 @@ export default function PuntoVenta() {
     medioPago,
     cuotasSeleccionadas,
     aplicarDescuento,
-    descuentoPersonalizado
+    descuentoPersonalizado,
+    mediosPago // Benjamin Orellana - 2026-01-28 - Necesario para construir preview_medios_pago_ids
   ]);
 
   const cuotasUnicas = Array.from(
@@ -1339,6 +1408,17 @@ export default function PuntoVenta() {
   };
 
   const finalizarVenta = async () => {
+    // Benjamin Orellana - 2026-01-28 - Guardrail anti doble disparo: bloquea múltiples clics/F2 mientras la venta está en proceso.
+    if (finalizarVentaLockRef.current) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Venta en proceso',
+        text: 'Ya se está generando la venta. Esperá a que finalice.',
+        confirmButtonText: 'Entendido'
+      });
+      return;
+    }
+
     if (carrito.length === 0) {
       await Swal.fire('Carrito vacío', 'Agregá productos al carrito.');
       return;
@@ -1354,327 +1434,356 @@ export default function PuntoVenta() {
     });
     if (!confirm.isConfirmed) return;
 
-    //  carrito está en modo "stock": cada item tiene stock_id, precio, precio_con_descuento, etc.
-    const productosRequest = carrito.map((item) => {
-      const precioOriginal = Number(item.precio ?? 0);
-      const precioFinal = Number(item.precio_con_descuento ?? item.precio ?? 0);
-      const descuento = Math.max(0, precioOriginal - precioFinal);
-      const descuentoPorcentaje =
-        precioOriginal > 0 ? (descuento / precioOriginal) * 100 : 0;
+    // Benjamin Orellana - 2026-01-28 - Loading UX: muestra “Generando…” y deshabilita acciones para evitar reintentos manuales.
+    finalizarVentaLockRef.current = true;
+    setFinalizandoVenta(true);
 
-      return {
-        stock_id: item.stock_id,
-        cantidad: Number(item.cantidad || 0),
-        precio_unitario: precioOriginal,
-        descuento: Number(descuento.toFixed(2)),
-        descuento_porcentaje: descuentoPorcentaje.toFixed(2),
-        precio_unitario_con_descuento: precioFinal
-      };
-    });
-
-    const origenes_descuento = [];
-
-    // 1) Por producto (snapshot guardado en cada línea)
-    carrito.forEach((item) => {
-      const pct = Number(item.descuentoPorcentaje || 0);
-      if (pct > 0) {
-        origenes_descuento.push({
-          tipo: 'producto',
-          referencia_id: item.producto_id ?? null,
-          detalle: item.nombre ?? 'Producto',
-          porcentaje: pct,
-          monto: (Number(item.precio_original || item.precio || 0) * pct) / 100
-        });
-      }
-    });
-
-    // ¿hay descuento manual?
-    const hayDescuentoManual =
-      aplicarDescuento &&
-      descuentoPersonalizado !== '' &&
-      parseFloat(descuentoPersonalizado) > 0;
-
-    // 2) Por medio de pago (solo si NO hay manual)
-    if (
-      aplicarDescuento &&
-      !hayDescuentoManual &&
-      totalCalculado.ajuste_porcentual !== 0
-    ) {
-      origenes_descuento.push({
-        tipo: 'medio_pago',
-        referencia_id: medioPago,
-        detalle:
-          mediosPago.find((m) => m.id === medioPago)?.nombre || 'Medio de pago',
-        porcentaje: totalCalculado.ajuste_porcentual,
-        monto:
-          (totalCalculado.precio_base * totalCalculado.ajuste_porcentual) / 100
-      });
-    }
-
-    // 3) Manual (tiene prioridad)
-    if (hayDescuentoManual) {
-      const pct = parseFloat(descuentoPersonalizado);
-      origenes_descuento.push({
-        tipo: 'manual',
-        referencia_id: null,
-        detalle: 'Descuento personalizado',
-        porcentaje: pct,
-        monto: (totalCalculado.precio_base * pct) / 100
-      });
-    }
-
-    // Si se solicita comprobante fiscal, pedimos cliente
-    if (cbteTipoSolicitado != null && !clienteSeleccionado) {
-      await Swal.fire(
-        'Cliente requerido',
-        'Para emitir comprobante fiscal, seleccioná un cliente.'
-      );
-      return;
-    }
-
-    const totalFinalCalculado = aplicarDescuento
-      ? totalCalculado.total
-      : totalCalculado.precio_base;
-
-    const ventaRequest = {
-      cliente_id: clienteSeleccionado ? clienteSeleccionado.id : null,
-      productos: productosRequest,
-      combos: combosSeleccionados,
-      total: totalFinalCalculado,
-      medio_pago_id: medioPago,
-      usuario_id: userId,
-      local_id: userLocalId,
-      cbte_tipo: cbteTipoSolicitado,
-      descuento_porcentaje:
-        aplicarDescuento && descuentoPersonalizado !== ''
-          ? parseFloat(descuentoPersonalizado)
-          : aplicarDescuento && totalCalculado.ajuste_porcentual < 0
-            ? Math.abs(totalCalculado.ajuste_porcentual)
-            : 0,
-      recargo_porcentaje:
-        aplicarDescuento && totalCalculado.ajuste_porcentual > 0
-          ? totalCalculado.ajuste_porcentual
-          : 0,
-      aplicar_descuento: aplicarDescuento,
-      origenes_descuento,
-      cuotas: totalCalculado.cuotas,
-      monto_por_cuota: totalCalculado?.monto_por_cuota ?? null,
-      porcentaje_recargo_cuotas: totalCalculado?.porcentaje_recargo_cuotas ?? 0,
-      diferencia_redondeo: totalCalculado?.diferencia_redondeo ?? 0,
-      precio_base: totalCalculado.precio_base,
-      recargo_monto_cuotas: totalCalculado?.recargo_monto_cuotas ?? 0
-    };
-
-    // NUEVO: helpers locales (sin dependencias)
-    const safeJson = async (r) => {
-      try {
-        return await r.json();
-      } catch {
-        return {};
-      }
-    };
-
-    const isNumeracionEnProceso = (payload, status) => {
-      const msg = String(
-        payload?.mensajeError || payload?.message || ''
-      ).toUpperCase();
-      const code = String(
-        payload?.errorCode || payload?.facturacion?.errorCode || ''
-      ).toUpperCase();
-      return (
-        status === 409 &&
-        (msg.includes('NUMERACION_EN_PROCESO') ||
-          msg.includes('FACTURACIÓN EN CURSO') ||
-          code === 'NUMERACION_EN_PROCESO' ||
-          code === 'FACTURACION_EN_PROCESO')
-      );
-    };
-
-    // NUEVO: auto-reintento con backoff
-    const autoRetryFacturacion = async (ventaId, opts = {}) => {
-      const {
-        maxTries = 5,
-        delaysMs = [1500, 2500, 4000, 6500, 10000] // backoff suave
-      } = opts;
-
-      for (let i = 0; i < maxTries; i++) {
-        await new Promise((res) =>
-          setTimeout(res, delaysMs[Math.min(i, delaysMs.length - 1)])
-        );
-
-        try {
-          const r = await fetch(
-            `https://api.rioromano.com.ar/ventas/${ventaId}/reintentar-facturacion`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({}) // reintento REAL lo decide backend
-            }
-          );
-
-          const d = await safeJson(r);
-
-          const estado =
-            d?.estado ||
-            d?.comprobante?.estado ||
-            d?.comprobante?.estado ||
-            d?.facturacion?.estado ||
-            'desconocido';
-
-          if (String(estado).toLowerCase() === 'aprobado') {
-            const cae = d?.comprobante?.cae || '—';
-            const numero = d?.comprobante?.numero_comprobante ?? '—';
-
-            // refrescar venta para UI
-            const ventaCompleta = await fetch(
-              `https://api.rioromano.com.ar/ventas/${ventaId}`
-            ).then((rr) => rr.json());
-            setVentaFinalizada(ventaCompleta);
-
-            await swalSuccess(
-              'Facturación aprobada',
-              `Estado: APROBADO\nComprobante #${numero}\nCAE: ${cae}`
-            );
-            return { ok: true, estado: 'aprobado' };
-          }
-
-          // si sigue "en proceso", seguimos esperando (no spamear alerts)
-          const msg = String(d?.mensajeError || d?.message || '').toUpperCase();
-          const code = String(d?.errorCode || '').toUpperCase();
-          const sigueEnProceso =
-            r.status === 409 ||
-            msg.includes('NUMERACION_EN_PROCESO') ||
-            msg.includes('FACTURACION_EN_PROCESO') ||
-            code === 'NUMERACION_EN_PROCESO' ||
-            code === 'FACTURACION_EN_PROCESO';
-
-          if (sigueEnProceso) continue;
-
-          // cualquier otro estado: cortamos (pendiente/rechazado/omitido)
-          return { ok: false, estado };
-        } catch (e) {
-          // error de red: intentamos el próximo ciclo
-          continue;
+    // Benjamin Orellana - 2026-01-28 - Loader seguro: se abre solo cuando realmente vamos a llamar al backend, y se cierra por flag (evita que el spinner pise otros modales).
+    let openedLoading = false;
+    const openLoading = () => {
+      if (openedLoading) return;
+      openedLoading = true;
+      Swal.fire({
+        title: 'Generando venta...',
+        text: 'Registrando operación y emitiendo factura si corresponde.',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
         }
-      }
-
-      return { ok: false, estado: 'pendiente' };
+      });
+    };
+    const closeLoading = () => {
+      if (openedLoading && Swal.isVisible()) Swal.close();
+      openedLoading = false;
     };
 
     try {
-      // Guardrail front: RI no debería facturar con B
-      const isB = [6, 7, 8].includes(Number(cbteTipoSolicitado));
-      const condIvaCli = String(
-        clienteSeleccionado?.condicion_iva || ''
-      ).toUpperCase();
+      //  carrito está en modo "stock": cada item tiene stock_id, precio, precio_con_descuento, etc.
+      const productosRequest = carrito.map((item) => {
+        const precioOriginal = Number(item.precio ?? 0);
+        const precioFinal = Number(
+          item.precio_con_descuento ?? item.precio ?? 0
+        );
+        const descuento = Math.max(0, precioOriginal - precioFinal);
+        const descuentoPorcentaje =
+          precioOriginal > 0 ? (descuento / precioOriginal) * 100 : 0;
 
+        return {
+          stock_id: item.stock_id,
+          cantidad: Number(item.cantidad || 0),
+          precio_unitario: precioOriginal,
+          descuento: Number(descuento.toFixed(2)),
+          descuento_porcentaje: descuentoPorcentaje.toFixed(2),
+          precio_unitario_con_descuento: precioFinal
+        };
+      });
+
+      const origenes_descuento = [];
+
+      // 1) Por producto (snapshot guardado en cada línea)
+      carrito.forEach((item) => {
+        const pct = Number(item.descuentoPorcentaje || 0);
+        if (pct > 0) {
+          origenes_descuento.push({
+            tipo: 'producto',
+            referencia_id: item.producto_id ?? null,
+            detalle: item.nombre ?? 'Producto',
+            porcentaje: pct,
+            monto:
+              (Number(item.precio_original || item.precio || 0) * pct) / 100
+          });
+        }
+      });
+
+      // ¿hay descuento manual?
+      const hayDescuentoManual =
+        aplicarDescuento &&
+        descuentoPersonalizado !== '' &&
+        parseFloat(descuentoPersonalizado) > 0;
+
+      // 2) Por medio de pago (solo si NO hay manual)
       if (
-        cbteTipoSolicitado != null &&
-        isB &&
-        (condIvaCli === 'RI' || condIvaCli === 'RESPONSABLE_INSCRIPTO')
+        aplicarDescuento &&
+        !hayDescuentoManual &&
+        totalCalculado.ajuste_porcentual !== 0
       ) {
-        await Swal.fire({
-          icon: 'warning',
-          title: 'Tipo de comprobante incompatible',
-          text: 'El cliente es Responsable Inscripto. Para ese caso corresponde Factura A (1), no Factura B (6). Cambiá el comprobante o el cliente.',
-          confirmButtonColor: '#f59e0b'
+        origenes_descuento.push({
+          tipo: 'medio_pago',
+          referencia_id: medioPago,
+          detalle:
+            mediosPago.find((m) => m.id === medioPago)?.nombre ||
+            'Medio de pago',
+          porcentaje: totalCalculado.ajuste_porcentual,
+          monto:
+            (totalCalculado.precio_base * totalCalculado.ajuste_porcentual) /
+            100
         });
+      }
+
+      // 3) Manual (tiene prioridad)
+      if (hayDescuentoManual) {
+        const pct = parseFloat(descuentoPersonalizado);
+        origenes_descuento.push({
+          tipo: 'manual',
+          referencia_id: null,
+          detalle: 'Descuento personalizado',
+          porcentaje: pct,
+          monto: (totalCalculado.precio_base * pct) / 100
+        });
+      }
+
+      // Si se solicita comprobante fiscal, pedimos cliente
+      if (cbteTipoSolicitado != null && !clienteSeleccionado) {
+        // Benjamin Orellana - 2026-01-28 - Cierra loader antes de mostrar alertas bloqueantes.
+        closeLoading();
+
+        await Swal.fire(
+          'Cliente requerido',
+          'Para emitir comprobante fiscal, seleccioná un cliente.'
+        );
         return;
       }
 
-      const response = await fetch('https://api.rioromano.com.ar/ventas/pos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ventaRequest)
-      });
+      const totalFinalCalculado = aplicarDescuento
+        ? totalCalculado.total
+        : totalCalculado.precio_base;
 
-      const payload = await safeJson(response);
+      const ventaRequest = {
+        cliente_id: clienteSeleccionado ? clienteSeleccionado.id : null,
+        productos: productosRequest,
+        combos: combosSeleccionados,
+        total: totalFinalCalculado,
+        medio_pago_id: medioPago,
+        usuario_id: userId,
+        local_id: userLocalId,
+        cbte_tipo: cbteTipoSolicitado,
+        descuento_porcentaje:
+          aplicarDescuento && descuentoPersonalizado !== ''
+            ? parseFloat(descuentoPersonalizado)
+            : aplicarDescuento && totalCalculado.ajuste_porcentual < 0
+              ? Math.abs(totalCalculado.ajuste_porcentual)
+              : 0,
+        recargo_porcentaje:
+          aplicarDescuento && totalCalculado.ajuste_porcentual > 0
+            ? totalCalculado.ajuste_porcentual
+            : 0,
+        aplicar_descuento: aplicarDescuento,
+        origenes_descuento,
+        cuotas: totalCalculado.cuotas,
+        monto_por_cuota: totalCalculado?.monto_por_cuota ?? null,
+        porcentaje_recargo_cuotas:
+          totalCalculado?.porcentaje_recargo_cuotas ?? 0,
+        diferencia_redondeo: totalCalculado?.diferencia_redondeo ?? 0,
+        precio_base: totalCalculado.precio_base,
+        recargo_monto_cuotas: totalCalculado?.recargo_monto_cuotas ?? 0
+      };
 
-      // NUEVO: caja abierta (mantenemos tu lógica)
-      if (!response.ok) {
-        const msg = payload.mensajeError || 'Error al registrar la venta';
+      // NUEVO: helpers locales (sin dependencias)
+      const safeJson = async (r) => {
+        try {
+          return await r.json();
+        } catch {
+          return {};
+        }
+      };
 
-        // NUEVO: si el backend te devuelve 409 por numeración en curso PERO la venta quedó creada,
-        // lo tratamos como "venta registrada + facturación pendiente".
-        const ventaId =
-          payload.venta_id || payload?.venta?.id || payload?.data?.venta_id;
+      const isNumeracionEnProceso = (payload, status) => {
+        const msg = String(
+          payload?.mensajeError || payload?.message || ''
+        ).toUpperCase();
+        const code = String(
+          payload?.errorCode || payload?.facturacion?.errorCode || ''
+        ).toUpperCase();
+        return (
+          status === 409 &&
+          (msg.includes('NUMERACION_EN_PROCESO') ||
+            msg.includes('FACTURACIÓN EN CURSO') ||
+            code === 'NUMERACION_EN_PROCESO' ||
+            code === 'FACTURACION_EN_PROCESO')
+        );
+      };
 
-        if (isNumeracionEnProceso(payload, response.status) && ventaId) {
-          // 🧹 limpiar UI igual (la venta ya existe)
-          setCarrito([]);
-          setBusqueda('');
-          setDescuentoPersonalizado('');
-          setAplicarDescuento(false);
-          setClienteSeleccionado(null);
-          setBusquedaCliente('');
+      // NUEVO: auto-reintento con backoff
+      const autoRetryFacturacion = async (ventaId, opts = {}) => {
+        const { maxTries = 5, delaysMs = [1500, 2500, 4000, 6500, 10000] } =
+          opts;
 
-          // traer venta para mostrar ticket/detalle aunque sea con comprobante pendiente
-          const ventaCompleta = await fetch(
-            `https://api.rioromano.com.ar/ventas/${ventaId}`
-          ).then((r) => r.json());
-          setVentaFinalizada(ventaCompleta);
+        for (let i = 0; i < maxTries; i++) {
+          await new Promise((res) =>
+            setTimeout(res, delaysMs[Math.min(i, delaysMs.length - 1)])
+          );
 
-          // auto-reintento en background (del lado del front)
-          await autoRetryFacturacion(ventaId);
+          try {
+            const r = await fetch(
+              `https://api.rioromano.com.ar/ventas/${ventaId}/reintentar-facturacion`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+              }
+            );
 
+            const d = await safeJson(r);
+
+            const estado =
+              d?.estado ||
+              d?.comprobante?.estado ||
+              d?.comprobante?.estado ||
+              d?.facturacion?.estado ||
+              'desconocido';
+
+            if (String(estado).toLowerCase() === 'aprobado') {
+              const cae = d?.comprobante?.cae || '—';
+              const numero = d?.comprobante?.numero_comprobante ?? '—';
+
+              const ventaCompleta = await fetch(
+                `https://api.rioromano.com.ar/ventas/${ventaId}`
+              ).then((rr) => rr.json());
+              setVentaFinalizada(ventaCompleta);
+
+              await swalSuccess(
+                'Facturación aprobada',
+                `Estado: APROBADO\nComprobante #${numero}\nCAE: ${cae}`
+              );
+              return { ok: true, estado: 'aprobado' };
+            }
+
+            const msg = String(
+              d?.mensajeError || d?.message || ''
+            ).toUpperCase();
+            const code = String(d?.errorCode || '').toUpperCase();
+            const sigueEnProceso =
+              r.status === 409 ||
+              msg.includes('NUMERACION_EN_PROCESO') ||
+              msg.includes('FACTURACION_EN_PROCESO') ||
+              code === 'NUMERACION_EN_PROCESO' ||
+              code === 'FACTURACION_EN_PROCESO';
+
+            if (sigueEnProceso) continue;
+
+            return { ok: false, estado };
+          } catch (e) {
+            continue;
+          }
+        }
+
+        return { ok: false, estado: 'pendiente' };
+      };
+
+      try {
+        // Guardrail front: RI no debería facturar con B
+        const isB = [6, 7, 8].includes(Number(cbteTipoSolicitado));
+        const condIvaCli = String(
+          clienteSeleccionado?.condicion_iva || ''
+        ).toUpperCase();
+
+        if (
+          cbteTipoSolicitado != null &&
+          isB &&
+          (condIvaCli === 'RI' || condIvaCli === 'RESPONSABLE_INSCRIPTO')
+        ) {
+          // Benjamin Orellana - 2026-01-28 - Cierra loader antes de mostrar alertas bloqueantes.
+          closeLoading();
+
+          await Swal.fire({
+            icon: 'warning',
+            title: 'Tipo de comprobante incompatible',
+            text: 'El cliente es Responsable Inscripto. Para ese caso corresponde Factura A (1), no Factura B (6). Cambiá el comprobante o el cliente.',
+            confirmButtonColor: '#f59e0b'
+          });
           return;
         }
 
-        if (msg.toLowerCase().includes('caja abierta')) {
-          setMensajeCaja(msg);
-          setMostrarModalCaja(true);
-        } else {
-          await swalError('No se pudo registrar la venta', msg);
+        // Benjamin Orellana - 2026-01-28 - Abrimos loader recién cuando ya pasaron validaciones y realmente vamos a llamar al backend.
+        openLoading();
+
+        const response = await fetch('https://api.rioromano.com.ar/ventas/pos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ventaRequest)
+        });
+
+        const payload = await safeJson(response);
+
+        // NUEVO: caja abierta (mantenemos tu lógica)
+        if (!response.ok) {
+          const msg = payload.mensajeError || 'Error al registrar la venta';
+
+          const ventaId =
+            payload.venta_id || payload?.venta?.id || payload?.data?.venta_id;
+
+          if (isNumeracionEnProceso(payload, response.status) && ventaId) {
+            setCarrito([]);
+            setBusqueda('');
+            setDescuentoPersonalizado('');
+            setAplicarDescuento(false);
+            setClienteSeleccionado(null);
+            setBusquedaCliente('');
+
+            const ventaCompleta = await fetch(
+              `https://api.rioromano.com.ar/ventas/${ventaId}`
+            ).then((r) => r.json());
+            setVentaFinalizada(ventaCompleta);
+
+            closeLoading();
+            await autoRetryFacturacion(ventaId);
+            return;
+          }
+
+          if (msg.toLowerCase().includes('caja abierta')) {
+            // Benjamin Orellana - 2026-01-28 - Cierra loader antes de abrir tu modal de caja.
+            closeLoading();
+
+            setMensajeCaja(msg);
+            setMostrarModalCaja(true);
+          } else {
+            closeLoading();
+            await swalError('No se pudo registrar la venta', msg);
+          }
+          return;
         }
-        return;
-      }
 
-      // NUEVO: si el backend devuelve 200 pero con “estado pendiente/omitido” dentro del payload,
-      // también lo tratamos como venta OK + facturación pendiente.
-      const ventaId = payload.venta_id;
-      const factEstado =
-        payload?.facturacion?.estado ||
-        payload?.arca?.estado ||
-        payload?.estado_facturacion ||
-        payload?.estado ||
-        null;
+        const ventaId = payload.venta_id;
+        const factEstado =
+          payload?.facturacion?.estado ||
+          payload?.arca?.estado ||
+          payload?.estado_facturacion ||
+          payload?.estado ||
+          null;
 
-      const fact = payload?.facturacion || null;
+        const fact = payload?.facturacion || null;
 
-      // =========================================================
-      // NUEVO: Observaciones (warnings) - compat total
-      // - Preferimos fact.warnings (nuevo)
-      // - Fallback a payload.warnings (por compat si alguna capa lo envía así)
-      // =========================================================
-      const warningsRaw = Array.isArray(fact?.warnings)
-        ? fact.warnings
-        : Array.isArray(payload?.warnings)
-          ? payload.warnings
-          : [];
+        const warningsRaw = Array.isArray(fact?.warnings)
+          ? fact.warnings
+          : Array.isArray(payload?.warnings)
+            ? payload.warnings
+            : [];
 
-      const warnings = warningsRaw
-        .map((w) =>
-          normalizeWarningUi(w, {
-            docTipo: fact?.docTipo,
-            docNro: fact?.docNro
-          })
-        )
-        .filter((x) => Number.isFinite(x.code) && x.uiMsg);
+        const warnings = warningsRaw
+          .map((w) =>
+            normalizeWarningUi(w, {
+              docTipo: fact?.docTipo,
+              docNro: fact?.docNro
+            })
+          )
+          .filter((x) => Number.isFinite(x.code) && x.uiMsg);
 
-      const hasCriticalWarnings =
-        Boolean(fact?.hasCriticalWarnings) ||
-        warnings.some(
-          (w) => String(w?.severity || '').toLowerCase() === 'critical'
-        );
+        const hasCriticalWarnings =
+          Boolean(fact?.hasCriticalWarnings) ||
+          warnings.some(
+            (w) => String(w?.severity || '').toLowerCase() === 'critical'
+          );
 
-      const recommendedAction =
-        fact?.recommendedAction ??
-        warnings.find((w) => w?.recommendedAction)?.recommendedAction ??
-        null;
+        const recommendedAction =
+          fact?.recommendedAction ??
+          warnings.find((w) => w?.recommendedAction)?.recommendedAction ??
+          null;
 
-      if (fact?.estado === 'aprobado') {
-        if (warnings.length > 0) {
-          const html = `
+        if (fact?.estado === 'aprobado') {
+          if (warnings.length > 0) {
+            const html = `
 <div style="text-align:left">
   <div style="margin-bottom:8px">
     <b>Comprobante emitido OK</b>, pero ARCA devolvió observaciones:
@@ -1706,106 +1815,140 @@ export default function PuntoVenta() {
 </div>
 `;
 
-          await Swal.fire({
-            icon: 'warning',
-            title: hasCriticalWarnings
-              ? 'Emitido con observaciones críticas'
-              : 'Emitido con observaciones',
-            html,
-            confirmButtonText: 'Entendido',
-            confirmButtonColor: '#059669'
-          });
-        } else {
-          // opcional: swal OK normal
+            closeLoading();
+
+            await Swal.fire({
+              icon: 'warning',
+              title: hasCriticalWarnings
+                ? 'Emitido con observaciones críticas'
+                : 'Emitido con observaciones',
+              html,
+              confirmButtonText: 'Entendido',
+              confirmButtonColor: '#059669'
+            });
+          }
         }
-      }
 
-      // 🧹 limpiar UI (tu lógica)
-      setCarrito([]);
-      setBusqueda('');
-      setDescuentoPersonalizado('');
-      setAplicarDescuento(false);
+        setCarrito([]);
+        setBusqueda('');
+        setDescuentoPersonalizado('');
+        setAplicarDescuento(false);
 
-      if (busqueda.trim() !== '') {
-        const res2 = await fetch(
-          `https://api.rioromano.com.ar/buscar-productos-detallado?query=${encodeURIComponent(
-            busqueda
-          )}`
-        );
-        await res2.json().catch(() => []);
-      }
+        if (busqueda.trim() !== '') {
+          const res2 = await fetch(
+            `https://api.rioromano.com.ar/buscar-productos-detallado?query=${encodeURIComponent(
+              busqueda
+            )}`
+          );
+          await res2.json().catch(() => []);
+        }
 
-      const ventaCompleta = await fetch(
-        `https://api.rioromano.com.ar/ventas/${ventaId}`
-      ).then((r) => r.json());
-      setVentaFinalizada(ventaCompleta);
+        const ventaCompleta = await fetch(
+          `https://api.rioromano.com.ar/ventas/${ventaId}`
+        ).then((r) => r.json());
+        setVentaFinalizada(ventaCompleta);
 
-      // Mensajería según resultado de facturación (APROBADO / PENDIENTE / OMITIDO / RECHAZADO)
-      const estadoLower = String(factEstado || '').toLowerCase();
+        const estadoLower = String(factEstado || '').toLowerCase();
 
-      if (!fact) {
-        await swalSuccess(
-          'Venta registrada',
-          'La venta se registró correctamente.'
-        );
-      } else if (estadoLower === 'aprobado') {
-        // Si hubo warnings, ya los mostramos arriba; acá sólo mostramos success si NO hubo warnings
-        if (warnings.length === 0) {
+        // Benjamin Orellana - 2026-01-28 - Cierra loader antes de mostrar resultados finales.
+        closeLoading();
+
+        if (!fact) {
           await swalSuccess(
             'Venta registrada',
-            'Venta registrada y comprobante emitido.'
+            'La venta se registró correctamente.'
+          );
+        } else if (estadoLower === 'aprobado') {
+          if (warnings.length === 0) {
+            await swalSuccess(
+              'Venta registrada',
+              'Venta registrada y comprobante emitido.'
+            );
+          } else {
+            await swalSuccess(
+              'Venta registrada',
+              'Venta registrada y comprobante emitido con observaciones.'
+            );
+          }
+        } else if (estadoLower === 'pendiente') {
+          await Swal.fire(
+            'Venta registrada',
+            'La venta se registró. La facturación quedó pendiente y se reintentará automáticamente.'
+          );
+          await autoRetryFacturacion(ventaId);
+        } else if (estadoLower === 'omitido') {
+          await Swal.fire(
+            'Venta registrada',
+            'La venta se registró correctamente.'
+          );
+        } else if (estadoLower === 'rechazado') {
+          const motivo =
+            fact?.detalles ||
+            fact?.comprobante?.motivo_rechazo ||
+            'ARCA rechazó el comprobante. Revisá los datos del receptor y el tipo de comprobante.';
+
+          const hint = motivo.includes('Condicion IVA receptor')
+            ? '\n\nSugerencia: si el cliente es RI, corresponde Factura A (1), no Factura B (6).'
+            : '';
+
+          await Swal.fire({
+            icon: 'error',
+            title: 'Facturación rechazada',
+            text: `${motivo}${hint}`,
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#ef4444'
+          });
+        } else {
+          await Swal.fire(
+            'Venta registrada',
+            `La venta se registró. Estado de facturación: ${estadoLower || 'desconocido'}.`
           );
         }
-      } else if (estadoLower === 'pendiente') {
-        await Swal.fire(
-          'Venta registrada',
-          'La venta se registró. La facturación quedó pendiente y se reintentará automáticamente.'
-        );
-        await autoRetryFacturacion(ventaId);
-      } else if (estadoLower === 'omitido') {
-        await Swal.fire(
-          'Venta registrada',
-          'La venta se registró correctamente.'
-        );
-      } else if (estadoLower === 'rechazado') {
-        const motivo =
-          fact?.detalles ||
-          fact?.comprobante?.motivo_rechazo ||
-          'ARCA rechazó el comprobante. Revisá los datos del receptor y el tipo de comprobante.';
 
-        // Si querés, agregamos heurística UX para tu caso típico (RI + Factura B)
-        const hint = motivo.includes('Condicion IVA receptor')
-          ? '\n\nSugerencia: si el cliente es RI, corresponde Factura A (1), no Factura B (6).'
-          : '';
+        setCarrito([]);
+        setClienteSeleccionado(null);
+        setBusquedaCliente('');
+      } catch (err) {
+        closeLoading();
 
-        await Swal.fire({
-          icon: 'error',
-          title: 'Facturación rechazada',
-          text: `${motivo}${hint}`,
-          confirmButtonText: 'Entendido',
-          confirmButtonColor: '#ef4444'
-        });
-      } else {
-        // fallback: cualquier otro estado inesperado
-        await Swal.fire(
-          'Venta registrada',
-          `La venta se registró. Estado de facturación: ${
-            estadoLower || 'desconocido'
-          }.`
+        await swalError(
+          'Error de red',
+          'No se pudo registrar la venta. Intentá nuevamente.'
         );
+        console.error('Error:', err);
       }
-
-      setCarrito([]);
-      setClienteSeleccionado(null);
-      setBusquedaCliente('');
-    } catch (err) {
-      await swalError(
-        'Error de red',
-        'No se pudo registrar la venta. Intentá nuevamente.'
-      );
-      console.error('Error:', err);
+    } finally {
+      // Benjamin Orellana - 2026-01-28 - Libera lock/estado y cierra loader si quedó activo.
+      closeLoading();
+      finalizarVentaLockRef.current = false;
+      setFinalizandoVenta(false);
     }
   };
+
+  useEffect(() => {
+    // Benjamin Orellana - 2026-01-28 - Atajo de teclado: F2 ejecuta finalizarVenta respetando lock/estado para evitar múltiples disparos.
+    const onKeyDown = (e) => {
+      if (e.key !== 'F2') return;
+      e.preventDefault();
+
+      const tag = (e.target?.tagName || '').toLowerCase();
+      const isTypingField =
+        tag === 'input' ||
+        tag === 'textarea' ||
+        tag === 'select' ||
+        e.target?.isContentEditable;
+
+      if (isTypingField) return;
+
+      if (carrito.length === 0) return;
+      if (finalizarVentaLockRef.current || finalizandoVenta) return;
+
+      finalizarVenta();
+    };
+
+    window.addEventListener('keydown', onKeyDown, { passive: false });
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [carrito.length, finalizandoVenta, finalizarVenta]);
 
   const abrirCaja = async () => {
     if (
@@ -2229,14 +2372,43 @@ export default function PuntoVenta() {
         </div>
       </div>
 
-      {/* Productos */}
+      {/* Productos y Carrito */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-xl font-semibold">Productos</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto max-h-[60vh] pr-1">
+          {/* Header */}
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold titulo uppercase tracking-wide">
+                Productos
+              </h2>
+              <div className="text-[12px] text-slate-300/70">
+                {productos.length > 0
+                  ? `${productos.length} resultado${productos.length === 1 ? '' : 's'}`
+                  : 'Sin resultados'}
+              </div>
+            </div>
+
+            {/* Hint/legend (opcional) */}
+            <div className="hidden sm:flex items-center gap-2 text-[12px] text-slate-300/70">
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                Disponible
+              </span>
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur">
+                <span className="h-2 w-2 rounded-full bg-rose-400" />
+                Sin stock
+              </span>
+            </div>
+          </div>
+
+          {/* Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 overflow-y-auto max-h-[60vh] pr-1">
             {productos.length === 0 && (
-              <p className="text-gray-400 col-span-full">Sin resultados…</p>
+              <div className="col-span-full rounded-2xl border border-white/10 bg-white/[0.04] p-6">
+                <p className="text-slate-300/70">Sin resultados…</p>
+              </div>
             )}
+
             {productos.map((producto) => {
               const tieneDescuento =
                 producto.descuento_porcentaje > 0 &&
@@ -2245,62 +2417,140 @@ export default function PuntoVenta() {
               const usarDescuento =
                 usarDescuentoPorProducto[producto.producto_id] ?? true; // true por defecto
 
+              const sinStock = !producto.cantidad_disponible;
+
+              // Visibilidad de precio: si es vendedor NO muestra precios
+              const canSeePrices = userLevel !== 'vendedor';
+
               return (
                 <div
                   key={producto.stock_id}
-                  className="bg-white/5 p-4 rounded-xl shadow hover:shadow-lg transition relative flex flex-col"
+                  className={[
+                    'group relative overflow-hidden rounded-2xl border p-4',
+                    'border-white/10 bg-white/[0.04] backdrop-blur-xl',
+                    'shadow-[0_18px_60px_rgba(0,0,0,.35)]',
+                    'transition-transform duration-150',
+                    sinStock
+                      ? 'opacity-70'
+                      : 'hover:-translate-y-0.5 hover:shadow-[0_28px_90px_rgba(0,0,0,.45)]'
+                  ].join(' ')}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold text-lg text-white truncate max-w-[70%]">
-                      {producto.nombre}
-                    </span>
+                  {/* Halo */}
+                  <div className="pointer-events-none absolute -inset-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <div className="absolute inset-0 bg-[radial-gradient(600px_200px_at_30%_20%,rgba(16,185,129,.18),transparent_60%),radial-gradient(500px_240px_at_90%_10%,rgba(59,130,246,.14),transparent_55%)] blur-2xl" />
+                  </div>
 
+                  {/* Top row */}
+                  <div className="relative flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-start gap-2">
+                        <span className="text-[15px] font-extrabold tracking-wide text-white line-clamp-2">
+                          {producto.nombre}
+                        </span>
+                      </div>
+
+                      {/* Chips */}
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span
+                          className={[
+                            'inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                            'border backdrop-blur',
+                            sinStock
+                              ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
+                              : 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200'
+                          ].join(' ')}
+                        >
+                          <span
+                            className={[
+                              'h-1.5 w-1.5 rounded-full',
+                              sinStock ? 'bg-rose-400' : 'bg-emerald-400'
+                            ].join(' ')}
+                          />
+                          {sinStock ? 'Sin stock' : 'Disponible'}
+                        </span>
+
+                        {tieneDescuento && (
+                          <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold border border-emerald-400/20 bg-emerald-500/10 text-emerald-200">
+                            -{producto.descuento_porcentaje.toFixed(2)}% OFF
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action */}
+                    <button
+                      onClick={() =>
+                        manejarAgregarProducto(producto, usarDescuento)
+                      }
+                      className={[
+                        'relative z-10 inline-flex h-10 w-10 items-center justify-center rounded-2xl',
+                        'border border-emerald-400/20 bg-emerald-500/15 text-emerald-200',
+                        'shadow-[0_12px_35px_rgba(16,185,129,.18)]',
+                        'transition',
+                        sinStock
+                          ? 'opacity-40 cursor-not-allowed'
+                          : 'hover:bg-emerald-500/25 hover:text-white'
+                      ].join(' ')}
+                      title={sinStock ? 'Sin stock' : 'Agregar al carrito'}
+                      disabled={sinStock}
+                      aria-label="Agregar al carrito"
+                    >
+                      <FaPlus />
+                    </button>
+                  </div>
+
+                  {/* Bottom */}
+                  <div className="relative mt-4 space-y-3">
+                    {/* Toggle descuento */}
                     {tieneDescuento && (
-                      <label className="flex items-center gap-1 text-xs text-green-400 select-none mr-10">
+                      <label className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[12px] text-slate-200/80">
+                        <span className="font-semibold">Aplicar descuento</span>
+
                         <input
                           type="checkbox"
                           checked={usarDescuento}
                           onChange={() => toggleDescuento(producto.producto_id)}
-                          className="accent-green-400"
+                          className="h-4 w-4 accent-emerald-400"
                         />
-                        Aplicar descuento
                       </label>
                     )}
-                  </div>
 
-                  <span className="text-emerald-300 text-sm mt-auto">
-                    {tieneDescuento && usarDescuento ? (
-                      <>
-                        <span className="line-through mr-2 text-red-400">
-                          {formatearPrecio(producto.precio)}
-                        </span>
-                        <span>
-                          {formatearPrecio(producto.precio_con_descuento)}
-                        </span>
-                        <span className="ml-2 text-xs text-green-400 font-semibold">
-                          -{producto.descuento_porcentaje.toFixed(2)}% OFF
-                        </span>
-                      </>
+                    {/* Precio / oculto para vendedor */}
+                    {canSeePrices ? (
+                      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                        <div className="text-[11px] uppercase tracking-widest text-slate-300/60">
+                          Precio
+                        </div>
+
+                        <div className="mt-1 text-[14px] font-extrabold text-emerald-200">
+                          {tieneDescuento && usarDescuento ? (
+                            <div className="flex flex-wrap items-baseline gap-2">
+                              <span className="text-rose-300/80 line-through font-bold">
+                                {formatearPrecio(producto.precio)}
+                              </span>
+                              <span>
+                                {formatearPrecio(producto.precio_con_descuento)}
+                              </span>
+                              <span className="text-[11px] font-semibold text-emerald-300/90">
+                                Descuento aplicado
+                              </span>
+                            </div>
+                          ) : (
+                            <span>{formatearPrecio(producto.precio)}</span>
+                          )}
+                        </div>
+                      </div>
                     ) : (
-                      <>{formatearPrecio(producto.precio)}</>
+                      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                        {/* <div className="text-[11px] uppercase tracking-widest text-slate-300/60">
+                          Precio
+                        </div>
+                        <div className="mt-1 text-[13px] font-semibold text-slate-200/70">
+                          Oculto para vendedor
+                        </div> */}
+                      </div>
                     )}
-                  </span>
-                  {console.log(producto)}
-                  <button
-                    onClick={() =>
-                      manejarAgregarProducto(producto, usarDescuento)
-                    }
-                    className="absolute top-2 right-2 bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-full shadow disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={
-                      producto.cantidad_disponible
-                        ? 'Agregar al carrito'
-                        : 'Sin stock'
-                    }
-                    disabled={!producto.cantidad_disponible}
-                    aria-label="Agregar al carrito"
-                  >
-                    <FaPlus />
-                  </button>
+                  </div>
                 </div>
               );
             })}
@@ -2310,8 +2560,8 @@ export default function PuntoVenta() {
         {/* Carrito */}
         <div className="bg-white/10 p-4 rounded-xl sticky top-24 h-fit space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-xl font-semibold flex items-center gap-2 m-0">
-              <FaShoppingCart /> Carrito ({carrito.length})
+            <h2 className="text-xl font-semibold flex items-center gap-2 m-0 titulo uppercase">
+              <FaShoppingCart /> Carrito del cliente
             </h2>
             {/* Tuerca para abrir el modal */}
             <button
@@ -2324,39 +2574,52 @@ export default function PuntoVenta() {
           </div>
 
           {carrito.length === 0 ? (
-            <p className="text-gray-400">Aún no hay artículos</p>
+            <p className="text-gray-400">
+              Aún no hay artículos - ítems {carrito.length}
+            </p>
           ) : (
             <div className="max-h-64 overflow-y-auto pr-1 space-y-3">
+              <p className="text-gray-400">Ítems: {carrito.length}</p>
+
               {carrito.map((item) => (
                 <div
                   key={item.stock_id}
-                  className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg text-sm"
+                  className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg text-sm gap-3"
                 >
-                  <div className="text-white font-medium w-1/2 truncate">
+                  {/* Benjamin Orellana - 2026-01-28 - Permite el nombre del producto en 2 líneas (sin corte brusco) para mantener legibilidad en el carrito. */}
+                  <div className="text-white font-medium min-w-0 flex-1 leading-snug break-words [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden">
                     {item.nombre}
                   </div>
-                  <div className="flex items-center gap-2">
+
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => cambiarCantidad(item.stock_id, -1)}
                       className="p-1"
+                      title="Restar"
                     >
                       <FaMinus />
                     </button>
-                    <span>{item.cantidad}</span>
+                    <span className="min-w-[18px] text-center">
+                      {item.cantidad}
+                    </span>
                     <button
                       onClick={() => cambiarCantidad(item.stock_id, 1)}
                       className="p-1"
+                      title="Sumar"
                     >
                       <FaPlus />
                     </button>
                   </div>
-                  <div className="text-emerald-300 w-20 text-right">
-                    {formatearPrecio(item.precio * item.cantidad)}
-                  </div>
+
+                  {userLevel !== 'vendedor' && (
+                    <div className="text-emerald-300 w-24 text-right shrink-0">
+                      {formatearPrecio(item.precio * item.cantidad)}
+                    </div>
+                  )}
 
                   <button
                     onClick={() => quitarProducto(item.stock_id)}
-                    className="text-red-400 hover:text-red-600"
+                    className="text-red-400 hover:text-red-600 shrink-0"
                     title="Quitar producto"
                   >
                     <FaTrash />
@@ -2379,91 +2642,144 @@ export default function PuntoVenta() {
                 setDescuentoPersonalizado={setDescuentoPersonalizado}
                 mostrarValorTicket={mostrarValorTicket}
                 setMostrarValorTicket={setMostrarValorTicket}
+                mediosPago={mediosPago}
+                setMedioPago={setMedioPago}
+                medioPago={medioPago}
+                redondeoStep={1000}
+                userLevel={userLevel}
               />
             )}
 
-          <div className="text-xs text-white/70">
-            <div className="font-semibold text-white/90">Comprobante</div>
+          {/* Comprobante + Medios de pago + Cuotas (layout compacto) */}
+          <div className="space-y-3">
+            {/* Comprobante */}
+            <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[12px] font-semibold text-white/80 uppercase">
+                    Comprobante
+                  </div>
 
-            <div className="mt-0.5 flex flex-wrap items-center gap-2">
-              <span>
-                {cbteMeta.title}
-                {cbteMeta.subtitle ? ` – ${cbteMeta.subtitle}` : ''}
-              </span>
+                  <div className="mt-0.5 text-[14px] font-semibold text-white truncate">
+                    {cbteMeta.title}
+                    {cbteMeta.subtitle ? ` – ${cbteMeta.subtitle}` : ''}
+                  </div>
+                </div>
 
-              {/* <span className="ml-1 text-white/40">
-                cbte_tipo_solicitado:{' '}
-                {cbteMeta.tipo == null ? 'null' : cbteMeta.tipo}
-              </span> */}
-
-              <button
-                type="button"
-                onClick={() => openCbteSelectorRef.current?.()}
-                className="ml-auto rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 hover:ring-white/20 px-3 py-1 text-[11px] text-white/85 transition"
-                title="F11"
-              >
-                F11 · Cambiar
-              </button>
+                <button
+                  type="button"
+                  onClick={() => openCbteSelectorRef.current?.()}
+                  className="shrink-0 rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 hover:ring-white/20 px-3 py-1.5 text-[11px] text-white/85 transition"
+                  title="F11"
+                >
+                  F11 · Cambiar
+                </button>
+              </div>
             </div>
-          </div>
 
-          {/* Medios de pago */}
-          <div className="flex flex-wrap gap-2 items-center mb-2">
-            <div className="flex flex-wrap gap-2 flex-1 min-w-0">
-              {loadingMediosPago ? (
-                <span className="text-gray-300 text-sm">Cargando...</span>
-              ) : (
-                mediosPago
-                  .filter((m) => m.activo)
-                  .sort((a, b) => a.orden - b.orden)
-                  .map((m) => (
-                    <button
-                      key={m.id}
-                      onClick={() => setMedioPago(m.id)}
-                      className={`flex items-center gap-1 justify-center px-3 py-2 rounded-md text-sm font-semibold transition min-w-[110px] mb-1
-              ${
-                medioPago === m.id
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-white/10 text-white hover:bg-white/20'
-              }`}
-                      style={{ flex: '1 1 130px', maxWidth: '180px' }} // Hace que no se achiquen demasiado ni se amontonen
+            {/* Medios + Cuotas */}
+            <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[12px] font-semibold text-white/80 uppercase">
+                  Medio de pago
+                </div>
+
+                {/* Benjamin Orellana - 2026-01-28 - Mueve el selector de cuotas al header del bloque de medios para evitar que quede muy abajo y mejorar la lectura. */}
+                {cuotasDisponibles.length > 0 && (
+                  <div className="flex items-center gap-2 text-[12px] text-white/80 shrink-0">
+                    <span className="text-white/60">Cuotas</span>
+                    <select
+                      id="cuotas"
+                      value={cuotasSeleccionadas}
+                      onChange={(e) =>
+                        setCuotasSeleccionadas(Number(e.target.value))
+                      }
+                      className="bg-black/20 border border-white/15 text-white rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
                     >
-                      {dynamicIcon(m.icono)} {m.nombre}
-                    </button>
-                  ))
+                      {cuotasUnicas.map((num) => (
+                        <option key={num} value={num} className="bg-slate-900">
+                          {num} cuota{num > 1 ? 's' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {loadingMediosPago ? (
+                <div className="text-gray-300 text-sm">Cargando...</div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {mediosPago
+                    .filter((m) => m.activo)
+                    .sort((a, b) => a.orden - b.orden)
+                    .map((m) => {
+                      const selected = medioPago === m.id;
+
+                      // Benjamin Orellana - 2026-01-28 - Chip de porcentaje con color semántico (+ recargo / 0 neutro / - descuento) para lectura rápida.
+                      const p =
+                        parseFloat(
+                          String(m?.ajuste_porcentual ?? '0').replace(',', '.')
+                        ) || 0;
+
+                      const chipClass =
+                        p > 0
+                          ? 'bg-orange-500/15 text-orange-200 ring-orange-400/20'
+                          : p < 0
+                            ? 'bg-emerald-500/15 text-emerald-200 ring-emerald-400/20'
+                            : 'bg-white/5 text-white/70 ring-white/10';
+
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setMedioPago(m.id)}
+                          className={[
+                            // Benjamin Orellana - 2026-01-28 - Agrega min-height para que el grid se vea parejo aunque algunos nombres ocupen varias líneas.
+                            'w-full min-h-[52px] flex items-start gap-2 rounded-xl px-3 py-2 transition ring-1',
+                            'text-[12px] font-semibold',
+                            selected
+                              ? 'bg-emerald-600 text-white ring-emerald-500/30'
+                              : 'bg-white/5 text-white/90 hover:bg-white/10 ring-white/10 hover:ring-white/20'
+                          ].join(' ')}
+                          title={m.nombre}
+                        >
+                          <span className="text-[14px] shrink-0 mt-[1px]">
+                            {dynamicIcon(m.icono)}
+                          </span>
+
+                          {/* Benjamin Orellana - 2026-01-28 - Permite el nombre completo (sin clamp) haciendo wrap; el botón crece en alto si hace falta. */}
+                          <span className="min-w-0 flex-1 leading-snug whitespace-normal break-words">
+                            {m.nombre}
+                          </span>
+
+                          {typeof m.ajuste_porcentual !== 'undefined' && (
+                            <span
+                              className={`ml-auto text-[10px] px-2 py-1 rounded-full ring-1 shrink-0 mt-[1px] ${chipClass}`}
+                              title={`${p > 0 ? '+' : ''}${p.toFixed(2)}%`}
+                            >
+                              {p > 0 ? `+${p.toFixed(2)}%` : `${p.toFixed(2)}%`}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                </div>
               )}
             </div>
           </div>
 
-          {/* SELECTOR DE CUOTAS */}
-          {cuotasDisponibles.length > 0 && (
-            <div className="flex items-center justify-end gap-2 text-white text-sm">
-              <label htmlFor="cuotas">Cuotas:</label>
-              <select
-                id="cuotas"
-                value={cuotasSeleccionadas}
-                onChange={(e) => setCuotasSeleccionadas(Number(e.target.value))}
-                className="bg-transparent border border-emerald-400 text-emerald-600 rounded px-2 py-1 focus:outline-none"
-              >
-                {cuotasUnicas.map((num) => (
-                  <option key={num} value={num}>
-                    {num} cuota{num > 1 ? 's' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           <button
             onClick={finalizarVenta}
-            disabled={carrito.length === 0 && mediosPago.length === ''}
+            // Benjamin Orellana - 2026-01-28 - Se deshabilita si el carrito está vacío o si la venta ya está en curso (anti doble click/F2).
+            disabled={carrito.length === 0 || finalizandoVenta}
             className={`w-full py-3 rounded-xl font-bold transition ${
-              carrito.length === 0
+              carrito.length === 0 || finalizandoVenta
                 ? 'bg-gray-600 cursor-not-allowed'
                 : 'bg-green-500 hover:bg-green-600'
             }`}
           >
-            Finalizar Venta (F2)
+            {finalizandoVenta ? 'Generando...' : 'Finalizar Venta (F2)'}
           </button>
         </div>
       </div>

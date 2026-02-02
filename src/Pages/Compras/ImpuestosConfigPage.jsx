@@ -396,7 +396,7 @@ function ImpuestoConfigModal({ open, onClose, initial, onSaved }) {
 export default function ImpuestosConfigPage() {
   const { userLevel } = useAuth();
   const nivel = String(userLevel || '').toLowerCase();
-  const isAdmin = nivel === 'socio' || nivel === 'supervisor';
+  const isAdmin = nivel === 'socio' || nivel === 'administrativo';
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);

@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fa';
 import ButtonBack from '../../../Components/ButtonBack';
 import ParticlesBackground from '../../../Components/ParticlesBackground';
+import Swal from 'sweetalert2';
 
 const API_URL = 'https://api.rioromano.com.ar';
 
@@ -48,6 +49,21 @@ const PageSelector = ({ page, totalPages, onPage }) => {
   );
 };
 
+// Benjamin Orellana - 29/01/2026 - Config base de SweetAlert2 (toast + modal) para feedback consistente en asignaciones.
+const toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 2200,
+  timerProgressBar: true
+});
+
+const getErrMsg = (err, fallback) =>
+  err?.response?.data?.mensajeError ||
+  err?.response?.data?.message ||
+  err?.message ||
+  fallback;
+
 const ComboEditarPermitidos = () => {
   const { id } = useParams();
 
@@ -74,23 +90,52 @@ const ComboEditarPermitidos = () => {
   // Filtro categoría para productos
   const [categoriaFiltro, setCategoriaFiltro] = useState('');
 
+  // Benjamin Orellana - 29/01/2026 - Trae TODOS los productos activos recorriendo páginas porque el backend limita limit<=100.
+  const fetchAllProductosActivos = async () => {
+    const limit = 100;
+    let page = 1;
+    let out = [];
+
+    // “safety” defensivo para evitar loops infinitos ante un meta mal formado
+    for (let i = 0; i < 500; i++) {
+      const r = await axios.get(`${API_URL}/productos`, {
+        params: { page, limit, estado: 'activo' }
+      });
+
+      const payload = r?.data;
+
+      // Compat: si algún ambiente responde array plano
+      if (Array.isArray(payload)) return payload;
+
+      const rows = Array.isArray(payload?.data) ? payload.data : [];
+      out = out.concat(rows);
+
+      const hasNext = Boolean(payload?.meta?.hasNext);
+      if (!hasNext) break;
+
+      page += 1;
+    }
+
+    return out;
+  };
+
   const fetchDatos = async () => {
     setLoading(true);
     try {
-      const [comboRes, productosRes, categoriasRes, asignadosRes] =
+      const productosP = fetchAllProductosActivos();
+
+      const [comboRes, categoriasRes, asignadosRes, productosList] =
         await Promise.all([
           axios.get(`${API_URL}/combos/${id}`),
-          axios.get(`${API_URL}/productos`, {
-            params: { page: 1, limit: 500, estado: 'activo' }
-          }),
           axios.get(`${API_URL}/categorias/`),
-          axios.get(`${API_URL}/combo-productos-permitidos/${id}`)
+          axios.get(`${API_URL}/combo-productos-permitidos/${id}`),
+          productosP
         ]);
 
-      const productosJson = productosRes?.data;
-      const productosList = Array.isArray(productosJson)
-        ? productosJson
-        : productosJson?.data ?? [];
+      // const productosJson = productosRes?.data;
+      // const productosList = Array.isArray(productosJson)
+      //   ? productosJson
+      //   : (productosJson?.data ?? []);
 
       const categoriasList = Array.isArray(categoriasRes?.data)
         ? categoriasRes.data
@@ -121,40 +166,140 @@ const ComboEditarPermitidos = () => {
   }, [id]);
 
   const eliminarAsignado = async (permId) => {
-    if (!window.confirm('¿Eliminar este producto o categoría del combo?'))
-      return;
+    const resp = await Swal.fire({
+      title: 'Eliminar asignación',
+      text: '¿Eliminar este producto o categoría del combo?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
+
+    if (!resp.isConfirmed) return;
+
     try {
+      // Benjamin Orellana - 29/01/2026 - Confirm + loader SweetAlert2 para eliminar asignaciones del combo con feedback consistente.
+      Swal.fire({
+        title: 'Eliminando...',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => Swal.showLoading()
+      });
+
       await axios.delete(`${API_URL}/combo-productos-permitidos/${permId}`);
-      fetchDatos();
+      await fetchDatos();
+      Swal.close();
+
+      toast.fire({
+        icon: 'success',
+        title: 'Asignación eliminada'
+      });
     } catch (error) {
+      Swal.close();
       console.error('Error al eliminar asignación:', error);
+
+      Swal.fire({
+        title: 'No se pudo eliminar',
+        text: getErrMsg(error, 'Error al eliminar asignación'),
+        icon: 'error',
+        confirmButtonText: 'Entendido'
+      });
     }
   };
 
-  // 👉 ahora SIN talles: agregamos el producto directo
+  // ahora SIN talles: agregamos el producto directo
   const agregarProducto = async (producto_id) => {
+    const resp = await Swal.fire({
+      title: 'Asignar producto',
+      text: '¿Querés agregar este producto al combo?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, agregar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
+
+    if (!resp.isConfirmed) return;
+
     try {
+      // Benjamin Orellana - 29/01/2026 - Loader SweetAlert2 durante la asignación para evitar dobles clicks y dar feedback.
+      Swal.fire({
+        title: 'Asignando...',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => Swal.showLoading()
+      });
+
       await axios.post(`${API_URL}/combo-productos-permitidos`, {
         combo_id: parseInt(id, 10),
         producto_id
       });
+
       await fetchDatos();
+      Swal.close();
+
+      toast.fire({
+        icon: 'success',
+        title: 'Producto asignado'
+      });
     } catch (err) {
+      Swal.close();
       console.error('Error al asignar producto:', err);
-      alert(err?.response?.data?.mensajeError || 'Error al asignar producto');
+
+      Swal.fire({
+        title: 'No se pudo asignar',
+        text: getErrMsg(err, 'Error al asignar producto'),
+        icon: 'error',
+        confirmButtonText: 'Entendido'
+      });
     }
   };
 
   const agregarCategoria = async (categoria_id) => {
+    const resp = await Swal.fire({
+      title: 'Asignar categoría',
+      text: '¿Querés agregar esta categoría al combo?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, agregar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
+
+    if (!resp.isConfirmed) return;
+
     try {
+      // Benjamin Orellana - 29/01/2026 - Loader SweetAlert2 durante la asignación para evitar dobles clicks y dar feedback.
+      Swal.fire({
+        title: 'Asignando...',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => Swal.showLoading()
+      });
+
       await axios.post(`${API_URL}/combo-productos-permitidos`, {
         combo_id: parseInt(id, 10),
         categoria_id
       });
-      fetchDatos();
+
+      await fetchDatos();
+      Swal.close();
+
+      toast.fire({
+        icon: 'success',
+        title: 'Categoría asignada'
+      });
     } catch (err) {
+      Swal.close();
       console.error('Error al asignar categoría:', err);
-      alert(err?.response?.data?.mensajeError || 'Error al asignar categoría');
+
+      Swal.fire({
+        title: 'No se pudo asignar',
+        text: getErrMsg(err, 'Error al asignar categoría'),
+        icon: 'error',
+        confirmButtonText: 'Entendido'
+      });
     }
   };
 
@@ -170,7 +315,7 @@ const ComboEditarPermitidos = () => {
         if (!catId) return true;
         const pid = Number.isFinite(p?.categoria_id)
           ? p.categoria_id
-          : p?.categoria?.id ?? null;
+          : (p?.categoria?.id ?? null);
         return pid === catId;
       });
   }, [productos, debouncedProd, categoriaFiltro]);

@@ -15,6 +15,7 @@ import withReactContent from 'sweetalert2-react-content';
 import { dynamicIcon } from '../../utils/dynamicIcon';
 import axios from 'axios';
 import { useAuth } from '../../AuthContext';
+import RoleGate from '../auth/RoleGate';
 
 const MySwal = withReactContent(Swal);
 
@@ -805,40 +806,41 @@ export default function ModalMediosPago({
                     </div>
 
                     {/* Botones acción */}
-                    <div className="flex flex-col sm:flex-row gap-2 sm:justify-end mt-2">
-                      <button
-                        disabled={loading || !nuevo.nombre}
-                        onClick={guardar}
-                        className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold text-zinc-950 bg-emerald-500 hover:bg-emerald-400 shadow-lg shadow-emerald-500/30 transition-all ${
-                          loading ? 'opacity-60 cursor-wait' : ''
-                        }`}
-                      >
-                        {loading
-                          ? 'Guardando...'
-                          : editando
-                            ? 'Guardar cambios'
-                            : 'Crear medio'}
-                      </button>
+                    <RoleGate allow={['socio', 'administrativo']}>
+                      <div className="flex flex-col sm:flex-row gap-2 sm:justify-end mt-2">
+                        <button
+                          disabled={loading || !nuevo.nombre}
+                          onClick={guardar}
+                          className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold text-zinc-950 bg-emerald-500 hover:bg-emerald-400 shadow-lg shadow-emerald-500/30 transition-all ${
+                            loading ? 'opacity-60 cursor-wait' : ''
+                          }`}
+                        >
+                          {loading
+                            ? 'Guardando...'
+                            : editando
+                              ? 'Guardar cambios'
+                              : 'Crear medio'}
+                        </button>
 
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold border border-zinc-700 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 transition"
-                        onClick={cancelarFormulario}
-                      >
-                        Cancelar
-                      </button>
-
-                      {editando && (
                         <button
                           type="button"
-                          onClick={() => setMostrarModalCuotas(true)}
-                          className="inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold bg-orange-500/90 hover:bg-orange-400 text-zinc-950 shadow-md shadow-orange-500/40 transition"
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold border border-zinc-700 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 transition"
+                          onClick={cancelarFormulario}
                         >
-                          Configurar cuotas
+                          Cancelar
                         </button>
-                      )}
-                    </div>
 
+                        {editando && (
+                          <button
+                            type="button"
+                            onClick={() => setMostrarModalCuotas(true)}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold bg-orange-500/90 hover:bg-orange-400 text-zinc-950 shadow-md shadow-orange-500/40 transition"
+                          >
+                            Configurar cuotas
+                          </button>
+                        )}
+                      </div>
+                    </RoleGate>
                     {/* Cuotas embed en desktop */}
                     {editando && (
                       <div className="hidden md:block">
@@ -1011,12 +1013,14 @@ function CuotasPorMedio({ medioPago }) {
             })
           }
         />
-        <button
-          onClick={guardarCuota}
-          className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-sm font-semibold px-4 py-2 rounded-2xl w-full sm:w-auto shadow-md shadow-emerald-500/30 transition"
-        >
-          Agregar
-        </button>
+        <RoleGate allow={['socio', 'administrativo']}>
+          <button
+            onClick={guardarCuota}
+            className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-sm font-semibold px-4 py-2 rounded-2xl w-full sm:w-auto shadow-md shadow-emerald-500/30 transition"
+          >
+            Agregar
+          </button>
+        </RoleGate>
       </div>
 
       {/* LISTA SCROLEABLE */}
@@ -1053,47 +1057,49 @@ function CuotasPorMedio({ medioPago }) {
                   </span>
                 )}
               </div>
-              <div className="flex gap-2 mt-2 sm:mt-0">
-                {editandoId === c.id ? (
-                  <>
-                    <button
-                      onClick={() => guardarEdicion(c.id)}
-                      className="text-emerald-400 hover:text-emerald-300"
-                      title="Guardar cambios"
-                    >
-                      <FaSave />
-                    </button>
+              <RoleGate allow={['socio', 'administrativo']}>
+                <div className="flex gap-2 mt-2 sm:mt-0">
+                  {editandoId === c.id ? (
+                    <>
+                      <button
+                        onClick={() => guardarEdicion(c.id)}
+                        className="text-emerald-400 hover:text-emerald-300"
+                        title="Guardar cambios"
+                      >
+                        <FaSave />
+                      </button>
 
-                    <button
-                      onClick={() => setEditandoId(null)}
-                      className="text-zinc-500 hover:text-zinc-300"
-                      title="Cancelar"
-                    >
-                      <FaTimes />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => {
-                        setEditandoId(c.id);
-                        setEditandoCuota(c);
-                      }}
-                      className="text-yellow-400 hover:text-yellow-300"
-                      title="Editar cuota"
-                    >
-                      <FaEdit />
-                    </button>
-                    <button
-                      onClick={() => borrarCuota(c.id)}
-                      className="text-red-400 hover:text-red-300"
-                      title="Eliminar cuota"
-                    >
-                      <FaTrash />
-                    </button>
-                  </>
-                )}
-              </div>
+                      <button
+                        onClick={() => setEditandoId(null)}
+                        className="text-zinc-500 hover:text-zinc-300"
+                        title="Cancelar"
+                      >
+                        <FaTimes />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          setEditandoId(c.id);
+                          setEditandoCuota(c);
+                        }}
+                        className="text-yellow-400 hover:text-yellow-300"
+                        title="Editar cuota"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        onClick={() => borrarCuota(c.id)}
+                        className="text-red-400 hover:text-red-300"
+                        title="Eliminar cuota"
+                      >
+                        <FaTrash />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </RoleGate>
             </div>
           ))
         )}
