@@ -212,17 +212,19 @@ function ProveedorModal({
               mass: 0.7
             }}
             className={
+              // Benjamin Orellana - 2026-02-02 - Ajusta altura del modal con dvh (viewport real en mobile) y layout estable para que no exceda la pantalla; evita que el contenido “estire” el dialog.
               isMobile
-                ? 'absolute inset-x-0 bottom-0 max-h-[85vh] rounded-t-3xl bg-white shadow-2xl ring-1 ring-emerald-500/10 border border-white/40'
-                : 'absolute inset-0 flex items-center justify-center p-4 sm:p-6'
+                ? 'absolute inset-x-0 bottom-0 max-h-[85dvh] rounded-t-3xl bg-white shadow-2xl ring-1 ring-emerald-500/10 border border-white/40 pb-[env(safe-area-inset-bottom)]'
+                : 'absolute inset-0 flex items-center justify-center p-3 sm:p-6'
             }
             onClick={(e) => e.stopPropagation()}
           >
             <div
               className={
+                // Benjamin Orellana - 2026-02-02 - Convierte el dialog desktop en un contenedor flex con max-height para que el scroll quede dentro de la lista y no crezca fuera del viewport.
                 isMobile
                   ? 'flex flex-col h-full'
-                  : 'w-full max-w-3xl bg-white/95 backdrop-blur-xl rounded-3xl shadow-[0_30px_80px_-20px_rgba(16,185,129,0.45)] ring-1 ring-emerald-500/10 border border-white/50 overflow-hidden'
+                  : 'w-full max-w-3xl max-h-[85dvh] flex flex-col bg-white/95 backdrop-blur-xl rounded-3xl shadow-[0_30px_80px_-20px_rgba(16,185,129,0.45)] ring-1 ring-emerald-500/10 border border-white/50 overflow-hidden'
               }
             >
               {/* Header */}
@@ -232,7 +234,7 @@ function ProveedorModal({
                     <FaBuilding />
                   </div>
                   <div>
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+                    <h3 className="text-base titulo uppercase sm:text-lg font-semibold text-gray-900">
                       Seleccionar proveedor
                     </h3>
                     <p className="text-xs sm:text-sm text-gray-600">
@@ -263,7 +265,11 @@ function ProveedorModal({
               </div>
 
               {/* Content list */}
-              <div ref={listRef} className="relative flex-1 overflow-y-auto">
+              {/* Benjamin Orellana - 2026-02-02 - min-h-0 permite que el área scrolleable no expanda el modal y respete el max-height del contenedor. */}
+              <div
+                ref={listRef}
+                className="relative flex-1 min-h-0 overflow-y-auto overscroll-contain"
+              >
                 {error && (
                   <div className="p-4 text-sm text-red-600">
                     {String(error)}

@@ -86,12 +86,17 @@ const fmtProveedor = (p) => {
   return [nom, doc].filter(Boolean).join(' • ');
 };
 
+// Benjamin Orellana - 2026-02-02 - Amplía el texto indexado para búsqueda local: label, razón social, fantasía y CUIT.
 const getProveedorSearchText = (p) => {
-  if (!p) return '';
-  return [p.id, p.nombre, p.razon_social, p.cuit, p.documento]
-    .filter(Boolean)
-    .join(' ');
+  const parts = [
+    p?.label,
+    p?.razon_social,
+    p?.nombre_fantasia,
+    p?.cuit
+  ].filter(Boolean);
+  return parts.join(' ').toLowerCase();
 };
+
 
 const fmtProducto = (prd) => {
   if (!prd) return '';
@@ -188,7 +193,8 @@ function calcLinea(line) {
 function sumDet(detalles) {
   return detalles.reduce(
     (acc, d) => {
-      const c = calcLinea(d);
+      const cantNum = toDecimalSafe(d.cantidad, 0);
+      const c = calcLinea({ ...d, cantidad: cantNum });
       acc.subtotal_neto += c.netoSinIVA;
       acc.iva_total += c.ivaMonto;
       acc.total_detalles += c.totalLinea;
@@ -253,13 +259,65 @@ function buildImpuestosFromForm(tot, form, impuestosSeleccionados = []) {
 const nuevaLinea = () => ({
   producto_id: '', // opcional (servicio)
   descripcion: '',
-  cantidad: 1,
+  cantidad: '1', // ahora string para permitir decimales sin issues de input controlado
   costo_unit_neto: '',
   alicuota_iva: 21,
   inc_iva: false,
   descuento_porcentaje: 0,
   otros_impuestos: 0
 });
+
+// Benjamin Orellana - 2026-02-02 - Soporta cantidades decimales en ítems de compra (ej. 34.5 o 34,5) normalizando el input para cálculos y para el payload sin alterar la lógica existente.
+const QTY_DECIMALS = 3;
+
+const toDecimalSafe = (v, fallback = 0) => {
+  if (v === null || v === undefined) return fallback;
+  const s0 = String(v).trim();
+  if (!s0) return fallback;
+
+  // Permite "34,5" -> 34.5 y también "1.234,56" -> 1234.56 (si alguien pega con miles)
+  const hasDot = s0.includes('.');
+  const hasComma = s0.includes(',');
+  let s = s0;
+
+  if (hasDot && hasComma) {
+    // asumimos '.' miles y ',' decimal
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else {
+    // si viene sólo coma, la tratamos como separador decimal
+    s = s.replace(',', '.');
+  }
+
+  const n = Number(s);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const sanitizeQtyInput = (raw, maxDecimals = QTY_DECIMALS) => {
+  // Mantiene dígitos + separadores decimales ('.' o ',')
+  const s = String(raw ?? '').replace(/[^\d.,]/g, '');
+  if (!s) return '';
+
+  // Elegimos como separador decimal el último '.' o ',' ingresado
+  const lastComma = s.lastIndexOf(',');
+  const lastDot = s.lastIndexOf('.');
+  const decPos = Math.max(lastComma, lastDot);
+
+  let intPart = s;
+  let decPart = '';
+
+  if (decPos !== -1) {
+    intPart = s.slice(0, decPos);
+    decPart = s.slice(decPos + 1);
+  }
+
+  // Quitamos separadores del entero (miles) y limitamos decimales
+  intPart = intPart.replace(/[.,]/g, '');
+  decPart = decPart.replace(/[.,]/g, '').slice(0, maxDecimals);
+
+  // Reconstruimos usando '.' como separador interno (Number-friendly)
+  if (decPos !== -1) return `${intPart || '0'}.${decPart}`;
+  return intPart;
+};
 
 const defaultSubmit = async (payload) => {
   // Usa axios con baseURL (http) — si preferís fetch, descomenta el bloque de abajo.
@@ -334,16 +392,24 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
   const [detalles, setDetalles] = useState([nuevaLinea()]);
 
   // ======= Carga de catálogos cuando abre
+  // Benjamin Orellana - 2026-02-02 - Carga proveedores desde /proveedores/catalogo (payload liviano) para evitar flicker y renders pesados del selector.
+  const fetchProveedoresCatalogo = async () => {
+    const resp = await http.get('/proveedores/catalogo');
+    const root = resp?.data ?? resp;
+    return Array.isArray(root)
+      ? root
+      : Array.isArray(root?.data)
+        ? root.data
+        : [];
+  };
+
   useEffect(() => {
     if (!open) return;
+
     (async () => {
       try {
         const [pvs, locs, prods, impsResp] = await Promise.all([
-          listProveedores?.({
-            limit: 5000,
-            orderBy: 'nombre',
-            orderDir: 'ASC'
-          }),
+          fetchProveedoresCatalogo(),
           listLocales?.({ limit: 5000, orderBy: 'nombre', orderDir: 'ASC' }),
           listProductos?.({ limit: 5000, orderBy: 'nombre', orderDir: 'ASC' }),
           http.get('/impuestos-config', { params: { activo: true } })
@@ -351,10 +417,9 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
 
         const norm = (x) => (Array.isArray(x) ? x : x?.data) ?? [];
 
-        // 🔧 Normalización específica para impuestos-config
         const normImpuestos = (resp) => {
           if (!resp) return [];
-          const root = resp.data ?? resp; // axios: resp.data
+          const root = resp.data ?? resp;
           if (Array.isArray(root)) return root;
           if (Array.isArray(root.rows)) return root.rows;
           if (Array.isArray(root.data)) return root.data;
@@ -374,44 +439,6 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
       }
     })();
   }, [open]);
-
-  // ======= Inicialización para edición
-  useEffect(() => {
-    if (!open) return;
-    setForm({
-      canal: initial?.canal ?? 'C1',
-      tipo_comprobante: initial?.tipo_comprobante ?? 'FA',
-      punto_venta: initial?.punto_venta ?? '',
-      nro_comprobante: initial?.nro_comprobante ?? '',
-      proveedor_id: initial?.proveedor_id ?? '',
-      local_id: initial?.local_id ?? '',
-      fecha: initial?.fecha
-        ? new Date(initial.fecha).toISOString().slice(0, 16)
-        : '',
-      condicion_compra: initial?.condicion_compra ?? 'cuenta_corriente',
-      fecha_vencimiento: initial?.fecha_vencimiento || '',
-      moneda: initial?.moneda ?? 'ARS',
-      percepciones_total: initial?.percepciones_total ?? 0,
-      retenciones_total: initial?.retenciones_total ?? 0,
-      observaciones: initial?.observaciones ?? '',
-      estado: initial?.estado ?? 'borrador'
-    });
-    setDetalles(
-      Array.isArray(initial?.detalles) && initial.detalles.length
-        ? initial.detalles.map((d) => ({
-            producto_id: d.producto_id ?? '',
-            descripcion: d.descripcion ?? '',
-            cantidad: d.cantidad ?? 1,
-            costo_unit_neto: d.costo_unit_neto ?? 0,
-            alicuota_iva: d.alicuota_iva ?? 21,
-            inc_iva: !!d.inc_iva,
-            descuento_porcentaje: d.descuento_porcentaje ?? 0,
-            otros_impuestos: d.otros_impuestos ?? 0
-          }))
-        : [nuevaLinea()]
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initial?.id]);
 
   // ======= Índices para labels
   const productosIdx = useMemo(
@@ -454,7 +481,8 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
         title: 'Impuesto ya agregado',
         text: 'Este impuesto ya está aplicado a la compra.'
       });
-      return;
+      // Benjamin Orellana - 2026-02-02 - Garantiza que validarCabecera retorne boolean cuando el detalle tiene cantidades inválidas.
+      return false;
     }
 
     // Base sugerida: subtotal neto + IVA actual
@@ -596,6 +624,17 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
       });
       return false;
     }
+    const badIdx = detalles.findIndex((d) => toDecimalSafe(d.cantidad, 0) <= 0);
+    if (badIdx !== -1) {
+      await Swal.fire({
+        ...swalBase,
+        icon: 'warning',
+        title: 'Cantidad inválida',
+        text: `La cantidad del ítem ${badIdx + 1} debe ser mayor a 0.`
+      });
+      return;
+    }
+
     return true;
   }
 
@@ -609,11 +648,12 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
     const hasNro = form.nro_comprobante !== '' && form.nro_comprobante !== null;
 
     const detallesFmt = detalles.map((d) => {
-      const c = calcLinea(d);
+      const cantNum = toDecimalSafe(d.cantidad, 0);
+      const c = calcLinea({ ...d, cantidad: cantNum });
       return {
         producto_id: d.producto_id ? Number(d.producto_id) : null,
         descripcion: d.descripcion?.trim() || null,
-        cantidad: Number(c.cantidad),
+        cantidad: cantNum, // decimal real
         costo_unit_neto: Number(c.costo_unit_neto.toFixed(4)),
         alicuota_iva: Number(c.alicuota_iva),
         inc_iva: !!c.inc_iva,
@@ -783,7 +823,7 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
       ? arr.map((d) => ({
           producto_id: d.producto_id ?? '',
           descripcion: d.descripcion ?? '',
-          cantidad: d.cantidad ?? 1,
+          cantidad: d.cantidad != null ? String(d.cantidad) : '1',
           costo_unit_neto: d.costo_unit_neto ?? 0,
           alicuota_iva: d.alicuota_iva ?? 21,
           inc_iva: !!d.inc_iva,
@@ -1130,7 +1170,8 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
                       const prd = d.producto_id
                         ? productosIdx[String(d.producto_id)]
                         : null;
-                      const c = calcLinea(d);
+                      const cantNum = toDecimalSafe(d.cantidad, 0);
+                      const c = calcLinea({ ...d, cantidad: cantNum });
 
                       return (
                         <div
@@ -1214,14 +1255,26 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
                                     Cant.
                                   </label>
                                   <input
-                                    type="number"
-                                    min="1"
+                                    type="text"
+                                    inputMode="decimal"
                                     value={d.cantidad}
                                     onChange={(e) =>
                                       setLinea(idx, {
-                                        cantidad: e.target.value
+                                        cantidad: sanitizeQtyInput(
+                                          e.target.value
+                                        )
                                       })
                                     }
+                                    onBlur={(e) => {
+                                      // Normalización suave: si queda vacío o inválido, vuelve a 1
+                                      const n = toDecimalSafe(
+                                        e.target.value,
+                                        0
+                                      );
+                                      setLinea(idx, {
+                                        cantidad: n > 0 ? String(n) : '1'
+                                      });
+                                    }}
                                     className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-300/40 focus:border-transparent"
                                   />
                                 </div>
@@ -1639,8 +1692,8 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
                     {saving
                       ? 'Guardando…'
                       : isEdit
-                      ? 'Guardar cambios'
-                      : 'Crear'}
+                        ? 'Guardar cambios'
+                        : 'Crear'}
                   </button>
                 </motion.div>
               </motion.form>

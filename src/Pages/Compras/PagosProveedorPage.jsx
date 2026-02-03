@@ -1,7 +1,7 @@
 // ===========================================
 // FILE: src/Pages/Compras/PagosProveedorPage.jsx
 // ===========================================
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NavbarStaff from '../Dash/NavbarStaff';
 import ButtonBack from '../../Components/ButtonBack';
@@ -52,17 +52,40 @@ export default function PagosProveedorPage() {
   const [detailId, setDetailId] = useState(null);
 
   // proveedor picker loader
-  const loaderProveedores = async ({ q, page, pageSize }) => {
-    const { data } = await http.get('/proveedores', {
-      params: { q, page, pageSize }
-    });
-    return {
-      data: data?.data || [],
-      page: data?.page || page,
-      pageSize: data?.pageSize || pageSize,
-      total: data?.total || data?.data?.length || 0
-    };
-  };
+  // Benjamin Orellana - 2026-02-02 - Loader estable para ProveedorPicker; soporta respuesta array de /proveedores/catalogo y evita reinicializaciones (flicker).
+  const loaderProveedores = useCallback(
+    async ({ q = '', page = 1, pageSize = 30 } = {}) => {
+      const params = {};
+      const qq = String(q || '').trim();
+      if (qq) params.q = qq; // si el backend lo soporta, mejor; si no, filtramos abajo
+
+      const { data } = await http.get('/proveedores/catalogo', { params });
+
+      const rows = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.data)
+          ? data.data
+          : [];
+
+      // Si tu backend NO filtra por q, filtramos acá para que el picker no “salte”
+      const filtered = qq
+        ? rows.filter((p) => {
+            const hay =
+              `${p?.label || ''} ${p?.razon_social || ''} ${p?.nombre_fantasia || ''} ${p?.cuit || ''}`.toLowerCase();
+            return hay.includes(qq.toLowerCase());
+          })
+        : rows;
+
+      return {
+        data: filtered,
+        page,
+        pageSize,
+        total: filtered.length
+      };
+    },
+    []
+  );
+
   // Fetch list
   const fetchList = async (opts = {}) => {
     try {

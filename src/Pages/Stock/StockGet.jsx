@@ -830,6 +830,34 @@ const StockGet = () => {
 
   // R2 - permitir duplicar productos, para poder cambiar nombres BENJAMIN ORELLANA 9/8/25
 
+  // Benjamin Orellana - 2026-02-02 - Formatea cantidades de stock DECIMAL (hasta 3 decimales) en es-AR, removiendo ceros finales y asegurando que los cálculos usen números (no strings).
+  const qtyFormatterAR = new Intl.NumberFormat('es-AR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3
+  });
+
+  const toQtyNum = (v) => {
+    if (v === null || v === undefined) return 0;
+    const s0 = String(v).trim();
+    if (!s0) return 0;
+
+    // Soporta "3.000", "34.500", "34,5" y también "1.234,56"
+    const hasDot = s0.includes('.');
+    const hasComma = s0.includes(',');
+    let s = s0;
+
+    if (hasDot && hasComma) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      s = s.replace(',', '.');
+    }
+
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const fmtQty = (v) => qtyFormatterAR.format(toQtyNum(v));
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-10 px-6 text-white">
       <ParticlesBackground />
@@ -1091,10 +1119,11 @@ const StockGet = () => {
             const local = locales.find((l) => l.id === group.local_id);
             const lugar = lugares.find((l) => l.id === group.lugar_id);
             const estado = estados.find((e) => e.id === group.estado_id);
-            const cantidadTotal = group.items.reduce(
-              (sum, i) => sum + i.cantidad,
-              0
-            );
+          const cantidadTotal = group.items.reduce(
+            (sum, i) => sum + toQtyNum(i.cantidad),
+            0
+          );
+
 
             // locales (además del actual) donde este producto tiene stock > 0
             const otrosLocalesConStock = (() => {
@@ -1208,7 +1237,7 @@ const StockGet = () => {
                               : 'text-emerald-300 font-semibold'
                           }
                         >
-                          {cantidadTotal}
+                          {fmtQty(cantidadTotal)}
                         </span>
                         {cantidadTotal <= THRESHOLD && (
                           <span className="flex items-center text-red-400 font-bold text-[0.65rem] animate-pulse">
@@ -2071,7 +2100,7 @@ const StockGet = () => {
           </div>
         </div>
       )}
-       {/* Benjamin Orellana - 2026-02-02 - Se pasa el stock global para poder
+      {/* Benjamin Orellana - 2026-02-02 - Se pasa el stock global para poder
       mostrar "Otros locales" del mismo producto. */}
       <StockDetalleModal
         open={detalleOpen}
@@ -2081,6 +2110,6 @@ const StockGet = () => {
       />
     </div>
   );
-};;
+};;;
 
 export default StockGet;

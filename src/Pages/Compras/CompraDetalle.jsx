@@ -482,6 +482,41 @@ export default function CompraDetalle() {
     total: moneyAR(row.total)
   };
 
+  // Benjamin Orellana - 2026-02-02 - Formatea cantidades decimales para visualización (es-AR), recortando ceros finales sin alterar el valor real almacenado.
+  const qtyFormatterAR = new Intl.NumberFormat('es-AR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3
+  });
+
+  const toDecimalSafe = (v, fallback = 0) => {
+    if (v === null || v === undefined) return fallback;
+    const s0 = String(v).trim();
+    if (!s0) return fallback;
+
+    // Permite "34,5" -> 34.5 y también "1.234,56" -> 1234.56 (si alguien pega con miles)
+    const hasDot = s0.includes('.');
+    const hasComma = s0.includes(',');
+    let s = s0;
+
+    if (hasDot && hasComma) {
+      // asumimos '.' miles y ',' decimal
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      // si viene sólo coma, la tratamos como separador decimal
+      s = s.replace(',', '.');
+    }
+
+    const n = Number(s);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
+  const fmtCantidad = (v) => {
+    // Reutiliza tu parser seguro (acepta "34,5" y "34.500")
+    const n = toDecimalSafe(v, NaN);
+    if (!Number.isFinite(n)) return v ?? '';
+    return qtyFormatterAR.format(n);
+  };
+
   return (
     <section className="min-h-screen bg-[radial-gradient(1200px_600px_at_20%_-10%,rgba(16,185,129,0.28),transparent),radial-gradient(1000px_500px_at_110%_20%,rgba(6,148,162,0.25),transparent)] from-[#031c17] via-[#07372d] to-[#05211c] bg-gradient-to-b">
       {/* halos */}
@@ -695,7 +730,9 @@ export default function CompraDetalle() {
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-2">{d.cantidad}</td>
+                            <td className="px-3 py-2">
+                              {fmtCantidad(d.cantidad)}
+                            </td>
                             <td className="px-3 py-2">
                               {d.costo_unit_neto != null
                                 ? moneyAR(d.costo_unit_neto)
