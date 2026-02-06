@@ -25,6 +25,13 @@ const fmtMoney = (n) =>
     Number(n || 0)
   );
 
+const formatFechaAR = (isoDate) => {
+  if (!isoDate) return '—';
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const dt = new Date(y, m - 1, d); // <-- medianoche local
+  return dt.toLocaleDateString('es-AR');
+};
+
 // Pequeño sparkline con SVG (proyección neto)
 function Sparkline({ points = [] }) {
   if (!points.length) return <div className="h-10" />;
@@ -392,11 +399,7 @@ export default function TesoFlujoPage() {
                     )}
                     {rows.map((r) => (
                       <tr key={r.id} className="border-t hover:bg-gray-50/80">
-                        <td className="px-4 py-2">
-                          {r?.fecha
-                            ? new Date(r.fecha).toLocaleDateString('es-AR')
-                            : '—'}
-                        </td>
+                        <td className="px-4 py-2">{formatFechaAR(r?.fecha)}</td>
 
                         <td className="px-4 py-2">
                           <span

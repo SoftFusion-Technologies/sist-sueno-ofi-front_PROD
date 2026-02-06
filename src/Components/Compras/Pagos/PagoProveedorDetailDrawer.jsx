@@ -82,15 +82,15 @@ export default function PagoProveedorDetailDrawer({
         const apps = Array.isArray(data?.aplicaciones)
           ? data.aplicaciones
           : Array.isArray(data?.detalle)
-          ? data.detalle
-          : [];
+            ? data.detalle
+            : [];
         setAplicaciones(apps);
 
         const meds = Array.isArray(data?.medios)
           ? data.medios
           : Array.isArray(data?.pagos_proveedor_medios)
-          ? data.pagos_proveedor_medios
-          : [];
+            ? data.pagos_proveedor_medios
+            : [];
         setMedios(meds);
 
         // fallback (si no viniera el detalle):
@@ -153,14 +153,14 @@ export default function PagoProveedorDetailDrawer({
       const apps = Array.isArray(data?.aplicaciones)
         ? data.aplicaciones
         : Array.isArray(data?.detalle)
-        ? data.detalle
-        : [];
+          ? data.detalle
+          : [];
       setAplicaciones(apps);
       const meds = Array.isArray(data?.medios)
         ? data.medios
         : Array.isArray(data?.pagos_proveedor_medios)
-        ? data.pagos_proveedor_medios
-        : [];
+          ? data.pagos_proveedor_medios
+          : [];
       setMedios(meds);
     } catch (e) {
       // mantener lo actual, pero mostrar error
@@ -413,7 +413,9 @@ export default function PagoProveedorDetailDrawer({
 
                     <button
                       onClick={onAnularPago}
-                      disabled={loading || (aplicaciones?.length || 0) > 0}
+                      disabled={
+                        isAnulado || loading || (aplicaciones?.length || 0) > 0
+                      }
                       className="inline-flex items-center gap-2 px-3 py-2 rounded-xl
              border border-rose-300/50 text-rose-200 hover:bg-rose-500/10 transition
              disabled:opacity-50 disabled:cursor-not-allowed"
@@ -594,7 +596,7 @@ export default function PagoProveedorDetailDrawer({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setOpenAplicar(true)}
-                    disabled={disponible <= 0}
+                    disabled={loading || disponible <= 0 || isAnulado}
                     className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl
                                 ${glass} ${ring} text-white hover:bg-white/20
                                 disabled:opacity-50 disabled:cursor-not-allowed`}

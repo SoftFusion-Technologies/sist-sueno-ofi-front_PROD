@@ -183,7 +183,7 @@ export default function PagosProveedorPage() {
               Pagos a Proveedor
             </motion.h1>
             <p className="text-white/85">
-              Un pago, múltiples medios; aplicá a CxP y mantené saldos al día.
+              Un pago, múltiples medios, aplicá a CxP y mantené saldos al día.
             </p>
           </div>
 

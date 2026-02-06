@@ -88,15 +88,11 @@ const fmtProveedor = (p) => {
 
 // Benjamin Orellana - 2026-02-02 - Amplía el texto indexado para búsqueda local: label, razón social, fantasía y CUIT.
 const getProveedorSearchText = (p) => {
-  const parts = [
-    p?.label,
-    p?.razon_social,
-    p?.nombre_fantasia,
-    p?.cuit
-  ].filter(Boolean);
+  const parts = [p?.label, p?.razon_social, p?.nombre_fantasia, p?.cuit].filter(
+    Boolean
+  );
   return parts.join(' ').toLowerCase();
 };
-
 
 const fmtProducto = (prd) => {
   if (!prd) return '';
@@ -153,7 +149,7 @@ function toNum(n, def = 0) {
 }
 
 function calcLinea(line) {
-  const cantidad = Math.max(1, toNum(line.cantidad, 1));
+  const cantidad = Math.max(0, toNum(line.cantidad, 0));
   const costoUnit = Math.max(0, toNum(line.costo_unit_neto, 0));
   const alic = Math.max(0, toNum(line.alicuota_iva, 21));
   const incIVA = !!line.inc_iva;
@@ -209,22 +205,24 @@ function buildImpuestosFromForm(tot, form, impuestosSeleccionados = []) {
 
   // Si el usuario seleccionó impuestos desde impuestos_config, usamos esos
   if (Array.isArray(impuestosSeleccionados) && impuestosSeleccionados.length) {
-    return impuestosSeleccionados.map((imp) => {
-      const base = imp.base != null ? Number(imp.base) : baseDefault;
-      const alicuotaFrac = imp.alicuota != null ? Number(imp.alicuota) : 0; // fracción 0–1
-      const monto =
-        imp.monto != null
-          ? Number(imp.monto)
-          : Number((base * alicuotaFrac).toFixed(2));
+    return impuestosSeleccionados
+      .filter((imp) => imp.tipo !== 'IVA') //  IVA por detalle
+      .map((imp) => {
+        const base = imp.base != null ? Number(imp.base) : baseDefault;
+        const alicuotaFrac = imp.alicuota != null ? Number(imp.alicuota) : 0;
+        const monto =
+          imp.monto != null
+            ? Number(imp.monto)
+            : Number((base * alicuotaFrac).toFixed(2));
 
-      return {
-        tipo: imp.tipo, // 'IVA' | 'Percepcion' | 'Retencion' | 'Otro'
-        codigo: imp.codigo || null,
-        base,
-        alicuota: alicuotaFrac,
-        monto
-      };
-    });
+        return {
+          tipo: imp.tipo,
+          codigo: imp.codigo || null,
+          base,
+          alicuota: alicuotaFrac,
+          monto
+        };
+      });
   }
 
   // Fallback legacy: sólo totales manuales (Percepciones / Retenciones)
@@ -350,14 +348,16 @@ const defaultUpdate = async (id, payload) => {
 // Normaliza impuestos de una compra existente (edición)
 const normalizeImpuestosFromInitial = (arr = []) =>
   Array.isArray(arr)
-    ? arr.map((imp) => ({
-        codigo: imp.codigo || '',
-        tipo: imp.tipo || 'Otro',
-        descripcion: imp.descripcion || imp.nombre || '',
-        alicuota: toNum(imp.alicuota, 0),
-        base: toNum(imp.base, 0),
-        monto: toNum(imp.monto, 0)
-      }))
+    ? arr
+        .filter((imp) => String(imp.tipo || '').toLowerCase() !== 'iva')
+        .map((imp) => ({
+          codigo: imp.codigo || '',
+          tipo: imp.tipo || 'Otro',
+          descripcion: imp.descripcion || imp.nombre || '',
+          alicuota: toNum(imp.alicuota, 0),
+          base: toNum(imp.base, 0),
+          monto: toNum(imp.monto, 0)
+        }))
     : [];
 export default function CompraFormModal({ open, onClose, initial, fetchData }) {
   const isEdit = !!initial?.id;
@@ -470,6 +470,18 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
     );
     if (!cfg) return;
 
+    if (String(cfg.tipo).toLowerCase() === 'iva') {
+      await Swal.fire({
+        ...swalBase,
+        icon: 'info',
+        title: 'IVA no se agrega acá',
+        text:
+          'El IVA ya se calcula automáticamente desde los ítems. ' +
+          'Usá este panel solo para percepciones, retenciones u otros impuestos.'
+      });
+      return false;
+    }
+
     // evitar duplicados por código
     const yaExiste = impuestosSeleccionados.some(
       (imp) => String(imp.codigo) === String(cfg.codigo)
@@ -486,7 +498,15 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
     }
 
     // Base sugerida: subtotal neto + IVA actual
-    const baseSugerida = Number((tot.subtotal_neto + tot.iva_total).toFixed(2));
+  const tipo = String(cfg.tipo || '').toLowerCase();
+
+  let baseSugerida = Number((tot.subtotal_neto + tot.iva_total).toFixed(2));
+
+  // Para percepciones/retenciones: base neta (lo más común y coincide con tu factura)
+  if (tipo === 'percepcion' || tipo === 'retencion') {
+    baseSugerida = Number(tot.subtotal_neto.toFixed(2));
+  }
+
     const alicFrac = Number(cfg.alicuota || 0); // fracción 0–1
     const montoSug = Number((baseSugerida * alicFrac).toFixed(2));
 
@@ -555,10 +575,10 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
       .filter((imp) => imp.tipo === 'Retencion')
       .reduce((acc, imp) => acc + toNum(imp.monto, 0), 0);
 
+    // IVA ya viene calculado desde detalles (calcLinea). Acá sumamos SOLO "Otro".
     const sumOtrosConf = impuestosSeleccionados
-      .filter((imp) => imp.tipo === 'IVA' || imp.tipo === 'Otro')
+      .filter((imp) => imp.tipo === 'Otro')
       .reduce((acc, imp) => acc + toNum(imp.monto, 0), 0);
-
     // total_compra = total_detalles (neto + IVA + otros_imp de línea)
     //              + otros_impuestos_config (IVA adicionales / tasas)
     //              + percepciones

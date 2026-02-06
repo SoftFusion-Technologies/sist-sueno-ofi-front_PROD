@@ -218,7 +218,8 @@ export default function ChequeMovimientosTablePlus({
   function fmtDate(d) {
     if (!d) return '';
     const dt = new Date(d);
-    return dt.toLocaleDateString('es-AR');
+    if (Number.isNaN(dt.getTime())) return '';
+    return new Intl.DateTimeFormat('es-AR', { timeZone: 'UTC' }).format(dt);
   }
 
   // Quick filters chips
@@ -264,7 +265,7 @@ export default function ChequeMovimientosTablePlus({
 
   return (
     <>
-      {chequeId ? '': <NavbarStaff></NavbarStaff> }
+      {chequeId ? '' : <NavbarStaff></NavbarStaff>}
 
       <ButtonBack></ButtonBack>
       <ParticlesBackground></ParticlesBackground>
@@ -777,7 +778,7 @@ export default function ChequeMovimientosTablePlus({
               />
               <div className="relative z-10 w-[min(800px,90vw)] max-h-[80vh] overflow-auto rounded-2xl bg-black/80 ring-1 ring-white/15 p-5 shadow-[0_10px_40px_rgba(0,0,0,0.6)]">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-white font-bold text-lg">
+                  <h3 className="titulo uppercase text-white font-bold text-lg">
                     Observaciones
                   </h3>
                   <button

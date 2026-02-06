@@ -213,6 +213,20 @@ export default function CxpManager() {
     setOpenDetail(true);
   };
 
+  function fmtDateOnlyAR(d) {
+    if (!d) return '—';
+
+    if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      const [y, m, day] = d.split('-').map(Number);
+      const dt = new Date(y, m - 1, day); // midnight local
+      return dt.toLocaleDateString('es-AR');
+    }
+
+    // ISO con hora (DATETIME/TIMESTAMP)
+    const dt = new Date(d);
+    return Number.isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('es-AR');
+  }
+
   // ===============================
   // Render
   // ===============================
@@ -442,7 +456,7 @@ export default function CxpManager() {
                             Saldo <ArrowUpDown className="h-3.5 w-3.5" />
                           </button>
                         </th>
-                          <th className="px-4 py-3">Estado / Acciones</th>
+                        <th className="px-4 py-3">Estado / Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/50 dark:divide-slate-800/60 text-slate-800 dark:text-slate-100">
@@ -481,21 +495,13 @@ export default function CxpManager() {
                               </div>
                             </td>
                             <td className="px-4 py-2">
-                              {r?.fecha_emision
-                                ? new Date(r.fecha_emision).toLocaleDateString(
-                                    'es-AR'
-                                  )
-                                : '—'}
+                              {fmtDateOnlyAR(r.fecha_emision)}
                             </td>
+
                             <td className="px-4 py-2">
                               <div className="inline-flex items-center gap-2">
-                                <span>
-                                  {r?.fecha_vencimiento
-                                    ? new Date(
-                                        r.fecha_vencimiento
-                                      ).toLocaleDateString('es-AR')
-                                    : '—'}
-                                </span>
+                                {fmtDateOnlyAR(r.fecha_vencimiento)}
+n
                                 {isOverdue(r.fecha_vencimiento) && (
                                   <span className="text-[11px] text-rose-400">
                                     (Vencida)
@@ -510,7 +516,7 @@ export default function CxpManager() {
                               {moneyAR(r.saldo)}
                             </td>
                             <td className="px-4 py-2">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 uppercase titulo">
                                 <EstadoBadge estado={r.estado} />
                                 <button
                                   onClick={() => openRowDetail(r.id)}

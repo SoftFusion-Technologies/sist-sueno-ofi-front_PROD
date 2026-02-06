@@ -193,37 +193,50 @@ const ComprasImpuestosPage = () => {
   }, []);
 
   // KPIs (si el backend no devuelve totales, los calculamos acá como fallback)
-  const kpi = useMemo(() => {
-    const base_total =
-      totales?.base_total ??
-      rows.reduce((acc, r) => acc + Number(r.base || 0), 0);
-    const iva_total =
-      totales?.iva_total ??
-      rows
-        .filter((r) => r.tipo === 'IVA')
-        .reduce((acc, r) => acc + Number(r.monto || 0), 0);
-    const percepciones_total =
-      totales?.percepciones_total ??
-      rows
-        .filter((r) => r.tipo === 'Percepcion')
-        .reduce((acc, r) => acc + Number(r.monto || 0), 0);
-    const retenciones_total =
-      totales?.retenciones_total ??
-      rows
-        .filter((r) => r.tipo === 'Retencion')
-        .reduce((acc, r) => acc + Number(r.monto || 0), 0);
-    const monto_total =
-      totales?.monto_total ??
-      rows.reduce((acc, r) => acc + Number(r.monto || 0), 0);
+const kpi = useMemo(() => {
+  // compras únicas (evita duplicar IVA si hay varias filas de impuestos por compra)
+  const comprasMap = new Map();
+  rows.forEach((r) => {
+    const c = r.compra;
+    if (c?.id != null) comprasMap.set(Number(c.id), c);
+  });
+  const comprasUnicas = Array.from(comprasMap.values());
 
-    return {
-      base_total,
-      iva_total,
-      percepciones_total,
-      retenciones_total,
-      monto_total
-    };
-  }, [rows, totales]);
+  // Base neta real: suma de subtotal_neto por compra (no suma de bases de impuestos)
+  const base_total =
+    totales?.base_total ??
+    comprasUnicas.reduce((acc, c) => acc + Number(c.subtotal_neto || 0), 0);
+
+  // IVA real: viene de compras.iva_total
+  const iva_total =
+    totales?.iva_total ??
+    comprasUnicas.reduce((acc, c) => acc + Number(c.iva_total || 0), 0);
+
+  const percepciones_total =
+    totales?.percepciones_total ??
+    rows
+      .filter((r) => r.tipo === 'Percepcion')
+      .reduce((acc, r) => acc + Number(r.monto || 0), 0);
+
+  const retenciones_total =
+    totales?.retenciones_total ??
+    rows
+      .filter((r) => r.tipo === 'Retencion')
+      .reduce((acc, r) => acc + Number(r.monto || 0), 0);
+
+  // “Monto acumulado de este listado”: suma de lo que muestra la tabla (solo compras_impuestos)
+  const monto_total =
+    totales?.monto_total ??
+    rows.reduce((acc, r) => acc + Number(r.monto || 0), 0);
+
+  return {
+    base_total,
+    iva_total,
+    percepciones_total,
+    retenciones_total,
+    monto_total
+  };
+}, [rows, totales]);
 
   const totalPages = useMemo(() => {
     const total = meta.total || 0;

@@ -53,7 +53,8 @@ export default function PagoProveedorFormModal({
       tipo_origen: 'EFECTIVO',
       medio_pago_id: '', // por si luego lo usas
       banco_cuenta_id: '',
-      cheque_id: '',
+      // Benjamin Orellana - 2026-02-04 - Normalizamos cheque_id a null para evitar estados ambiguos ('' vs null) y simplificar la lógica del selector.
+      cheque_id: null,
       movimiento_caja_id: '', // si luego linkeás caja
       monto: ''
     }
@@ -63,14 +64,22 @@ export default function PagoProveedorFormModal({
   const [chequePicker, setChequePicker] = useState({
     open: false,
     medioId: null,
-    tipoOrigen: null
+    tipoOrigen: null,
+    selectedChequeId: null
   });
 
-  const openChequePicker = (medioId, tipoOrigen) => {
+  const openChequePicker = (medioId, tipoOrigen, selectedChequeId) => {
+    // Benjamin Orellana - 2026-02-04 - Normalizamos el ID seleccionado: ''/null/undefined => null.
+    const normalizedSelectedChequeId =
+      selectedChequeId == null || String(selectedChequeId).trim() === ''
+        ? null
+        : selectedChequeId;
+
     setChequePicker({
       open: true,
       medioId,
-      tipoOrigen
+      tipoOrigen,
+      selectedChequeId: normalizedSelectedChequeId
     });
   };
 
@@ -78,7 +87,8 @@ export default function PagoProveedorFormModal({
     setChequePicker({
       open: false,
       medioId: null,
-      tipoOrigen: null
+      tipoOrigen: null,
+      selectedChequeId: null
     });
 
   const handleChequeSelected = (cheque) => {
@@ -87,7 +97,10 @@ export default function PagoProveedorFormModal({
       return;
     }
 
-    // Resumen bonito para mostrar en el medio
+    // Benjamin Orellana - 2026-02-04 - Tomamos el ID del cheque de forma defensiva (según el shape del backend).
+    const chequeId =
+      cheque?.id ?? cheque?.cheque_id ?? cheque?.chequeId ?? cheque?.ID ?? null;
+
     const resumen = [
       cheque.banco?.nombre,
       cheque.numero && `N° ${cheque.numero}`,
@@ -99,8 +112,10 @@ export default function PagoProveedorFormModal({
       .join(' • ');
 
     setMedio(chequePicker.medioId, {
-      cheque_id: cheque.id,
-      cheque_resumen: resumen
+      cheque_id: chequeId,
+      cheque_resumen: resumen,
+      // Benjamin Orellana - 2026-02-04 - Autocompletamos el monto del medio con el importe del cheque seleccionado.
+      monto: String(cheque.monto ?? 0)
     });
 
     closeChequePicker();
@@ -232,7 +247,6 @@ export default function PagoProveedorFormModal({
     })();
   }, [open, aplicarAhora, form.proveedor_id]);
 
-  
   // ======= Derivados =======
   const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
   const toNumOrNull = (v) =>
@@ -269,36 +283,36 @@ export default function PagoProveedorFormModal({
   );
 
   // Autodistribuir aplicaciones cuando se marca "Aplicar ahora"
-// y el usuario todavía no cargó montos a mano.
-useEffect(() => {
-  if (!aplicarAhora) return;
-  if (!open) return;
-  if (totalMedios <= 0) return;
-  if (!cxpPend || cxpPend.length === 0) return;
+  // y el usuario todavía no cargó montos a mano.
+  useEffect(() => {
+    if (!aplicarAhora) return;
+    if (!open) return;
+    if (totalMedios <= 0) return;
+    if (!cxpPend || cxpPend.length === 0) return;
 
-  setApps((prev) => {
-    // Si el usuario ya cargó algo manual (> 0), no tocamos nada
-    const yaHayMontos = prev.some((a) => Number(a.monto) > 0);
-    if (yaHayMontos) return prev;
+    setApps((prev) => {
+      // Si el usuario ya cargó algo manual (> 0), no tocamos nada
+      const yaHayMontos = prev.some((a) => Number(a.monto) > 0);
+      if (yaHayMontos) return prev;
 
-    let restante = totalMedios;
+      let restante = totalMedios;
 
-    // Distribuimos secuencialmente el totalMedios sobre las CxP
-    return prev.map((a) => {
-      if (restante <= 0) {
-        return { ...a, monto: 0 };
-      }
-      const saldo = Number(a.saldo || 0);
-      const usar = Math.min(restante, saldo);
-      restante = restante - usar;
+      // Distribuimos secuencialmente el totalMedios sobre las CxP
+      return prev.map((a) => {
+        if (restante <= 0) {
+          return { ...a, monto: 0 };
+        }
+        const saldo = Number(a.saldo || 0);
+        const usar = Math.min(restante, saldo);
+        restante = restante - usar;
 
-      return {
-        ...a,
-        monto: usar
-      };
+        return {
+          ...a,
+          monto: usar
+        };
+      });
     });
-  });
-}, [aplicarAhora, open, totalMedios, cxpPend]);
+  }, [aplicarAhora, open, totalMedios, cxpPend]);
 
   // ======= Handlers =======
   const setMedio = (id, patch) =>
@@ -312,7 +326,8 @@ useEffect(() => {
         tipo_origen: 'EFECTIVO',
         medio_pago_id: '',
         banco_cuenta_id: '',
-        cheque_id: '',
+        // Benjamin Orellana - 2026-02-04 - Mantener cheque_id en null por defecto (evita '' y simplifica el filtro del selector).
+        cheque_id: null,
         movimiento_caja_id: '',
         monto: ''
       }
@@ -378,7 +393,7 @@ useEffect(() => {
         observaciones: form.observaciones?.trim() || null,
         monto_total: totalMedios,
         medios: mediosValidos,
-        // 👇 agregamos el local del usuario
+        // Agregamos el local del usuario
         user_local_id: userLocalId ?? null
       };
 
@@ -407,7 +422,7 @@ useEffect(() => {
       // Notificar al padre (refrescar listados, etc.)
       onSuccess?.(pagoId);
       fetchList?.();
-      // ✅ SweetAlert de éxito
+      // SweetAlert de éxito
       await Swal.fire({
         icon: 'success',
         title: 'Pago registrado',
@@ -509,7 +524,7 @@ useEffect(() => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="relative w-full max-w-[96vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-white/[0.06] backdrop-blur-xl"
+            className="relative w-full max-w-[96vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-white/[0.06] backdrop-blur-xl"
           >
             {/* Borde metálico sutil */}
             <span
@@ -538,7 +553,7 @@ useEffect(() => {
                 <HandCoins className="h-6 w-6 text-gray-300 shrink-0" />
                 <h3
                   id={titleId}
-                  className="text-xl sm:text-2xl font-bold tracking-tight text-white"
+                  className="titulo uppercase text-xl sm:text-2xl font-bold tracking-tight text-white"
                 >
                   Nuevo Pago a Proveedor
                 </h3>
@@ -661,7 +676,7 @@ useEffect(() => {
                                 value === 'CHEQUE_RECIBIDO' ||
                                 value === 'CHEQUE_EMITIDO'
                               ) {
-                                openChequePicker(m.id, value);
+                                openChequePicker(m.id, value, m.cheque_id);
                               }
                             }}
                             className="w-full rounded-xl bg-white/10 border border-white/10 px-3 py-2 text-white"
@@ -772,7 +787,11 @@ useEffect(() => {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  openChequePicker(m.id, m.tipo_origen)
+                                  openChequePicker(
+                                    m.id,
+                                    m.tipo_origen,
+                                    m.cheque_id
+                                  )
                                 }
                                 className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500/15 border border-emerald-400/60 px-3 py-2 text-sm text-emerald-50 hover:bg-emerald-500/25 hover:border-emerald-300 transition"
                               >
@@ -795,7 +814,8 @@ useEffect(() => {
                                     onClick={() =>
                                       setMedio(m.id, {
                                         cheque_id: null,
-                                        cheque_resumen: null
+                                        cheque_resumen: null,
+                                        monto: ''
                                       })
                                     }
                                     className="text-[11px] text-rose-200 hover:text-rose-300"
@@ -985,8 +1005,8 @@ useEffect(() => {
                     {saving
                       ? 'Guardando…'
                       : aplicarAhora
-                      ? 'Crear y aplicar'
-                      : 'Crear pago'}
+                        ? 'Crear y aplicar'
+                        : 'Crear pago'}
                   </button>
                 </motion.div>
               </motion.form>
@@ -1000,6 +1020,7 @@ useEffect(() => {
               proveedorId={form.proveedor_id || null}
               onClose={closeChequePicker}
               onSelect={handleChequeSelected}
+              selectedChequeId={chequePicker.selectedChequeId}
             />
           </motion.div>
         </motion.div>
@@ -1011,15 +1032,22 @@ useEffect(() => {
 // Modal para seleccionar cheques
 function ChequePickerModal({
   open,
-  tipoOrigenMedio,   // 'CHEQUE_RECIBIDO' | 'CHEQUE_EMITIDO'
-  proveedorId,        // opcional, para filtrar emitidos por proveedor
+  tipoOrigenMedio, // 'CHEQUE_RECIBIDO' | 'CHEQUE_EMITIDO'
+  proveedorId, // opcional, para filtrar emitidos por proveedor
   onClose,
-  onSelect            // (cheque) => void
+  onSelect, // (cheque) => void
+  selectedChequeId
 }) {
   const [cheques, setCheques] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const [soloDisponibles, setSoloDisponibles] = React.useState(true);
+
+  // Benjamin Orellana - 2026-02-04 - Helper defensivo: algunos backends devuelven id con distintos nombres.
+  const getChequeId = React.useCallback(
+    (c) => c?.id ?? c?.cheque_id ?? c?.chequeId ?? c?.ID ?? null,
+    []
+  );
 
   const tipoCheque = React.useMemo(
     () => (tipoOrigenMedio === 'CHEQUE_EMITIDO' ? 'emitido' : 'recibido'),
@@ -1030,18 +1058,47 @@ function ChequePickerModal({
   React.useEffect(() => {
     if (!open) return;
 
+    const normalizedSelectedId =
+      selectedChequeId == null || String(selectedChequeId).trim() === ''
+        ? null
+        : selectedChequeId;
+
     const fetchCheques = async () => {
       try {
         setLoading(true);
 
         const params = {
-          tipo: tipoCheque
+          tipo: tipoCheque,
+          disponibles: 1 // Benjamin Orellana - 2026-02-04 - Pedimos al backend solo cheques seleccionables para pagar (registrado/en_cartera).
+
           // ...(tipoCheque === 'emitido' && proveedorId ? { proveedor_id: proveedorId } : {})
         };
 
         const r = await http.get('/cheques', { params });
         const list = r?.data?.data || r?.data?.rows || r?.data || [];
-        setCheques(Array.isArray(list) ? list : []);
+
+        let arr = Array.isArray(list) ? list : [];
+
+        // Benjamin Orellana - 2026-02-04 - Si el backend no incluye el cheque ya seleccionado (por estado/filtros), intentamos traerlo por id y anexarlo.
+        if (normalizedSelectedId != null) {
+          const already = arr.some(
+            (c) => String(getChequeId(c)) === String(normalizedSelectedId)
+          );
+
+          if (!already) {
+            try {
+              const rOne = await http.get(`/cheques/${normalizedSelectedId}`);
+              const one = rOne?.data?.data || rOne?.data || null;
+              if (one && getChequeId(one) != null) {
+                arr = [one, ...arr];
+              }
+            } catch (_err) {
+              // Si el endpoint /cheques/:id no existe o falla, no interrumpimos el flujo.
+            }
+          }
+        }
+
+        setCheques(arr);
       } catch (err) {
         console.error('ChequePickerModal: error al cargar cheques', err);
         setCheques([]);
@@ -1051,31 +1108,53 @@ function ChequePickerModal({
     };
 
     fetchCheques();
-  }, [open, tipoCheque, proveedorId]);
+  }, [open, tipoCheque, proveedorId, selectedChequeId, getChequeId]);
 
   // Filtro por estado "disponible" y por buscador
+  const selectedId =
+    selectedChequeId == null || String(selectedChequeId).trim() === ''
+      ? null
+      : selectedChequeId;
+  // Benjamin Orellana - 2026-02-04 - Normaliza estado (trim + upper) para evitar falsos negativos por espacios/casing del backend.
+  const esDisponible = (c) => {
+    const est = String(c?.estado || '')
+      .trim()
+      .toUpperCase();
+
+    // Benjamin Orellana - 2026-02-04 - Emitidos: disponibles si están "REGISTRADO" (y opcionalmente "EN_CARTERA" si lo usan).
+    if (tipoCheque === 'emitido')
+      return ['REGISTRADO', 'EN_CARTERA'].includes(est);
+
+    // Benjamin Orellana - 2026-02-04 - Recibidos: disponibles si están "EN_CARTERA" o "REGISTRADO".
+    return ['EN_CARTERA', 'REGISTRADO'].includes(est);
+  };
+
   const filtrados = React.useMemo(() => {
-    const base = Array.isArray(cheques) ? cheques : [];
-
-    // Podés ajustar qué estados considerás "disponibles"
-    const disponibles = soloDisponibles
-      ? base.filter((c) =>
-          ['en_cartera', 'registrado'].includes(
-            String(c.estado || '').toLowerCase()
-          )
-        )
-      : base;
-
-    if (!search.trim()) return disponibles;
-
     const q = search.trim().toLowerCase();
-    return disponibles.filter((c) => {
-      const banco = c.banco?.nombre || '';
-      const benef = c.beneficiario_nombre || '';
-      const txt = `${c.id} ${c.numero} ${c.monto} ${banco} ${benef} ${c.estado} ${c.formato}`.toLowerCase();
-      return txt.includes(q);
+
+    return cheques.filter((c) => {
+      // Si está seleccionado, NO lo filtres (y ojo tipos)
+      if (selectedId != null && String(getChequeId(c)) === String(selectedId))
+        return true;
+
+      if (soloDisponibles && !esDisponible(c)) return false;
+
+      if (!q) return true;
+
+      const blob = [
+        c.banco?.nombre,
+        c.numero,
+        c.monto,
+        c.beneficiario_nombre,
+        c.estado
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return blob.includes(q);
     });
-  }, [cheques, soloDisponibles, search]);
+  }, [cheques, search, soloDisponibles, selectedId, getChequeId]);
 
   const handleSelect = (cheque) => {
     if (!cheque) return;
@@ -1124,18 +1203,19 @@ function ChequePickerModal({
                     <Banknote className="h-5 w-5 text-emerald-300" />
                   </div>
                   <div>
-                    <h3 className="text-lg sm:text-xl font-semibold text-white">
+                    <h3 className="titulo uppercase text-lg sm:text-xl font-semibold text-white">
                       Seleccionar cheque{' '}
                       <span className="text-emerald-300">
-                        {tipoCheque === 'recibido'
-                          ? 'recibido'
-                          : 'emitido'}
+                        {tipoCheque === 'recibido' ? 'recibido' : 'emitido'}
                       </span>
                     </h3>
                     <p className="text-xs sm:text-[13px] text-slate-300/80">
-                      Elegí de la lista un cheque para usarlo como medio
-                      de pago. Solo disponibles se toma como{' '}
-                      <span className="font-semibold">en cartera / registrado</span>.
+                      Elegí de la lista un cheque para usarlo como medio de
+                      pago. Solo disponibles se toma como{' '}
+                      <span className="font-semibold">
+                        en cartera / registrado
+                      </span>
+                      .
                     </p>
                   </div>
                 </div>
@@ -1192,79 +1272,82 @@ function ChequePickerModal({
                   </div>
                 ) : filtrados.length === 0 ? (
                   <div className="text-sm text-slate-200/80 py-6 text-center">
-                    No se encontraron cheques para los filtros
-                    seleccionados.
+                    No se encontraron cheques para los filtros seleccionados.
                   </div>
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2">
-                    {filtrados.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => handleSelect(c)}
-                        className="w-full text-left group rounded-2xl border border-white/10 bg-white/5 hover:bg-emerald-500/10 hover:border-emerald-300/80 transition overflow-hidden"
-                      >
-                        <div className="flex items-center justify-between gap-3 p-3">
-                          <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-                              <Banknote className="h-5 w-5 text-emerald-300" />
+                    {filtrados.map((c, idx) => {
+                      const cid = getChequeId(c);
+                      const isSelected =
+                        selectedId != null &&
+                        cid != null &&
+                        String(cid) === String(selectedId);
+
+                      return (
+                        <button
+                          key={cid ?? `cheque-${idx}`}
+                          type="button"
+                          onClick={() => handleSelect(c)}
+                          // Benjamin Orellana - 2026-02-04 - Resaltamos el cheque ya seleccionado para orientar al usuario y evitar confusiones.
+                          className={`w-full text-left group rounded-2xl border bg-white/5 transition overflow-hidden ${
+                            isSelected
+                              ? 'border-emerald-300/80 ring-2 ring-emerald-400/40 bg-emerald-500/10'
+                              : 'border-white/10 hover:bg-emerald-500/10 hover:border-emerald-300/80'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3 p-3">
+                            <div className="flex items-center gap-3">
+                              <div className="h-9 w-9 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+                                <Banknote className="h-5 w-5 text-emerald-300" />
+                              </div>
+                              <div>
+                                <div className="text-[11px] uppercase tracking-wide text-emerald-200/90">
+                                  {tipoCheque === 'recibido'
+                                    ? 'Cheque recibido'
+                                    : 'Cheque emitido'}
+                                </div>
+                                <div className="text-sm font-semibold text-white">
+                                  {c.banco?.nombre || 'Banco'} • N° {c.numero}
+                                </div>
+                                <div className="text-[11px] text-slate-300">
+                                  {c.beneficiario_nombre
+                                    ? `Beneficiario: ${c.beneficiario_nombre}`
+                                    : c.cliente_id
+                                      ? `Cliente #${c.cliente_id}`
+                                      : c.proveedor_id
+                                        ? `Proveedor #${c.proveedor_id}`
+                                        : 'Beneficiario no informado'}
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="text-[11px] uppercase tracking-wide text-emerald-200/90">
-                                {tipoCheque === 'recibido'
-                                  ? 'Cheque recibido'
-                                  : 'Cheque emitido'}
+                            <div className="text-right">
+                              <div className="text-xs text-slate-300">
+                                Importe
                               </div>
-                              <div className="text-sm font-semibold text-white">
-                                {c.banco?.nombre || 'Banco'} • N° {c.numero}
-                              </div>
-                              <div className="text-[11px] text-slate-300">
-                                {c.beneficiario_nombre
-                                  ? `Beneficiario: ${c.beneficiario_nombre}`
-                                  : c.cliente_id
-                                  ? `Cliente #${c.cliente_id}`
-                                  : c.proveedor_id
-                                  ? `Proveedor #${c.proveedor_id}`
-                                  : 'Beneficiario no informado'}
+                              <div className="text-sm font-semibold text-emerald-300">
+                                {moneyAR(c.monto)}
                               </div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="text-xs text-slate-300">
-                              Importe
-                            </div>
-                            <div className="text-sm font-semibold text-emerald-300">
-                              {moneyAR(c.monto)}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="px-3 pb-2 pt-1 flex flex-wrap gap-x-3 gap-y-1 items-center text-[11px] text-slate-200/80">
-                          <span>
-                            Emisión:{' '}
-                            {c.fecha_emision || '—'}
-                          </span>
-                          <span>
-                            Venc:{' '}
-                            {c.fecha_vencimiento || '—'}
-                          </span>
-                          {c.fecha_cobro_prevista && (
-                            <span>
-                              Cobro prev.: {c.fecha_cobro_prevista}
+                          <div className="px-3 pb-2 pt-1 flex flex-wrap gap-x-3 gap-y-1 items-center text-[11px] text-slate-200/80">
+                            <span>Emisión: {c.fecha_emision || '—'}</span>
+                            <span>Venc: {c.fecha_vencimiento || '—'}</span>
+                            {c.fecha_cobro_prevista && (
+                              <span>Cobro prev.: {c.fecha_cobro_prevista}</span>
+                            )}
+                            <span className="ml-auto inline-flex items-center rounded-full bg-slate-800/90 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                              {c.estado || 'sin estado'}
                             </span>
-                          )}
-                          <span className="ml-auto inline-flex items-center rounded-full bg-slate-800/90 px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                            {c.estado || 'sin estado'}
-                          </span>
-                        </div>
-                      </button>
-                    ))}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
               <p className="text-[11px] text-slate-400 text-right pt-1">
-                Tip: Hacé click en una tarjeta para usar ese cheque en el
-                pago.
+                Tip: Hacé click en una tarjeta para usar ese cheque en el pago.
               </p>
             </div>
           </motion.div>

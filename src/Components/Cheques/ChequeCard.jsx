@@ -48,7 +48,7 @@ const chipEstado = (e = 'registrado') =>
     anulado: 'bg-zinc-200 text-zinc-700',
     entregado: 'bg-fuchsia-100 text-fuchsia-700',
     compensado: 'bg-teal-100 text-teal-700'
-  }[e] || 'bg-zinc-100 text-zinc-700');
+  })[e] || 'bg-zinc-100 text-zinc-700';
 
 const Pill = ({ children, className = '' }) => (
   <span
@@ -75,6 +75,7 @@ const PillFormato = ({ formato }) => (
 // Acciones permitidas
 function getAllowedActions(ch) {
   const { tipo, estado } = ch || {};
+
   if (tipo === 'recibido') {
     if (['registrado', 'en_cartera'].includes(estado))
       return ['depositar', 'entregar', 'aplicar-a-proveedor', 'anular'];
@@ -82,13 +83,24 @@ function getAllowedActions(ch) {
     if (estado === 'entregado') return ['compensar'];
     return [];
   }
+
   if (tipo === 'emitido') {
+    // 1) Antes de usarlo / entregarlo
     if (['registrado', 'en_cartera'].includes(estado))
       return ['entregar', 'anular'];
-    if (['aplicado_a_compra', 'entregado'].includes(estado))
+
+    // 2) Ya fue aplicado a una compra (pago creado), pero todavía NO se entregó físicamente
+    //    (tu backend pide ENTREGADO para compensar)
+    if (estado === 'aplicado_a_compra')
+      return ['entregar']; // <- clave: NO compensar acá
+
+    // 3) Ya fue entregado → ahora sí se puede compensar (y anular si tu backend lo permite)
+    if (estado === 'entregado')
       return ['compensar', 'anular'];
+
     return [];
   }
+
   return [];
 }
 
@@ -278,7 +290,9 @@ export default function ChequeCard({
             >
               {fmt(monto)}
             </div>
-            <div className={`mt-1 text-sm ${txtMuted(formato)}`}>#{numero} - {beneficiario_nombre}</div>
+            <div className={`mt-1 text-sm ${txtMuted(formato)}`}>
+              #{numero} - {beneficiario_nombre}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
