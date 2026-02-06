@@ -120,7 +120,8 @@ const ComprasImpuestosPage = () => {
     fecha_hasta: toDateInput(hoy),
     tipo: '',
     codigo: '',
-    q_proveedor: ''
+    q_proveedor: '',
+    fecha_campo: 'CARGA' // o 'COMPROBANTE'
   });
 
   const [rows, setRows] = useState([]);
@@ -152,29 +153,48 @@ const ComprasImpuestosPage = () => {
       if (filters.codigo) params.append('codigo', filters.codigo.trim());
       if (filters.q_proveedor)
         params.append('q_proveedor', filters.q_proveedor.trim());
+
+      // Benjamin Orellana - 2026-02-06 - Se agrega envío del nuevo filtro `fecha_campo` para permitir elegir
+      // el criterio del rango de fechas (COMPROBANTE vs CARGA). Si no viene, el backend conserva el comportamiento anterior.
+      if (filters.fecha_campo)
+        params.append('fecha_campo', filters.fecha_campo);
+
       params.append('page', page);
       params.append('pageSize', pageSize);
 
-      const { data } = await http.get(
-        `/compras-impuestos?${params.toString()}`
-      );
+      const resp = await http.get(`/compras-impuestos?${params.toString()}`);
 
-      // Flexible: soportar { ok, data, meta, totales } o directamente array
-      if (Array.isArray(data)) {
-        setRows(data);
-        setMeta((m) => ({ ...m, page, total: data.length }));
-        setTotales(null);
-      } else {
-        setRows(data.data || []);
-        setMeta(
-          data.meta || {
-            total: (data.data || []).length,
-            page,
-            pageSize
-          }
+      // Benjamin Orellana - 2026-02-06 - Normalización del payload para soportar distintas formas de respuesta:
+      // 1) axios: resp.data = { ok, data, meta, totales }
+      // 2) wrapper propio: resp = { ok, data, ... } o resp.data = array
+      const payload = resp?.data ?? resp;
+
+      // Si el backend responde ok=false, levantamos error uniforme
+      if (payload?.ok === false) {
+        throw new Error(
+          payload?.error || 'Error obteniendo impuestos por compra'
         );
-        setTotales(data.totales || null);
       }
+
+      // Dataset final
+      const list = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+
+      setRows(list);
+
+      // Meta: total es por COMPRAS (paginación), rowsReturned es por FILAS (IVA + impuestos)
+      const metaIn = payload?.meta || null;
+      setMeta({
+        total: metaIn?.total ?? list.length,
+        page: metaIn?.page ?? page,
+        pageSize: metaIn?.pageSize ?? pageSize,
+        rowsReturned: metaIn?.rowsReturned ?? list.length
+      });
+
+      setTotales(payload?.totales ?? null);
     } catch (e) {
       setErr(
         e?.response?.data?.error ||
@@ -193,50 +213,50 @@ const ComprasImpuestosPage = () => {
   }, []);
 
   // KPIs (si el backend no devuelve totales, los calculamos acá como fallback)
-const kpi = useMemo(() => {
-  // compras únicas (evita duplicar IVA si hay varias filas de impuestos por compra)
-  const comprasMap = new Map();
-  rows.forEach((r) => {
-    const c = r.compra;
-    if (c?.id != null) comprasMap.set(Number(c.id), c);
-  });
-  const comprasUnicas = Array.from(comprasMap.values());
+  const kpi = useMemo(() => {
+    // compras únicas (evita duplicar IVA si hay varias filas de impuestos por compra)
+    const comprasMap = new Map();
+    rows.forEach((r) => {
+      const c = r.compra;
+      if (c?.id != null) comprasMap.set(Number(c.id), c);
+    });
+    const comprasUnicas = Array.from(comprasMap.values());
 
-  // Base neta real: suma de subtotal_neto por compra (no suma de bases de impuestos)
-  const base_total =
-    totales?.base_total ??
-    comprasUnicas.reduce((acc, c) => acc + Number(c.subtotal_neto || 0), 0);
+    // Base neta real: suma de subtotal_neto por compra (no suma de bases de impuestos)
+    const base_total =
+      totales?.base_total ??
+      comprasUnicas.reduce((acc, c) => acc + Number(c.subtotal_neto || 0), 0);
 
-  // IVA real: viene de compras.iva_total
-  const iva_total =
-    totales?.iva_total ??
-    comprasUnicas.reduce((acc, c) => acc + Number(c.iva_total || 0), 0);
+    // IVA real: viene de compras.iva_total
+    const iva_total =
+      totales?.iva_total ??
+      comprasUnicas.reduce((acc, c) => acc + Number(c.iva_total || 0), 0);
 
-  const percepciones_total =
-    totales?.percepciones_total ??
-    rows
-      .filter((r) => r.tipo === 'Percepcion')
-      .reduce((acc, r) => acc + Number(r.monto || 0), 0);
+    const percepciones_total =
+      totales?.percepciones_total ??
+      rows
+        .filter((r) => r.tipo === 'Percepcion')
+        .reduce((acc, r) => acc + Number(r.monto || 0), 0);
 
-  const retenciones_total =
-    totales?.retenciones_total ??
-    rows
-      .filter((r) => r.tipo === 'Retencion')
-      .reduce((acc, r) => acc + Number(r.monto || 0), 0);
+    const retenciones_total =
+      totales?.retenciones_total ??
+      rows
+        .filter((r) => r.tipo === 'Retencion')
+        .reduce((acc, r) => acc + Number(r.monto || 0), 0);
 
-  // “Monto acumulado de este listado”: suma de lo que muestra la tabla (solo compras_impuestos)
-  const monto_total =
-    totales?.monto_total ??
-    rows.reduce((acc, r) => acc + Number(r.monto || 0), 0);
+    // “Monto acumulado de este listado”: suma de lo que muestra la tabla (solo compras_impuestos)
+    const monto_total =
+      totales?.monto_total ??
+      rows.reduce((acc, r) => acc + Number(r.monto || 0), 0);
 
-  return {
-    base_total,
-    iva_total,
-    percepciones_total,
-    retenciones_total,
-    monto_total
-  };
-}, [rows, totales]);
+    return {
+      base_total,
+      iva_total,
+      percepciones_total,
+      retenciones_total,
+      monto_total
+    };
+  }, [rows, totales]);
 
   const totalPages = useMemo(() => {
     const total = meta.total || 0;
@@ -263,11 +283,11 @@ const kpi = useMemo(() => {
       fecha_hasta: '',
       tipo: '',
       codigo: '',
-      q_proveedor: ''
+      q_proveedor: '',
+      fecha_campo: 'CARGA' // o el default que uses
     });
     fetchData(1);
   };
-
   const handleChangePage = (dir) => {
     const next =
       dir === 'prev'
@@ -562,6 +582,7 @@ const kpi = useMemo(() => {
                               <td className="px-3 py-2 whitespace-nowrap">
                                 {compra?.id ? (
                                   <Link
+                                    to={`/dashboard/compras/${compra.id}`} // ajustá a tu ruta real
                                     className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900"
                                   >
                                     <FaFileInvoice className="text-[10px]" />
