@@ -20,6 +20,7 @@ import {
   depositarCheque,
   acreditarCheque,
   rechazarCheque,
+  rebotarCheque, // Benjamin Orellana - 07/02/2026 - Se agrega transición de rebotar para cheques que son rechazados por el banco.
   aplicarProveedorCheque,
   entregarCheque,
   compensarCheque,
@@ -452,6 +453,11 @@ export default function ChequesCards() {
     )
       a.anular = true;
 
+    // REBOTADO (rechazo bancario con reversa por medio)
+    // Solo tiene sentido cuando el cheque ya fue aplicado a proveedor / entregado
+    if (['aplicado_a_compra', 'entregado'].includes(it.estado)) {
+      a.rebotado = true;
+    }
     return a;
   };
 
@@ -473,6 +479,9 @@ export default function ChequesCards() {
         case 'rechazar':
           await rechazarCheque(id, payload);
           break;
+        case 'rebotado':
+          await rebotarCheque(id, payload);
+          break;
         case 'aplicar-a-proveedor':
           if (!payload.proveedor_id) return alert('Proveedor ID es requerido');
           await aplicarProveedorCheque(id, payload);
@@ -486,6 +495,7 @@ export default function ChequesCards() {
         case 'anular':
           await anularCheque(id, payload);
           break;
+
         default:
           break;
       }
@@ -875,6 +885,9 @@ export default function ChequesCards() {
                           : null,
                         rechazar: a.rechazar
                           ? (row) => openTransition('rechazar', row)
+                          : null,
+                        rebotado: a.rebotado
+                          ? (row) => openTransition('rebotado', row)
                           : null,
                         aplicarProveedor: a.aplicarProveedor
                           ? (row) => openTransition('aplicar-a-proveedor', row)

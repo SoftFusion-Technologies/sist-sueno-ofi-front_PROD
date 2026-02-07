@@ -16,30 +16,29 @@ import {
   FaFileInvoiceDollar,
   FaHandHoldingUsd,
   FaPercent,
-  FaClipboardList,
-  FaTruck,
-  FaUndoAlt,
-  FaFileInvoice,
-  FaBook,
   FaCogs,
-  FaCloudUploadAlt,
-  FaSitemap,
-  FaSearch
+  FaSearch,
+  FaLock
 } from 'react-icons/fa';
 import CompraFormModal from '../../Components/Compras/CompraFormModal';
 
 /**
  * THEME — Emerald/Jade con toques de vidrio + brillo.
  * Si querés el mismo de Bancos (teal/azul): cambia bg y accent.
+ *
+ * Benjamin Orellana - 07/02/2026 - Se adapta el diseño del AdminPageCompras para que sea similar al AdminPageCaja
+ * (cards centradas con hover brillante), usando una paleta distinta (orangea/índigo) y manteniendo funcionalidades
+ * existentes (búsqueda, KPIs placeholder y modal de alta).
  */
 const THEME = {
   title: 'Compras',
-  bg: 'bg-gradient-to-b from-[#041f1a] via-[#064e3b] to-[#0b3b2f]',
-  accentText: 'text-emerald-300',
-  accentIcon: 'text-emerald-400',
-  hoverShadow: 'hover:shadow-emerald-400',
-  cardRing: 'ring-emerald-500/20',
-  kpiGlow: 'from-emerald-400/40 via-transparent to-transparent'
+  // Fondo oscuro con “profundidad” similar a Caja, pero con tinte orangea
+  bg: 'bg-gradient-to-b from-[#070816] via-[#0d1030] to-[#1a1a3a]',
+  accentText: 'text-orange-200/80',
+  accentIcon: 'text-orange-400',
+  accentBorderHover: 'hover:border-orange-400',
+  accentShadowHover:
+    'hover:shadow-[0_0_20px_rgba(167,139,250,0.18)] hover:scale-[1.04]'
 };
 
 // Links del módulo (TODO: ajusta rutas reales si difieren)
@@ -62,12 +61,12 @@ const links = [
     sub: 'Un/múltiples medios',
     icon: <FaHandHoldingUsd />
   },
-  {
-    to: '/dashboard/compras/movimientos-stock',
-    label: 'Movimientos de Stock',
-    sub: 'Ver stock movimientos de compras',
-    icon: <FaTruck />
-  },
+  // {
+  //   to: '/dashboard/compras/movimientos-stock',
+  //   label: 'Movimientos de Stock',
+  //   sub: 'Ver stock movimientos de compras',
+  //   icon: <FaTruck />
+  // },
   {
     to: '/dashboard/compras/impuestos',
     label: 'Impuestos por Compra',
@@ -127,65 +126,113 @@ function useTilt(maxTilt = 6) {
   return { ref, tilt, handleMouseMove, reset };
 }
 
-const CardLink = ({ to, label, sub, icon, index }) => {
-  const { ref, tilt, handleMouseMove, reset } = useTilt();
-  return (
-    <Link
-      to={typeof to === 'string' ? to : to.pathname}
-      state={typeof to === 'object' ? to.state || {} : {}}
+const CardItem = ({
+  to,
+  onClick,
+  label,
+  sub,
+  icon,
+  index,
+  isDisabled,
+  desc
+}) => {
+  const { ref, tilt, handleMouseMove, reset } = useTilt(5);
+
+  const Card = (
+    <motion.div
+      ref={ref}
+      onMouseMove={(e) => {
+        // Tilt sólo para desktop; en mobile no aporta y puede molestar.
+        if (window?.matchMedia?.('(min-width: 768px)')?.matches)
+          handleMouseMove(e);
+      }}
+      onMouseLeave={reset}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5, delay: index * 0.07 }}
+      style={{
+        transform:
+          !isDisabled && window?.matchMedia?.('(min-width: 768px)')?.matches
+            ? `perspective(800px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`
+            : undefined
+      }}
+      className={[
+        'relative bg-white shadow-lg border rounded-2xl',
+        'flex flex-col justify-center items-center h-36 gap-2',
+        'font-semibold text-base lg:text-lg text-gray-800',
+        'transition-all duration-300',
+        isDisabled
+          ? 'opacity-55 cursor-not-allowed border-white/20'
+          : [
+              'cursor-pointer border-white/20',
+              THEME.accentBorderHover,
+              THEME.accentShadowHover
+            ].join(' ')
+      ].join(' ')}
+      title={isDisabled ? 'Acceso restringido' : desc || sub || label}
+      aria-disabled={isDisabled}
     >
-      <motion.div
-        ref={ref}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={reset}
-        initial={{ opacity: 0, y: 8, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.45, delay: index * 0.05 }}
-        style={{
-          transform: `perspective(800px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`
-        }}
+      <span
         className={[
-          'group relative bg-white/90 backdrop-blur-xl',
-          'rounded-2xl border border-white/20',
-          'shadow-lg transition-all duration-300',
-          THEME.hoverShadow,
-          'hover:scale-[1.03] p-5'
+          'text-3xl',
+          isDisabled ? 'text-gray-400' : THEME.accentIcon
         ].join(' ')}
       >
-        {/* Halo dinámico */}
-        <div
-          className={[
-            'absolute inset-0 rounded-2xl pointer-events-none',
-            'ring-1',
-            THEME.cardRing,
-            'opacity-0 group-hover:opacity-100 transition-opacity'
-          ].join(' ')}
-        />
-        {/* Brillo diagonal sutil */}
-        <div className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-white/0 via-white/20 to-white/0 blur-2xl" />
-        </div>
+        {icon}
+      </span>
 
-        <div className="flex items-center gap-4">
-          <span className={['text-4xl', THEME.accentIcon].join(' ')}>
-            {icon}
-          </span>
-          <div className="min-w-0">
-            <div className="text-lg font-semibold text-gray-800 leading-tight">
-              {label}
-            </div>
-            {sub && <div className="text-sm text-gray-500">{sub}</div>}
-          </div>
+      <span className="text-center px-2 leading-tight">{label}</span>
+
+      {/* Subtítulo sutil (opcional) */}
+      {sub && (
+        <span className="text-[12px] text-gray-500 font-medium -mt-1">
+          {sub}
+        </span>
+      )}
+
+      {isDisabled && (
+        <div className="absolute top-3 right-3 inline-flex items-center gap-2 rounded-full bg-black/10 px-3 py-1 text-xs font-bold text-gray-700">
+          <FaLock />
+          Bloqueado
         </div>
-      </motion.div>
+      )}
+
+      {/* brillo sutil en hover (no intrusivo) */}
+      {!isDisabled && (
+        <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+      )}
+    </motion.div>
+  );
+
+  // Disabled: no navegación / no click
+  if (isDisabled) return <div>{Card}</div>;
+
+  // Acción (button) — por ejemplo abrir modal
+  if (typeof onClick === 'function') {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full text-left"
+        title={desc || sub || label}
+      >
+        {Card}
+      </button>
+    );
+  }
+
+  // Navegación normal
+  return (
+    <Link to={to} title={desc || sub || label}>
+      {Card}
     </Link>
   );
 };
 
 const StatCard = ({ label, value, hint }) => (
   <div className="relative overflow-hidden">
-    <div className="absolute -top-14 -left-16 w-56 h-56 rounded-full blur-3xl opacity-40 bg-gradient-to-br from-emerald-400/20 to-transparent" />
-    <div className="absolute -bottom-14 -right-16 w-56 h-56 rounded-full blur-3xl opacity-30 bg-gradient-to-tr from-emerald-500/20 to-transparent" />
+    <div className="absolute -top-14 -left-16 w-56 h-56 rounded-full blur-3xl opacity-35 bg-gradient-to-br from-orange-500/25 to-transparent" />
+    <div className="absolute -bottom-14 -right-16 w-56 h-56 rounded-full blur-3xl opacity-25 bg-gradient-to-tr from-indigo-500/25 to-transparent" />
     <div className="relative bg-white/90 backdrop-blur-xl rounded-2xl border border-white/20 p-5 shadow-lg">
       <div className="text-xs uppercase tracking-wide text-gray-500">
         {label}
@@ -200,6 +247,11 @@ const AdminPageCompras = () => {
   const { userLevel } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+
+  const roles = useMemo(
+    () => (Array.isArray(userLevel) ? userLevel : [userLevel]),
+    [userLevel]
+  );
 
   // 🔎 Búsqueda global (simple: redirige al listado con query)
   const [q, setQ] = useState('');
@@ -216,6 +268,12 @@ const AdminPageCompras = () => {
     // fetch('/api/compras/kpis').then(r => r.json()).then(setStats).catch(()=>{});
   }, []);
 
+  // Benjamin Orellana - 07/02/2026 - Acción centralizada para cards con “onClickKey”.
+  const resolveCardAction = (item) => {
+    if (item?.onClickKey === 'OPEN_COMPRA_MODAL') return () => setOpen(true);
+    return null;
+  };
+
   return (
     <>
       <NavbarStaff />
@@ -224,44 +282,63 @@ const AdminPageCompras = () => {
           <ParticlesBackground />
           <ButtonBack />
 
-          {/* Glow superior sutil */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/30 to-transparent" />
+          {/* Backdrop overlay (similar a Caja) */}
+          <div className="pointer-events-none absolute inset-0 bg-black/25" />
 
           {/* Header */}
-          <div className="text-center pt-24 px-4">
+          <div className="text-center pt-24 px-4 relative">
             <motion.h1
-              initial={{ opacity: 0, y: -18 }}
+              initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-4xl titulo uppercase font-bold text-white drop-shadow-md"
+              className="text-4xl titulo uppercase font-bold text-white mb-3 drop-shadow-md"
             >
-              Gestión de {THEME.title}
+              Módulo de {THEME.title}
             </motion.h1>
+
             <motion.p
-              initial={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className={['mt-3 text-sm sm:text-base', THEME.accentText].join(
-                ' '
-              )}
+              transition={{ duration: 0.55, delay: 0.08 }}
+              className={['text-sm sm:text-base', THEME.accentText].join(' ')}
             >
-              <span className="font-semibold">Compras · CxP · Pagos</span>
+              Accesos rápidos a compras, cuentas por pagar, pagos e impuestos.
             </motion.p>
           </div>
 
-          {/* GRID principal */}
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            {/* línea luminosa decorativa */}
-            <div className="h-px w-full bg-gradient-to-r from-transparent via-white/30 to-transparent mb-8" />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {links.map((item, index) => (
-                <CardLink key={item.label} index={index} {...item} />
-              ))}
-            </div>
+          {/* Cuadrícula de accesos rápidos (estilo AdminPageCaja) */}
+          <div className="mt-10 xl:px-0 sm:px-10 px-6 max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 pb-14 relative">
+            {links.map((item, index) => {
+              const isDisabled =
+                Array.isArray(item?.disableFor) &&
+                item.disableFor.some((r) => roles.includes(r));
+
+              const to = item?.to;
+              const onClick = resolveCardAction(item);
+
+              // Mantener compatibilidad si algún link futuro pasa objetos tipo { pathname, state }
+              const resolvedTo =
+                typeof to === 'object' && to?.pathname ? to : to || null;
+
+              return (
+                <CardItem
+                  key={item.label}
+                  index={index}
+                  to={resolvedTo}
+                  onClick={onClick}
+                  isDisabled={isDisabled}
+                  label={item.label}
+                  sub={item.sub}
+                  icon={item.icon}
+                  desc={item.desc}
+                />
+              );
+            })}
           </div>
         </div>
       </section>
+
       {/* Modal Crear Compra */}
       <CompraFormModal
         open={open}

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 import http from '../../../api/http';
-import { moneyAR } from '../../../utils/money';
+import { moneyAR, round2 } from '../../../utils/money';
 import PagoAplicacionesModal from './PagoAplicacionesModal';
 import {
   backdropV,
@@ -256,7 +256,40 @@ export default function PagoProveedorDetailDrawer({
       );
     }
   };
+  // Benjamin Orellana - 2026-02-07 - Disponible para aplicar = solo medios VIGENTES (excluye rechazados/invalidos) - mantiene monto_total histórico intacto.
+  const mediosVigentes = useMemo(() => {
+    const arr = Array.isArray(medios) ? medios : [];
+    return arr.filter((m) => (m.estado || 'vigente') === 'vigente');
+  }, [medios]);
 
+  // Benjamin Orellana - 2026-02-07 - Total de medios vigentes (lo que realmente puede aplicarse a CxP).
+  const totalMediosVigentes = useMemo(() => {
+    return round2(
+      mediosVigentes.reduce((acc, m) => acc + Number(m?.monto || 0), 0)
+    );
+  }, [mediosVigentes]);
+
+  // Benjamin Orellana - 2026-02-07 - Total aplicado SOLO desde medios vigentes.
+  // Compat: si alguna aplicación vieja viene sin pago_medio_id (NULL), se cuenta igual para no sobreestimar disponible.
+  const totalAplicadoVigente = useMemo(() => {
+    const setVig = new Set(mediosVigentes.map((m) => Number(m.id)));
+    const apps = Array.isArray(aplicaciones) ? aplicaciones : [];
+
+    return round2(
+      apps.reduce((acc, a) => {
+        const monto = Number(a?.monto_aplicado || a?.monto || 0);
+        const medioId = a?.pago_medio_id ?? a?.pago_medio?.id ?? null;
+
+        if (!medioId) return acc + monto; // compat conservadora
+        return setVig.has(Number(medioId)) ? acc + monto : acc;
+      }, 0)
+    );
+  }, [aplicaciones, mediosVigentes]);
+
+  // Benjamin Orellana - 2026-02-07 - Disponible real para aplicar (vigente - aplicado vigente). Nunca negativo.
+  const disponibleVigente = useMemo(() => {
+    return Math.max(0, round2(totalMediosVigentes - totalAplicadoVigente));
+  }, [totalMediosVigentes, totalAplicadoVigente]);
   // ------- Render
   return (
     <AnimatePresence>
@@ -370,7 +403,7 @@ export default function PagoProveedorDetailDrawer({
                     <div className="rounded-2xl bg-white/10 backdrop-blur-xl ring-1 ring-white/10 px-3 py-2">
                       <div className="text-xs text-gray-200/80">Disponible</div>
                       <div className="text-lg font-bold text-white">
-                        {moneyAR(disponible)}
+                        {moneyAR(disponibleVigente)}
                       </div>
                     </div>
                   </div>
@@ -457,29 +490,44 @@ export default function PagoProveedorDetailDrawer({
                   </motion.h4>
                   {medios?.length ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {medios.map((m, idx) => (
-                        <motion.div
-                          key={m.id || idx}
-                          variants={fieldV}
-                          className="flex items-center justify-between rounded-xl px-3 py-2 border border-white/10 bg-white/5 text-white"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="opacity-80">
-                              {medioIcon(m.tipo_origen || m.tipo)}
-                            </span>
-                            <span className="text-sm">
-                              {(m.tipo_origen || m.tipo || '—')
-                                .toString()
-                                .replace(/_/g, ' ')
-                                .toLowerCase()
-                                .replace(/^\w/, (c) => c.toUpperCase())}
-                            </span>
-                          </div>
-                          <div className="font-semibold">
-                            {moneyAR(m.monto)}
-                          </div>
-                        </motion.div>
-                      ))}
+                      {medios.map((m, idx) => {
+                        const st = (m.estado || 'vigente').toLowerCase();
+                        const isVig = st === 'vigente';
+
+                        return (
+                          <motion.div
+                            key={m.id || idx}
+                            variants={fieldV}
+                            className={[
+                              'flex items-center justify-between rounded-xl px-3 py-2 border border-white/10 bg-white/5 text-white',
+                              !isVig ? 'opacity-60' : ''
+                            ].join(' ')}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="opacity-80">
+                                {medioIcon(m.tipo_origen || m.tipo)}
+                              </span>
+                              <span className="text-sm">
+                                {(m.tipo_origen || m.tipo || '—')
+                                  .toString()
+                                  .replace(/_/g, ' ')
+                                  .toLowerCase()
+                                  .replace(/^\w/, (c) => c.toUpperCase())}
+                              </span>
+
+                              {!isVig && (
+                                <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full border border-rose-400/20 bg-rose-500/15 text-rose-200">
+                                  {st}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="font-semibold">
+                              {moneyAR(m.monto)}
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <motion.div
@@ -623,8 +671,9 @@ export default function PagoProveedorDetailDrawer({
             onClose={() => setOpenAplicar(false)}
             pagoId={id}
             proveedorId={pago?.proveedor_id}
-            totalDisponible={disponible}
-            totalMedios={totalMedios}
+            // Benjamin Orellana - 2026-02-07 - totalDisponible y totalMedios se basan en VIGENTES, no en monto_total histórico
+            totalDisponible={disponibleVigente}
+            totalMedios={totalMediosVigentes}
             onApplied={() => {
               setOpenAplicar(false);
               refreshSelf();

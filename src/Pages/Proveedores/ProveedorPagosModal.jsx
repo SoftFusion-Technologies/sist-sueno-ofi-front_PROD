@@ -11,7 +11,7 @@ import {
   Hash,
   BadgeDollarSign
 } from 'lucide-react';
-
+import { fmtDateAR } from '../../utils/formatters';
 const BASE_URL = import.meta.env.VITE_API_URL || 'https://api.rioromano.com.ar';
 
 function cx(...a) {
@@ -81,8 +81,8 @@ export default function ProveedorPagosModal({
       const data = Array.isArray(json?.data)
         ? json.data
         : Array.isArray(json)
-        ? json
-        : [];
+          ? json
+          : [];
 
       setRows(data);
       setMeta(json?.meta || null);
@@ -296,6 +296,9 @@ export default function ProveedorPagosModal({
                             Fecha
                           </th>
                           <th className="text-left font-semibold px-4 py-3">
+                            Estado
+                          </th>
+                          <th className="text-left font-semibold px-4 py-3">
                             Total
                           </th>
                           <th className="text-left font-semibold px-4 py-3">
@@ -371,7 +374,36 @@ export default function ProveedorPagosModal({
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-gray-200">
-                                {fmtDateTime(p.fecha)}
+                                {fmtDateAR(p.fecha)}{' '}
+                              </td>
+                              <td className="px-4 py-3">
+                                {(() => {
+                                  const st = String(
+                                    p.estado || '—'
+                                  ).toLowerCase();
+                                  const isOk = st === 'confirmado';
+
+                                  return (
+                                    <span
+                                      className={[
+                                        'titulo uppercase inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border',
+                                        isOk
+                                          ? 'bg-emerald-500/15 text-emerald-200 border-emerald-400/20'
+                                          : 'bg-rose-500/15 text-rose-200 border-rose-400/20'
+                                      ].join(' ')}
+                                    >
+                                      <span
+                                        className={[
+                                          'inline-block w-1.5 h-1.5 rounded-full',
+                                          isOk
+                                            ? 'bg-emerald-300'
+                                            : 'bg-rose-300'
+                                        ].join(' ')}
+                                      />
+                                      {st}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td className="px-4 py-3 font-semibold text-emerald-300">
                                 {fmtMoney(p.monto_total_num ?? p.monto_total)}
@@ -534,6 +566,11 @@ export default function ProveedorPagosModal({
                                   {m.cheque_id && (
                                     <div className="text-[11px] text-gray-400 mt-1">
                                       Cheque ID: {m.cheque_id}
+                                    </div>
+                                  )}
+                                  {m.estado && (
+                                    <div className="text-[11px] text-gray-400 mt-1">
+                                      Estado: {m.estado}
                                     </div>
                                   )}
                                   {m.banco_cuenta_id && (

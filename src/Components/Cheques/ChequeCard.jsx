@@ -80,7 +80,8 @@ function getAllowedActions(ch) {
     if (['registrado', 'en_cartera'].includes(estado))
       return ['depositar', 'entregar', 'aplicar-a-proveedor', 'anular'];
     if (estado === 'depositado') return ['acreditar', 'rechazar'];
-    if (estado === 'entregado') return ['compensar'];
+    if (estado === 'entregado') return ['compensar', 'rebotado'];
+    if (estado === 'aplicado_a_compra') return ['rebotado'];
     return [];
   }
 
@@ -91,13 +92,10 @@ function getAllowedActions(ch) {
 
     // 2) Ya fue aplicado a una compra (pago creado), pero todavía NO se entregó físicamente
     //    (tu backend pide ENTREGADO para compensar)
-    if (estado === 'aplicado_a_compra')
-      return ['entregar']; // <- clave: NO compensar acá
+    if (estado === 'aplicado_a_compra') return ['entregar', 'rebotado']; // <- clave: NO compensar acá
 
     // 3) Ya fue entregado → ahora sí se puede compensar (y anular si tu backend lo permite)
-    if (estado === 'entregado')
-      return ['compensar', 'anular'];
-
+    if (estado === 'entregado') return ['compensar', 'anular', 'rebotado'];
     return [];
   }
 
@@ -251,6 +249,7 @@ export default function ChequeCard({
     depositar: onActions?.depositar,
     acreditar: onActions?.acreditar,
     rechazar: onActions?.rechazar,
+    rebotado: onActions?.rebotado,
     'aplicar-a-proveedor': onActions?.aplicarProveedor,
     entregar: onActions?.entregar,
     compensar: onActions?.compensar,
@@ -456,6 +455,7 @@ export default function ChequeCard({
                 depositar: 'teal',
                 acreditar: 'green',
                 rechazar: 'rose',
+                rebotado: 'rose',
                 'aplicar-a-proveedor': 'amber',
                 entregar: 'teal',
                 compensar: 'teal',
@@ -466,6 +466,7 @@ export default function ChequeCard({
                 depositar: <FaArrowDown />,
                 acreditar: <FaCheckCircle />,
                 rechazar: <FaTimesCircle />,
+                rebotado: <FaUniversity />,
                 'aplicar-a-proveedor': <FaUserTie />,
                 entregar: <FaHandHolding />,
                 compensar: <FaExchangeAlt />,
@@ -475,6 +476,7 @@ export default function ChequeCard({
                 depositar: 'Depositar',
                 acreditar: 'Acreditar',
                 rechazar: 'Rechazar',
+                rebotado: 'Rebotado (Banco)',
                 'aplicar-a-proveedor': 'Aplicar a Proveedor',
                 entregar: 'Entregar',
                 compensar: 'Compensar',

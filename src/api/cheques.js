@@ -52,6 +52,8 @@ export const acreditarCheque = (id, payload = {}) =>
   transition(id, 'acreditar', payload);
 export const rechazarCheque = (id, payload = {}) =>
   transition(id, 'rechazar', payload);
+export const rebotarCheque = (id, payload = {}) =>
+  transition(id, 'rebotado', payload);
 export const aplicarProveedorCheque = (id, payload = {}) =>
   transition(id, 'aplicar-a-proveedor', payload);
 export const entregarCheque = (id, payload = {}) =>

@@ -285,11 +285,6 @@ export default function ChequesKpisBar({
                   <div className="text-sm text-zinc-500">—</div>
                 )}
               </div>
-
-              <div className="mt-3 text-[12px] text-zinc-500">
-                Sugerencia: al clickear un chip, aplicar filtro de estado en
-                la grilla.
-              </div>
             </div>
 
             <div className="rounded-3xl border border-zinc-200/70 bg-white p-4">
@@ -314,10 +309,6 @@ export default function ChequesKpisBar({
                 ) : (
                   <div className="text-sm text-zinc-500">—</div>
                 )}
-              </div>
-
-              <div className="mt-3 text-[12px] text-zinc-500">
-                Filtro rápido por “físico/eCheq”.
               </div>
             </div>
 

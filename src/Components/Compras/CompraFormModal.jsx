@@ -1068,18 +1068,22 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
                   </motion.div>
 
                   <motion.div variants={fieldV}>
-                    <label className="block text-sm font-medium text-gray-200 mb-2">
-                      <span className="inline-flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-gray-400" /> Fecha
-                      </span>
+                    <label className="mt-1 flex items-center gap-2 text-sm font-medium text-gray-200 mb-2">
+                      <Tag className="h-4 w-4 text-gray-400" /> Condición{' '}
+                      <span className="text-cyan-300">*</span>
                     </label>
-                    <input
-                      type="datetime-local"
-                      name="fecha"
-                      value={form.fecha || ''}
+                    <select
+                      name="condicion_compra"
+                      value={form.condicion_compra}
                       onChange={handleForm}
                       className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-300/40 focus:border-transparent"
-                    />
+                    >
+                      {CONDICIONES.map((t) => (
+                        <option key={t} value={t} className="bg-gray-900">
+                          {t}
+                        </option>
+                      ))}
+                    </select>
                   </motion.div>
                 </div>
 
@@ -1126,29 +1130,24 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
                       portal
                     />
                   </motion.div>
-
-                  <motion.div variants={fieldV}>
-                    <label className="flex items-center gap-2 text-sm font-medium text-gray-200 mb-2 -mt-1">
-                      <Tag className="h-4 w-4 text-gray-400" /> Condición{' '}
-                      <span className="text-cyan-300">*</span>
-                    </label>
-                    <select
-                      name="condicion_compra"
-                      value={form.condicion_compra}
-                      onChange={handleForm}
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-300/40 focus:border-transparent"
-                    >
-                      {CONDICIONES.map((t) => (
-                        <option key={t} value={t} className="bg-gray-900">
-                          {t}
-                        </option>
-                      ))}
-                    </select>
-                  </motion.div>
                 </div>
 
                 {/* Vencimiento (cuando CC / Crédito) */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <motion.div variants={fieldV}>
+                    <label className="block text-sm font-medium text-gray-200 mb-2">
+                      <span className="inline-flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-gray-400" /> Fecha
+                      </span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      name="fecha"
+                      value={form.fecha || ''}
+                      onChange={handleForm}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-300/40 focus:border-transparent"
+                    />
+                  </motion.div>
                   <motion.div variants={fieldV}>
                     <label className="block text-sm font-medium text-gray-200 mb-2">
                       <span className="inline-flex items-center gap-2">
