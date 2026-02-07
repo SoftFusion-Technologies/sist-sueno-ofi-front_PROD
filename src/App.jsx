@@ -92,6 +92,9 @@ import AdminPageCajaDash from './Pages/Caja/AdminPageCajaDash';
 import MovimientosStock from './Pages/Compras/MovimientosStock';
 import VentasFacturasGet from './Pages/Ventas/VentasFacturasGet';
 import VentasRemitosGet from './Pages/Ventas/VentasRemitosGet';
+
+// Benjamin Orellana - 07/02/2026 - Nueva pantalla de Caja: gestión de recibos (histórico + emisión/anulación).
+import AdminCajaRecibos from './Pages/Caja/AdminCajaRecibos';
 // -------------------------
 // MÓDULO ARCA  - 08-12-2025 Benjamin Orellana
 // -------------------------
@@ -277,6 +280,17 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          {/* Benjamin Orellana - 07/02/2026 - Ruta para Recibos de Caja (caja_recibos). */}
+          <Ruta
+            path="/dashboard/caja/recibos"
+            element={
+              <ProtectedRoute>
+                {' '}
+                <AdminCajaRecibos />{' '}
+              </ProtectedRoute>
+            }
+          />
+          {/* Benjamin Orellana - 07/02/2026 - Ruta para Recibos de Caja (caja_recibos). */}
           <Ruta
             path="/dashboard/caja/caja"
             element={

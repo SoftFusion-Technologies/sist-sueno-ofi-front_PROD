@@ -50,7 +50,8 @@ import CajaKpiGrid from './Components/CajaKpiGrid.jsx';
 import CajaCatalogosModal from '../Caja/components/CajaCatalogosModal.jsx';
 // Benjamin Orellana - 23 / 01 / 2026 - Modal movimiento manual
 import CajaMovimientoManualModal from './Components/CajaMovimientoManualModal.jsx';
-
+import CajaReciboQuickModal from '../Caja/Recibos/Components/CajaReciboQuickModal.jsx';
+import { imprimirReciboCajaPdf } from '../Caja/Recibos/ReciboCajaPdf.jsx';
 const toast = Swal.mixin({
   toast: true,
   position: 'top-end',
@@ -187,6 +188,12 @@ export default function CajaPOS() {
   const [openMovManual, setOpenMovManual] = useState(false);
 
   const canManageCatalogos = ['socio', 'administrativo'].includes(userLevel);
+
+  // Benjamin Orellana - 07/02/2026 - Estados para flujo de recibo e impresión.
+  const [reciboFlow, setReciboFlow] = useState({
+    open: false,
+    movPayload: null
+  });
 
   const buildCanalParams = (forcedIncludeC2) => {
     const params = new URLSearchParams();
@@ -706,14 +713,13 @@ export default function CajaPOS() {
     }
   };
 
-  const registrarMovimiento = async (override = null) => {
-    // 1) Verificar en backend si sigue abierta
+  // Benjamin Orellana - 07/02/2026 - registrarMovimiento retorna {ok, movimiento, recibo}
+  // y permite emitir recibo enviando emitir_recibo + recibo al backend.
+  const registrarMovimiento = async (override = null, opts = {}) => {
     const verif = await ensureCajaAbierta({ notify: true, refreshMovs: false });
-    if (!verif.ok || !verif.caja?.id) return false;
+    if (!verif.ok || !verif.caja?.id) return { ok: false };
 
     const cajaId = verif.caja.id;
-
-    // Fuente de datos: modal override o state local
     const src = override ?? nuevoMovimiento;
 
     const descripcion = String(src.descripcion || '').trim();
@@ -726,44 +732,50 @@ export default function CajaPOS() {
         ? null
         : Number(src.cuenta_id);
 
-    // 2) Validaciones
     if (!descripcion || !Number.isFinite(monto) || monto <= 0) {
       await swalError(
         'Datos incompletos',
         'Completá descripción y monto válido.'
       );
-      return false;
+      return { ok: false };
     }
 
-    // Regla UX + backend
     if (rubro_id != null && (Number.isNaN(rubro_id) || rubro_id <= 0)) {
       await swalError('Rubro inválido', 'Seleccioná un rubro válido.');
-      return false;
+      return { ok: false };
     }
     if (cuenta_id != null && (Number.isNaN(cuenta_id) || cuenta_id <= 0)) {
       await swalError('Cuenta inválida', 'Seleccioná una cuenta válida.');
-      return false;
+      return { ok: false };
     }
     if (rubro_id != null && cuenta_id == null) {
       await swalError(
         'Cuenta requerida',
         'Si elegís un rubro, debés elegir una cuenta permitida para ese rubro.'
       );
-      return false;
+      return { ok: false };
     }
 
     try {
       swalLoading('Registrando movimiento...');
 
-      await axios.post(`${BASE_URL}/movimientos_caja`, {
+      const emitirRecibo = [true, 'true', 1, '1'].includes(opts?.emitirRecibo);
+      const recibo = emitirRecibo ? (opts?.recibo ?? {}) : undefined;
+
+      const { data } = await axios.post(`${BASE_URL}/movimientos_caja`, {
         caja_id: cajaId,
         tipo: src.tipo,
         descripcion,
         monto,
         usuario_id: userId,
-        canal: 'C1', // manual = oficial
+        canal: 'C1',
         rubro_id,
-        cuenta_id
+        cuenta_id,
+
+        // Benjamin Orellana - 07/02/2026 - Compatibilidad: backend usa emitir_recibo.
+        emitir_recibo: emitirRecibo,
+        emitirRecibo, // opcional por compatibilidad si en algún lado lo leés camelCase
+        recibo
       });
 
       await refreshCajaUI(cajaId);
@@ -777,8 +789,16 @@ export default function CajaPOS() {
       });
 
       Swal.close();
-      toast.fire({ icon: 'success', title: 'Movimiento registrado' });
-      return true;
+
+      if (!opts?.silentToast) {
+        toast.fire({ icon: 'success', title: 'Movimiento registrado' });
+      }
+
+      return {
+        ok: true,
+        movimiento: data?.movimiento ?? null,
+        recibo: data?.recibo ?? null
+      };
     } catch (err) {
       Swal.close();
       await swalError(
@@ -786,10 +806,25 @@ export default function CajaPOS() {
         err.response?.data?.mensajeError || 'No se pudo registrar el movimiento'
       );
       await ensureCajaAbierta({ notify: true, refreshMovs: true });
-      return false;
+      return { ok: false };
     }
   };
 
+  // Benjamin Orellana - 07/02/2026 - Reutiliza el helper existente de impresión.
+  const imprimirReciboSiCorresponde = async (recibo) => {
+    if (!recibo) return;
+
+    if (String(recibo?.estado || '').toLowerCase() !== 'emitido') {
+      await Swal.fire(
+        'Recibo anulado',
+        'No se puede imprimir un recibo anulado.',
+        'warning'
+      );
+      return;
+    }
+
+    imprimirReciboCajaPdf({ data: recibo });
+  };
   const totalIngresosUI = Number(saldoInfo?.total_ingresos ?? 0);
   const totalEgresosUI = Number(saldoInfo?.total_egresos ?? 0);
   const saldoActualUI = Number(saldoInfo?.saldo_actual ?? 0);
@@ -890,7 +925,7 @@ export default function CajaPOS() {
       <ButtonBack></ButtonBack>
       {/* <ButtonBack /> */}
       <motion.div
-        className="w-full max-w-2xl"
+        className="w-full max-w-7xl"
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -1286,9 +1321,28 @@ export default function CajaPOS() {
                 baseUrl={BASE_URL}
                 userId={userId}
                 onSubmit={async (payload) => {
-                  const ok = await registrarMovimiento(payload);
-                  // si ok, el modal se cierra solo desde el componente (por retorno true)
-                  return ok;
+                  const r = await Swal.fire({
+                    icon: 'question',
+                    title: '¿Emitir recibo?',
+                    text: 'Si emitís recibo, se imprimirá al finalizar.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, emitir',
+                    cancelButtonText: 'No, solo movimiento',
+                    confirmButtonColor: '#059669'
+                  });
+
+                  if (r.isConfirmed) {
+                    setOpenMovManual(false);
+                    setReciboFlow({ open: true, movPayload: payload });
+                    return false; // todavía no registramos el movimiento
+                  }
+
+                  const out = await registrarMovimiento(payload, {
+                    emitirRecibo: false,
+                    silentToast: true
+                  });
+
+                  return out; // el modal interpreta ok por out.ok
                 }}
               />
 
@@ -2189,6 +2243,35 @@ export default function CajaPOS() {
         onClose={() => setOpenCatalogos(false)}
         baseUrl={BASE_URL}
         userId={userId}
+      />
+      {/* Benjamin Orellana - 07/02/2026 - Modal rápido para completar recibo */}
+      <CajaReciboQuickModal
+        open={reciboFlow.open}
+        userId={userId}
+        baseUrl={BASE_URL}  
+        movimientoBase={{
+          tipo: reciboFlow.movPayload?.tipo,
+          monto: reciboFlow.movPayload?.monto,
+          descripcion: reciboFlow.movPayload?.descripcion
+        }}
+        onClose={async (ret) => {
+          if (!ret?.ok) {
+            setReciboFlow({ open: false, movPayload: null });
+            return;
+          }
+
+          const out = await registrarMovimiento(reciboFlow.movPayload, {
+            emitirRecibo: true,
+            recibo: ret.recibo,
+            silentToast: false
+          });
+
+          if (out?.ok && out?.recibo) {
+            await imprimirReciboSiCorresponde(out.recibo);
+          }
+
+          setReciboFlow({ open: false, movPayload: null });
+        }}
       />
     </div>
   );

@@ -20,9 +20,16 @@ import { useAuth } from '../../AuthContext';
 import ParticlesBackground from '../../Components/ParticlesBackground';
 import { motion } from 'framer-motion';
 import ButtonBack from '../../Components/ButtonBack';
-import { FaFileInvoiceDollar, FaRegSmileBeam, FaLock } from 'react-icons/fa';
+// Benjamin Orellana - 07/02/2026 - Se agrega ícono para el nuevo acceso "Recibos" (histórico de recibos de caja).
+import {
+  FaFileInvoiceDollar,
+  FaRegSmileBeam,
+  FaLock,
+  FaReceipt
+} from 'react-icons/fa';
 
 // Accesos del módulo Caja (extraídos del AdminPageVentas)
+// Benjamin Orellana - 07/02/2026 - Se agrega acceso directo al histórico de recibos emitidos/anulados (caja_recibos).
 const cajaLinks = [
   {
     to: '/dashboard/caja/caja',
@@ -41,6 +48,14 @@ const cajaLinks = [
     label: 'Resumenes de Caja',
     icon: <FaRegSmileBeam />,
     desc: 'Movimientos de caja histórico'
+  },
+
+  // Benjamin Orellana - 07/02/2026 - Nuevo acceso al listado/histórico de recibos (consulta, detalle y anulación).
+  {
+    to: '/dashboard/caja/recibos',
+    label: 'Recibos de Caja',
+    icon: <FaReceipt />,
+    desc: 'Histórico de recibos emitidos y anulados'
   }
 ];
 
