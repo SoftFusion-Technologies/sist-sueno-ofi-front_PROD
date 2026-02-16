@@ -61,10 +61,6 @@ const DashboardTile = ({ title, description, to, icon: Icon, delay = 0 }) => {
                   {title}
                 </h3>
               </div>
-
-              <span className="text-[11px] uppercase tracking-widest text-slate-400 group-hover:text-emerald-600">
-                Abrir
-              </span>
             </div>
 
             {description && (
@@ -72,6 +68,9 @@ const DashboardTile = ({ title, description, to, icon: Icon, delay = 0 }) => {
                 {description}
               </p>
             )}
+            <span className="text-[11px] uppercase tracking-widest text-slate-400 group-hover:text-emerald-600">
+              Abrir
+            </span>
           </div>
         </div>
       </Link>
@@ -167,6 +166,16 @@ const AdminPage = () => {
                 icon={FaBoxes}
                 delay={0.1}
               />
+
+              {!isVendedor && (
+                <DashboardTile
+                  title="Movimientos de Stock"
+                  description="Control de MOVIMIENTOS de stock en tiempo real, Compras, ventas, devoluciones."
+                  to="/dashboard/stock-movimientos"
+                  icon={FaBoxes}
+                  delay={0.1}
+                />
+              )}
 
               {/* Compras: oculto para vendedor */}
               {!isVendedor && (

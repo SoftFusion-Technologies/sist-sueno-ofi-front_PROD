@@ -428,7 +428,7 @@ function Modal({ open, onClose, title, children, size = 'max-w-3xl' }) {
             transition={{ type: 'spring', stiffness: 320, damping: 26 }}
           >
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+              <h3 className="text-sm font-semibold text-slate-900 titulo uppercase">{title}</h3>
               <button
                 onClick={onClose}
                 className="rounded-full p-2 text-slate-500 hover:bg-slate-100"
@@ -923,8 +923,22 @@ function CreatePedidoForm({ API_BASE, form, setForm, onCancel, onSubmit }) {
   const [prodFilter, setProdFilter] = useState('');
 
   const [stockOrigen, setStockOrigen] = useState(null);
+
+  // Benjamin Orellana - 11-02-2026 - Se normaliza la lectura de cantidad para DECIMAL (string/number) sin romper el punto decimal. Evita NaN y mantiene 3 decimales.
+  const toQty = (v) => {
+    const raw = String(v ?? '').trim();
+    if (!raw) return 0;
+
+    // Si viene como "11.000" => Number("11.000") = 11 (OK)
+    // Si alguna vez viene como "11,000" => 11.000 (OK)
+    const n = Number(raw.replace(',', '.'));
+    if (!Number.isFinite(n)) return 0;
+
+    return Math.round((n + Number.EPSILON) * 1000) / 1000;
+  };
+
   const disponible =
-    typeof stockOrigen?.cantidad === 'number'
+    stockOrigen && Number.isFinite(stockOrigen.cantidad)
       ? stockOrigen.cantidad
       : undefined;
 
@@ -958,33 +972,91 @@ function CreatePedidoForm({ API_BASE, form, setForm, onCancel, onSubmit }) {
   useEffect(() => {
     const pid = Number(form.producto_id);
     const lid = Number(form.local_origen_id);
+
     if (!pid || !lid) {
       setStockOrigen(null);
       return;
     }
+
     let mounted = true;
+
+    // Benjamin Orellana - 11-02-2026 - Se filtra SIEMPRE en frontend por producto_id/local_id para evitar tomar filas incorrectas cuando el endpoint /stock no filtra o devuelve múltiples filas.
+    const normalizeRows = (payload) => {
+      if (Array.isArray(payload)) return payload;
+      if (payload && Array.isArray(payload.data)) return payload.data;
+      if (payload && Array.isArray(payload.rows)) return payload.rows;
+      return [];
+    };
+
+    const pickRow = (rows, preferId) => {
+      const prefer = preferId ? Number(preferId) : null;
+
+      // 1) Respetar stock_id_origen si ya fue seleccionado
+      if (prefer) {
+        const byId = rows.find((r) => Number(r?.id) === prefer);
+        if (byId) return byId;
+      }
+
+      // 2) Si quedó una sola fila, usarla
+      if (rows.length === 1) return rows[0];
+
+      // 3) Fallback: mayor cantidad dentro del mismo producto/local
+      return rows.reduce((best, r) => {
+        if (!best) return r;
+        return toQty(r?.cantidad) > toQty(best?.cantidad) ? r : best;
+      }, null);
+    };
+
     (async () => {
       try {
         const url = new URL(`${API_BASE}/stock`);
         url.searchParams.set('producto_id', pid);
         url.searchParams.set('local_id', lid);
-        const data = await fetch(url)
+
+        const payload = await fetch(url)
           .then((r) => r.json())
           .catch(() => []);
-        const s = Array.isArray(data) && data.length > 0 ? data[0] : null;
+
+        const rows = normalizeRows(payload);
+
+        // Filtrado definitivo (blindaje): aunque el backend devuelva de más
+        const filtered = rows.filter((r) => {
+          return Number(r?.producto_id) === pid && Number(r?.local_id) === lid;
+        });
+
+        const preferId =
+          form.stock_id_origen != null &&
+          String(form.stock_id_origen).trim() !== ''
+            ? Number(form.stock_id_origen)
+            : null;
+
+        const s = pickRow(filtered, preferId);
+
         if (!mounted) return;
+
         setStockOrigen(
-          s ? { id: s.id, cantidad: Number(s.cantidad || 0) } : null
+          s ? { id: Number(s.id), cantidad: toQty(s.cantidad) } : null
         );
-        setForm((f) => ({ ...f, stock_id_origen: s?.id ? String(s.id) : '' }));
+
+        setForm((f) => ({
+          ...f,
+          stock_id_origen: s?.id ? String(s.id) : ''
+        }));
       } catch {
         if (mounted) setStockOrigen(null);
       }
     })();
+
     return () => {
       mounted = false;
     };
-  }, [API_BASE, form.producto_id, form.local_origen_id, setForm]);
+  }, [
+    API_BASE,
+    form.producto_id,
+    form.local_origen_id,
+    form.stock_id_origen,
+    setForm
+  ]);
 
   const labelLocal = (loc) =>
     [loc.codigo, loc.nombre].filter(Boolean).join(' · ') || `#${loc.id}`;
@@ -1128,11 +1200,11 @@ function CreatePedidoForm({ API_BASE, form, setForm, onCancel, onSubmit }) {
               </option>
             ))}
           </select>
-          <div className="mt-2 text-[11px] text-slate-500">
+          <div className="mt-2 text-[11px] text-slate-500 uppercase">
             {typeof disponible === 'number' ? (
               <>
                 Stock disponible: <b>{disponible}</b>
-                {stockOrigen?.id ? ` · stock_id #${stockOrigen.id}` : null}
+                {/* {stockOrigen?.id ? ` · stock_id #${stockOrigen.id}` : null} */}
               </>
             ) : (
               'Seleccioná producto y origen para ver stock disponible.'

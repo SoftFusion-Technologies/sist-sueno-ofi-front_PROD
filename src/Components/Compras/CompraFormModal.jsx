@@ -411,7 +411,7 @@ export default function CompraFormModal({ open, onClose, initial, fetchData }) {
         const [pvs, locs, prods, impsResp] = await Promise.all([
           fetchProveedoresCatalogo(),
           listLocales?.({ limit: 5000, orderBy: 'nombre', orderDir: 'ASC' }),
-          listProductos?.({ limit: 5000, orderBy: 'nombre', orderDir: 'ASC' }),
+          listProductos?.({ limit: 15000, orderBy: 'nombre', orderDir: 'ASC' }),
           http.get('/impuestos-config', { params: { activo: true } })
         ]);
 

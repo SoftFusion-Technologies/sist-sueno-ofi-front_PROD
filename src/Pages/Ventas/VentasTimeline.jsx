@@ -509,7 +509,6 @@ export default function VentasTimeline() {
                     <thead>
                       <tr className="bg-emerald-700/90 rounded-lg text-left text-white uppercase tracking-wide select-none">
                         <th className="py-3 px-4 rounded-l-lg">Producto</th>
-                        <th className="py-3 px-4">Talle</th>
                         <th className="py-3 px-4 text-right">Cantidad</th>
                         <th className="py-3 px-4 text-right">
                           Precio Unitario
@@ -533,9 +532,7 @@ export default function VentasTimeline() {
                           <td className="py-3 px-4 font-semibold">
                             {item.stock?.producto?.nombre || 'Producto'}
                           </td>
-                          <td className="py-3 px-4">
-                            {item.stock?.talle?.nombre || '-'}
-                          </td>
+                     
                           <td className="py-3 px-4 text-right font-mono">
                             {item.cantidad}
                           </td>
@@ -719,7 +716,7 @@ export default function VentasTimeline() {
                               {item.stock?.producto?.nombre}
                             </div>
                             <div className="text-sm text-gray-400">
-                              Talle: {item.stock?.talle?.nombre} • Vendido:{' '}
+                              Vendido:{' '}
                               {item.cantidad} • Ya devuelto:{' '}
                               {yaDevuelto > 0 ? yaDevuelto : 'NO'}
                             </div>
