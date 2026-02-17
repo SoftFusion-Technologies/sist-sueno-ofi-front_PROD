@@ -56,8 +56,10 @@ const AdminPageStock = () => {
   return (
     <>
       <NavbarStaff />
-      <section className="relative w-full min-h-screen bg-white">
-        <div className="min-h-screen bg-gradient-to-b from-[#0a0a0f] via-[#12121b] to-[#1a1a2e]">
+
+      {/* Benjamin Orellana - 2026-02-17 - Adecuación total a light/dark usando utilidades Tailwind (sin depender del fondo hardcodeado). */}
+      <section className="relative w-full min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 dark:from-[#0a0a0f] dark:via-[#12121b] dark:to-[#1a1a2e]">
           <ParticlesBackground />
           <ButtonBack />
 
@@ -66,7 +68,7 @@ const AdminPageStock = () => {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-4xl titulo uppercase font-bold text-white mb-8 drop-shadow-md"
+              className="text-4xl titulo uppercase font-bold text-slate-900 dark:text-white mb-8 drop-shadow-md"
             >
               Gestión de Stock
             </motion.h1>
@@ -80,9 +82,25 @@ const AdminPageStock = () => {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5, delay: index * 0.2 }}
-                    className="bg-white shadow-xl hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:border-pink-400 transition-all duration-300 font-semibold text-lg lg:text-xl text-gray-800 rounded-2xl flex justify-center items-center h-40 cursor-pointer border border-white/20 hover:scale-[1.02] flex-col gap-2"
+                    className={[
+                      // Base
+                      'rounded-2xl flex justify-center items-center h-40 cursor-pointer flex-col gap-2',
+                      'transition-all duration-300 font-semibold text-lg lg:text-xl',
+                      'border backdrop-blur-xl',
+                      'hover:scale-[1.02]',
+                      // Light
+                      'bg-white/90 text-slate-900 border-black/10 shadow-[0_18px_45px_rgba(15,23,42,0.18)]',
+                      'hover:shadow-[0_24px_60px_rgba(15,23,42,0.24)]',
+                      // Dark
+                      'dark:bg-white/[0.05] dark:text-slate-50 dark:border-white/10 dark:shadow-[0_18px_60px_rgba(0,0,0,.35)]',
+                      'dark:hover:shadow-[0_28px_90px_rgba(0,0,0,.45)]',
+                      // Hover accent (ambos)
+                      'hover:border-emerald-400/60'
+                    ].join(' ')}
                   >
-                    <span className="text-4xl text-pink-500">{icon}</span>
+                    <span className="text-4xl text-emerald-600 dark:text-emerald-300">
+                      {icon}
+                    </span>
                     <span>{label}</span>
                   </motion.div>
                 </Link>
@@ -93,7 +111,7 @@ const AdminPageStock = () => {
           {/* Si es vendedor, no mostramos el menú porque se redirige al Stock */}
           {isVendedor && (
             <div className="xl:px-0 sm:px-16 px-6 max-w-7xl mx-auto py-12">
-              <div className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md p-6 text-center text-white">
+              <div className="rounded-2xl border border-black/10 bg-white/70 backdrop-blur-md p-6 text-center text-slate-900 shadow-sm dark:border-white/10 dark:bg-white/10 dark:text-white dark:shadow-none">
                 Redirigiendo a Stock...
               </div>
             </div>

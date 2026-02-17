@@ -35,6 +35,7 @@ import ModalConsultarStock from '../../Components/Productos/ModalConsultarStock'
 // Benjamin Orellana - 24-01-2026
 // Se adiciona componente para vista previa de factura A4
 import FacturaA4Modal from '../../Components/Ventas/FacturaA4Modal';
+import NavbarStaff from '../Dash/NavbarStaff';
 const toast = Swal.mixin({
   toast: true,
   position: 'top-end',
@@ -2230,823 +2231,824 @@ export default function PuntoVenta() {
   const cbteMeta = getCbteMeta(cbteTipoSolicitado);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-4 sm:p-6 text-white">
-      <ParticlesBackground />
-      {/* <ButtonBack /> */}
-      <h1 className="text-3xl font-bold mb-6 titulo uppercase flex items-center gap-3 text-emerald-400">
-        <FaCashRegister /> Punto de Venta
-      </h1>
-      <div className="mb-4 w-full max-w-2xl">
-        <label className="block text-xl font-bold mb-1 text-gray-200">
-          Cliente
-        </label>
+    // Benjamin Orellana - 2026-02-17 - Fondo y color base compatibles con light/dark sin romper el estilo del POS
+    <>
+      <NavbarStaff></NavbarStaff>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 sm:p-6 text-slate-900 dark:from-gray-900 dark:to-gray-800 dark:text-white">
+        <ParticlesBackground />
+        {/* <ButtonBack /> */}
 
-        <div className="relative w-full max-w-3xl mb-6 flex items-center gap-2">
-          {/* Input + icono */}
-          <div className="relative flex-grow">
-            <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 text-lg" />
+        {/* Benjamin Orellana - 2026-02-17 - Título legible en light y conserva acento emerald en dark */}
+        <h1 className="text-3xl font-bold mb-6 titulo uppercase flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
+          <FaCashRegister /> Punto de Venta
+        </h1>
 
-            <input
-              type="text"
-              placeholder="Buscar cliente por nombre, DNI o teléfono…"
-              value={busquedaCliente}
-              onChange={handleBusquedaCliente}
-              onKeyDown={handleBusquedaKeyDown}
-              onBlur={handleBlurCliente}
-              onFocus={handleFocusCliente}
-              className="pl-10 pr-10 py-3 w-full rounded-xl bg-[#232323] text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow"
-              autoComplete="off"
-            />
+        <div className="mb-4 w-full max-w-2xl">
+          {/* Benjamin Orellana - 2026-02-17 - Label con contraste correcto en light/dark */}
+          <label className="block text-xl font-bold mb-1 text-slate-700 dark:text-gray-200">
+            Cliente
+          </label>
 
-            {/* Loading pill */}
-            {isSearchingCliente && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/20">
-                Buscando…
-              </div>
-            )}
+          <div className="relative w-full max-w-3xl mb-6 flex items-center gap-2">
+            {/* Input + icono */}
+            <div className="relative flex-grow">
+              <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400 text-lg" />
 
-            {/* Cliente seleccionado */}
-            {clienteSeleccionado?.id && (
-              <div className="mt-2 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20 px-3 py-2 text-emerald-200 text-sm flex items-center justify-between gap-3">
-                <div className="truncate">
-                  <span className="font-bold">Seleccionado:</span>{' '}
-                  <span className="text-emerald-100/90">
-                    {labelCliente(clienteSeleccionado)}
-                  </span>
+              {/* Benjamin Orellana - 2026-02-17 - Input tema-aware: claro (bg blanco + texto oscuro), oscuro (bg dark + texto claro) */}
+              <input
+                type="text"
+                placeholder="Buscar cliente por nombre, DNI o teléfono…"
+                value={busquedaCliente}
+                onChange={handleBusquedaCliente}
+                onKeyDown={handleBusquedaKeyDown}
+                onBlur={handleBlurCliente}
+                onFocus={handleFocusCliente}
+                className="
+              pl-10 pr-10 py-3 w-full rounded-xl shadow
+              bg-white text-slate-900 placeholder-slate-400
+              ring-1 ring-black/10
+              focus:outline-none focus:ring-2 focus:ring-emerald-500
+              dark:bg-[#232323] dark:text-slate-100 dark:placeholder-slate-400
+              dark:ring-white/10
+            "
+                autoComplete="off"
+              />
+
+              {/* Loading pill */}
+              {isSearchingCliente && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] px-2 py-1 rounded-full bg-emerald-600/10 text-emerald-700 ring-1 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-400/20">
+                  Buscando…
                 </div>
+              )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setClienteSeleccionado(null);
-                    setBusquedaCliente('');
-                    setSugerencias([]);
-                  }}
-                  className="text-xs font-bold px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 ring-1 ring-white/10"
-                >
-                  Quitar
-                </button>
-              </div>
-            )}
-
-            {/* SUGERENCIAS PRO */}
-            {sugerencias.length > 0 && (
-              <div className="absolute z-20 left-0 right-0 mt-2 rounded-2xl overflow-hidden border border-emerald-500/25 bg-[#101010]/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)]">
-                <div className="px-3 py-2 text-xs text-white/55 flex items-center justify-between">
-                  <span>Resultados ({sugerencias.length})</span>
-                  <span className="text-white/35">Click para seleccionar</span>
-                </div>
-
-                <ul className="max-h-72 overflow-auto">
-                  {sugerencias.map((cli) => {
-                    const dni = cli?.dni ? onlyDigits(cli.dni) : '';
-                    const tel = cli?.telefono ? onlyDigits(cli.telefono) : '';
-                    const badge = dni
-                      ? `DNI ${dni}`
-                      : tel
-                        ? `Tel ${tel}`
-                        : 'Sin doc/tel';
-
-                    return (
-                      <li
-                        key={cli.id}
-                        onMouseDown={() => seleccionarCliente(cli)} // 👈 evita que blur cierre antes del click
-                        className="group px-4 py-3 cursor-pointer border-t border-white/5 hover:bg-emerald-500/10 transition"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="text-gray-100 font-semibold truncate">
-                              {cli.nombre}
-                            </div>
-                            <div className="text-xs text-white/45 truncate">
-                              {cli.email || cli.direccion || '—'}
-                            </div>
-                          </div>
-
-                          <span className="shrink-0 text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-500/12 text-emerald-200 ring-1 ring-emerald-400/20 group-hover:bg-emerald-500/18">
-                            {badge}
-                          </span>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-          </div>
-
-          {/* Botón "Nuevo" alineado a la derecha */}
-          <button
-            type="button"
-            onClick={abrirModalNuevoCliente}
-            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold shadow transition flex items-center gap-2"
-            title="Agregar nuevo cliente"
-          >
-            <FaUserPlus /> Nuevo Cliente
-          </button>
-          {/* Indicador interno: verde=fiscal, rojo=modo interno */}
-          <div className="mt-2 flex items-center gap-2">
-            <span
-              className={[
-                'inline-block h-3 w-3 rounded-full ring-1',
-                cbteTipoSolicitado == null
-                  ? 'bg-red-500 ring-red-300/40'
-                  : 'bg-emerald-500 ring-emerald-300/40'
-              ].join(' ')}
-            />
-          </div>
-        </div>
-
-        <div className="mt-2">
-          {clienteSeleccionado ? (
-            <div className="flex items-center gap-3 text-emerald-400">
-              <FaCheckCircle className="text-emerald-500" />
-              <span>
-                {clienteSeleccionado.nombre} ({clienteSeleccionado.dni})
-              </span>
-              <button
-                className="ml-4 text-xs text-emerald-500 underline"
-                onClick={() => setClienteSeleccionado(null)}
-              >
-                Cambiar
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 text-gray-500">
-              <FaUserAlt />
-              <span>
-                Cliente no seleccionado (
-                <b className="text-emerald-400">Consumidor Final</b>)
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-      {/* lector de codigo de barras invicible */}
-      <div>
-        <input
-          ref={inputRef}
-          type="text"
-          style={{
-            opacity: 0,
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            width: 1,
-            height: 1,
-            pointerEvents: 'none'
-          }}
-          onBlur={() => setModoEscaner(false)} // Si el input invisible pierde foco, vuelve a manual
-          onKeyDown={handleKeyDown}
-        />
-      </div>
-      {/* Buscador por fuera*/}
-      <div className="w-full max-w-3xl mb-6 sm:mx-0 mx-auto">
-        {/* Acá el truco: flex-col por defecto (mobile), flex-row en sm+ */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-          {/* Input arriba en mobile, a la izquierda en desktop */}
-          <div className="relative flex-grow">
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-emerald-500 text-lg" />
-            <input
-              ref={buscadorRef}
-              type="text"
-              placeholder="Buscar por nombre, SKU o ID..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="pl-10 pr-4 py-3 w-full rounded-xl bg-white/90 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-md"
-              onFocus={() => setModoEscaner(false)}
-            />
-          </div>
-
-          {/* Botón principal */}
-          <button
-            onClick={abrirModalVerProductos}
-            className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white w-full sm:w-auto px-2 py-2 rounded-xl font-bold shadow-md hover:scale-105 hover:from-emerald-600 hover:to-emerald-700 transition-all focus:ring-2 focus:ring-emerald-400 focus:outline-none"
-            type="button"
-          >
-            <span className="flex items-center gap-1">
-              <FaBoxOpen className="inline -ml-1" />
-              Ver Productos
-            </span>
-          </button>
-
-          <button
-            onClick={abrirModalVerCombos}
-            className="bg-gradient-to-br from-purple-500 to-purple-600 text-white w-full sm:w-auto px-2 py-2 rounded-xl font-bold shadow-md hover:scale-105 hover:from-purple-600 hover:to-purple-700 transition-all focus:ring-2 focus:ring-purple-400 focus:outline-none"
-            type="button"
-          >
-            <span className="flex items-center gap-1">
-              <FaCubes className="inline -ml-1" />
-              Ver Combos
-            </span>
-          </button>
-
-          {/* NUEVO: Consultar Stock */}
-          <button
-            onClick={() => setModalStockOpen(true)}
-            className="bg-gradient-to-br from-sky-500 to-sky-600 text-white w-full sm:w-auto px-2 py-2 rounded-xl font-bold shadow-md hover:scale-105 hover:from-sky-600 hover:to-sky-700 transition-all focus:ring-2 focus:ring-sky-400 focus:outline-none"
-            type="button"
-            title="Consultar stock"
-          >
-            <span className="flex items-center gap-1">
-              <FaWarehouse className="inline -ml-1" />
-              Consultar Stock
-            </span>
-          </button>
-
-          {/* NUEVO: Consultar CBUs (previsto) */}
-          <button
-            onClick={() => setModalCBUsOpen(true)}
-            className="bg-gradient-to-br from-amber-500 to-amber-600 text-white w-full sm:w-auto px-2 py-2 rounded-xl font-bold shadow-md hover:scale-105 hover:from-amber-600 hover:to-amber-700 transition-all focus:ring-2 focus:ring-amber-400 focus:outline-none"
-            type="button"
-            title="Consultar CBUs"
-          >
-            <span className="flex items-center gap-1">
-              <FaMoneyCheckAlt className="inline -ml-1" />
-              Consultar CBUs
-            </span>
-          </button>
-
-          {/* Botón escanear */}
-          <button
-            onClick={() => setModoEscaner(true)}
-            className={`flex items-center gap-1 w-full sm:w-auto px-4 py-2 rounded-xl border-2 font-semibold shadow-sm transition-all text-emerald-700 bg-white
-        ${
-          modoEscaner
-            ? 'border-emerald-500 ring-2 ring-emerald-300 bg-emerald-50 scale-105'
-            : 'border-gray-200 hover:bg-emerald-50 hover:border-emerald-400'
-        }
-      `}
-            type="button"
-          >
-            <FaBarcode className="inline" />
-            Escanear
-          </button>
-        </div>
-      </div>
-
-      {/* Productos y Carrito */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          {/* Header */}
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-semibold titulo uppercase tracking-wide">
-                Productos
-              </h2>
-              <div className="text-[12px] text-slate-300/70">
-                {productos.length > 0
-                  ? `${productos.length} resultado${productos.length === 1 ? '' : 's'}`
-                  : 'Sin resultados'}
-              </div>
-            </div>
-
-            <div className="hidden sm:flex items-center gap-2 text-[10px] text-slate-300/70">
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur">
-                <span className="h-2 w-2 rounded-full bg-rose-400" />
-                Desarrollado por SOFTFUSION +54 9 3815 43-0503
-              </span>
-            </div>
-          </div>
-
-          {/* Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 overflow-y-auto max-h-[60vh] pr-1">
-            {productos.length === 0 && (
-              <div className="col-span-full rounded-2xl border border-white/10 bg-white/[0.04] p-6">
-                <p className="text-slate-300/70">Sin resultados…</p>
-              </div>
-            )}
-
-            {productos.map((producto) => {
-              const tieneDescuento =
-                producto.descuento_porcentaje > 0 &&
-                producto.precio_con_descuento < producto.precio;
-
-              const usarDescuento =
-                usarDescuentoPorProducto[producto.producto_id] ?? true; // true por defecto
-
-              const sinStock = !producto.cantidad_disponible;
-
-              // Visibilidad de precio: si es vendedor NO muestra precios
-              const canSeePrices = userLevel !== 'vendedor';
-
-              return (
-                <div
-                  key={producto.stock_id}
-                  className={[
-                    'group relative overflow-hidden rounded-2xl border p-4',
-                    'border-white/10 bg-white/[0.04] backdrop-blur-xl',
-                    'shadow-[0_18px_60px_rgba(0,0,0,.35)]',
-                    'transition-transform duration-150',
-                    sinStock
-                      ? 'opacity-70'
-                      : 'hover:-translate-y-0.5 hover:shadow-[0_28px_90px_rgba(0,0,0,.45)]'
-                  ].join(' ')}
-                >
-                  {/* Halo */}
-                  <div className="pointer-events-none absolute -inset-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <div className="absolute inset-0 bg-[radial-gradient(600px_200px_at_30%_20%,rgba(16,185,129,.18),transparent_60%),radial-gradient(500px_240px_at_90%_10%,rgba(59,130,246,.14),transparent_55%)] blur-2xl" />
-                  </div>
-
-                  {/* Top row */}
-                  <div className="relative flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-start gap-2">
-                        <span className="text-[15px] font-extrabold tracking-wide text-white line-clamp-2">
-                          {producto.nombre}
-                        </span>
-                      </div>
-
-                      {/* Chips */}
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span
-                          className={[
-                            'inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                            'border backdrop-blur',
-                            sinStock
-                              ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
-                              : 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200'
-                          ].join(' ')}
-                        >
-                          <span
-                            className={[
-                              'h-1.5 w-1.5 rounded-full',
-                              sinStock ? 'bg-rose-400' : 'bg-emerald-400'
-                            ].join(' ')}
-                          />
-                          {sinStock ? 'Sin stock' : 'Disponible'}
-                        </span>
-
-                        {tieneDescuento && (
-                          <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold border border-emerald-400/20 bg-emerald-500/10 text-emerald-200">
-                            -{producto.descuento_porcentaje.toFixed(2)}% OFF
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Action */}
-                    <button
-                      onClick={() =>
-                        manejarAgregarProducto(producto, usarDescuento)
-                      }
-                      className={[
-                        'relative z-10 inline-flex h-10 w-10 items-center justify-center rounded-2xl',
-                        'border border-emerald-400/20 bg-emerald-500/15 text-emerald-200',
-                        'shadow-[0_12px_35px_rgba(16,185,129,.18)]',
-                        'transition',
-                        sinStock
-                          ? 'opacity-40 cursor-not-allowed'
-                          : 'hover:bg-emerald-500/25 hover:text-white'
-                      ].join(' ')}
-                      title={sinStock ? 'Sin stock' : 'Agregar al carrito'}
-                      disabled={sinStock}
-                      aria-label="Agregar al carrito"
-                    >
-                      <FaPlus />
-                    </button>
-                  </div>
-
-                  {/* Bottom */}
-                  <div className="relative mt-4 space-y-3">
-                    {/* Toggle descuento */}
-                    {tieneDescuento && (
-                      <label className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[12px] text-slate-200/80">
-                        <span className="font-semibold">Aplicar descuento</span>
-
-                        <input
-                          type="checkbox"
-                          checked={usarDescuento}
-                          onChange={() => toggleDescuento(producto.producto_id)}
-                          className="h-4 w-4 accent-emerald-400"
-                        />
-                      </label>
-                    )}
-
-                    {/* Precio / oculto para vendedor */}
-                    {canSeePrices ? (
-                      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                        <div className="text-[11px] uppercase tracking-widest text-slate-300/60">
-                          Precio
-                        </div>
-
-                        <div className="mt-1 text-[14px] font-extrabold text-emerald-200">
-                          {tieneDescuento && usarDescuento ? (
-                            <div className="flex flex-wrap items-baseline gap-2">
-                              <span className="text-rose-300/80 line-through font-bold">
-                                {formatearPrecio(producto.precio)}
-                              </span>
-                              <span>
-                                {formatearPrecio(producto.precio_con_descuento)}
-                              </span>
-                              <span className="text-[11px] font-semibold text-emerald-300/90">
-                                Descuento aplicado
-                              </span>
-                            </div>
-                          ) : (
-                            <span>{formatearPrecio(producto.precio)}</span>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                        {/* <div className="text-[11px] uppercase tracking-widest text-slate-300/60">
-                          Precio
-                        </div>
-                        <div className="mt-1 text-[13px] font-semibold text-slate-200/70">
-                          Oculto para vendedor
-                        </div> */}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Carrito */}
-        <div className="bg-white/10 p-4 rounded-xl sticky top-24 h-fit space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-xl font-semibold flex items-center gap-2 m-0 titulo uppercase">
-              <FaShoppingCart /> Carrito del cliente
-            </h2>
-            {/* Tuerca para abrir el modal */}
-            <button
-              className="p-2 rounded-full hover:bg-white/10 text-xl shrink-0"
-              title="Gestionar medios de pago"
-              onClick={() => setShowModal(true)}
-            >
-              <FaCog />
-            </button>
-          </div>
-
-          {carrito.length === 0 ? (
-            <p className="text-gray-400">
-              Aún no hay artículos - ítems {carrito.length}
-            </p>
-          ) : (
-            <div className="max-h-64 overflow-y-auto pr-1 space-y-3">
-              <p className="text-gray-400">Ítems: {carrito.length}</p>
-
-              {carrito.map((item) => (
-                <div
-                  key={item.stock_id}
-                  className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg text-sm gap-3"
-                >
-                  {/* Benjamin Orellana - 2026-01-28 - Permite el nombre del producto en 2 líneas (sin corte brusco) para mantener legibilidad en el carrito. */}
-                  <div className="text-white font-medium min-w-0 flex-1 leading-snug break-words [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden">
-                    {item.nombre}
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => cambiarCantidad(item.stock_id, -1)}
-                      className="p-1"
-                      title="Restar"
-                    >
-                      <FaMinus />
-                    </button>
-                    <span className="min-w-[18px] text-center">
-                      {item.cantidad}
+              {/* Cliente seleccionado */}
+              {clienteSeleccionado?.id && (
+                <div className="mt-2 rounded-xl bg-emerald-600/10 ring-1 ring-emerald-600/20 px-3 py-2 text-emerald-800 text-sm flex items-center justify-between gap-3 dark:bg-emerald-500/10 dark:ring-emerald-500/20 dark:text-emerald-200">
+                  <div className="truncate">
+                    <span className="font-bold">Seleccionado:</span>{' '}
+                    <span className="text-emerald-800/90 dark:text-emerald-100/90">
+                      {labelCliente(clienteSeleccionado)}
                     </span>
-                    <button
-                      onClick={() => cambiarCantidad(item.stock_id, 1)}
-                      className="p-1"
-                      title="Sumar"
-                    >
-                      <FaPlus />
-                    </button>
                   </div>
-
-                  {userLevel !== 'vendedor' && (
-                    <div className="text-emerald-300 w-24 text-right shrink-0">
-                      {formatearPrecio(item.precio * item.cantidad)}
-                    </div>
-                  )}
 
                   <button
-                    onClick={() => quitarProducto(item.stock_id)}
-                    className="text-red-400 hover:text-red-600 shrink-0"
-                    title="Quitar producto"
+                    type="button"
+                    onClick={() => {
+                      setClienteSeleccionado(null);
+                      setBusquedaCliente('');
+                      setSugerencias([]);
+                    }}
+                    // Benjamin Orellana - 2026-02-17 - Botón "Quitar" visible en light y consistente en dark
+                    className="text-xs font-bold px-3 py-1 rounded-lg bg-slate-900/5 hover:bg-slate-900/10 ring-1 ring-black/10 text-slate-700 dark:bg-white/10 dark:hover:bg-white/15 dark:ring-white/10 dark:text-white/90"
                   >
-                    <FaTrash />
+                    Quitar
                   </button>
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {/* Total */}
-          {carrito.length > 0 &&
-            totalCalculado &&
-            totalCalculado.total >= 0 && (
-              <TotalConOpciones
-                totalCalculado={totalCalculado}
-                formatearPrecio={formatearPrecio}
-                aplicarDescuento={aplicarDescuento}
-                setAplicarDescuento={setAplicarDescuento}
-                descuentoPersonalizado={descuentoPersonalizado}
-                setDescuentoPersonalizado={setDescuentoPersonalizado}
-                mostrarValorTicket={mostrarValorTicket}
-                setMostrarValorTicket={setMostrarValorTicket}
-                mediosPago={mediosPago}
-                setMedioPago={setMedioPago}
-                medioPago={medioPago}
-                redondeoStep={1000}
-                userLevel={userLevel}
-              />
-            )}
-
-          {/* Comprobante + Medios de pago + Cuotas (layout compacto) */}
-          <div className="space-y-3">
-            {/* Comprobante */}
-            <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-[12px] font-semibold text-white/80 uppercase">
-                    Comprobante
+              {/* SUGERENCIAS PRO */}
+              {sugerencias.length > 0 && (
+                // Benjamin Orellana - 2026-02-17 - Dropdown tema-aware para mantener legibilidad (light) y look pro (dark)
+                <div className="absolute z-20 left-0 right-0 mt-2 rounded-2xl overflow-hidden border border-emerald-600/20 bg-white/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.18)] dark:border-emerald-500/25 dark:bg-[#101010]/95 dark:shadow-[0_18px_60px_rgba(0,0,0,0.55)]">
+                  <div className="px-3 py-2 text-xs text-slate-500 flex items-center justify-between dark:text-white/55">
+                    <span>Resultados ({sugerencias.length})</span>
+                    <span className="text-slate-400 dark:text-white/35">
+                      Click para seleccionar
+                    </span>
                   </div>
 
-                  <div className="mt-0.5 text-[14px] font-semibold text-white truncate">
-                    {cbteMeta.title}
-                    {cbteMeta.subtitle ? ` – ${cbteMeta.subtitle}` : ''}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => openCbteSelectorRef.current?.()}
-                  className="shrink-0 rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 hover:ring-white/20 px-3 py-1.5 text-[11px] text-white/85 transition"
-                  title="F11"
-                >
-                  F11 · Cambiar
-                </button>
-              </div>
-            </div>
-
-            {/* Medios + Cuotas */}
-            <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-3 space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-[12px] font-semibold text-white/80 uppercase">
-                  Medio de pago
-                </div>
-
-                {/* Benjamin Orellana - 2026-01-28 - Mueve el selector de cuotas al header del bloque de medios para evitar que quede muy abajo y mejorar la lectura. */}
-                {cuotasDisponibles.length > 0 && (
-                  <div className="flex items-center gap-2 text-[12px] text-white/80 shrink-0">
-                    <span className="text-white/60">Cuotas</span>
-                    <select
-                      id="cuotas"
-                      value={cuotasSeleccionadas}
-                      onChange={(e) =>
-                        setCuotasSeleccionadas(Number(e.target.value))
-                      }
-                      className="bg-black/20 border border-white/15 text-white rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
-                    >
-                      {cuotasUnicas.map((num) => (
-                        <option key={num} value={num} className="bg-slate-900">
-                          {num} cuota{num > 1 ? 's' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              {loadingMediosPago ? (
-                <div className="text-gray-300 text-sm">Cargando...</div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {mediosPago
-                    .filter((m) => m.activo)
-                    .sort((a, b) => a.orden - b.orden)
-                    .map((m) => {
-                      const selected = medioPago === m.id;
-
-                      // Benjamin Orellana - 2026-01-28 - Chip de porcentaje con color semántico (+ recargo / 0 neutro / - descuento) para lectura rápida.
-                      const p =
-                        parseFloat(
-                          String(m?.ajuste_porcentual ?? '0').replace(',', '.')
-                        ) || 0;
-
-                      const chipClass =
-                        p > 0
-                          ? 'bg-orange-500/15 text-orange-200 ring-orange-400/20'
-                          : p < 0
-                            ? 'bg-emerald-500/15 text-emerald-200 ring-emerald-400/20'
-                            : 'bg-white/5 text-white/70 ring-white/10';
+                  <ul className="max-h-72 overflow-auto">
+                    {sugerencias.map((cli) => {
+                      const dni = cli?.dni ? onlyDigits(cli.dni) : '';
+                      const tel = cli?.telefono ? onlyDigits(cli.telefono) : '';
+                      const badge = dni
+                        ? `DNI ${dni}`
+                        : tel
+                          ? `Tel ${tel}`
+                          : 'Sin doc/tel';
 
                       return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => setMedioPago(m.id)}
-                          className={[
-                            // Benjamin Orellana - 2026-01-28 - Agrega min-height para que el grid se vea parejo aunque algunos nombres ocupen varias líneas.
-                            'w-full min-h-[52px] flex items-start gap-2 rounded-xl px-3 py-2 transition ring-1',
-                            'text-[12px] font-semibold',
-                            selected
-                              ? 'bg-emerald-600 text-white ring-emerald-500/30'
-                              : 'bg-white/5 text-white/90 hover:bg-white/10 ring-white/10 hover:ring-white/20'
-                          ].join(' ')}
-                          title={m.nombre}
+                        <li
+                          key={cli.id}
+                          onMouseDown={() => seleccionarCliente(cli)} // evita que blur cierre antes del click
+                          className="group px-4 py-3 cursor-pointer border-t border-black/5 hover:bg-emerald-600/10 transition dark:border-white/5 dark:hover:bg-emerald-500/10"
                         >
-                          <span className="text-[14px] shrink-0 mt-[1px]">
-                            {dynamicIcon(m.icono)}
-                          </span>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-slate-900 font-semibold truncate dark:text-gray-100">
+                                {cli.nombre}
+                              </div>
+                              <div className="text-xs text-slate-500 truncate dark:text-white/45">
+                                {cli.email || cli.direccion || '—'}
+                              </div>
+                            </div>
 
-                          {/* Benjamin Orellana - 2026-01-28 - Permite el nombre completo (sin clamp) haciendo wrap; el botón crece en alto si hace falta. */}
-                          <span className="min-w-0 flex-1 leading-snug whitespace-normal break-words">
-                            {m.nombre}
-                          </span>
-
-                          {typeof m.ajuste_porcentual !== 'undefined' && (
-                            <span
-                              className={`ml-auto text-[10px] px-2 py-1 rounded-full ring-1 shrink-0 mt-[1px] ${chipClass}`}
-                              title={`${p > 0 ? '+' : ''}${p.toFixed(2)}%`}
-                            >
-                              {p > 0 ? `+${p.toFixed(2)}%` : `${p.toFixed(2)}%`}
+                            <span className="shrink-0 text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-600/10 text-emerald-700 ring-1 ring-emerald-600/20 group-hover:bg-emerald-600/15 dark:bg-emerald-500/12 dark:text-emerald-200 dark:ring-emerald-400/20 dark:group-hover:bg-emerald-500/18">
+                              {badge}
                             </span>
-                          )}
-                        </button>
+                          </div>
+                        </li>
                       );
                     })}
+                  </ul>
                 </div>
               )}
             </div>
+
+            {/* Botón "Nuevo" alineado a la derecha */}
+            <button
+              type="button"
+              onClick={abrirModalNuevoCliente}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold shadow transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              title="Agregar nuevo cliente"
+            >
+              <FaUserPlus /> Nuevo Cliente
+            </button>
+
+            {/* Indicador interno: verde=fiscal, rojo=modo interno */}
+            <div className="mt-2 flex items-center gap-2">
+              <span
+                className={[
+                  'inline-block h-3 w-3 rounded-full ring-1',
+                  cbteTipoSolicitado == null
+                    ? 'bg-red-500 ring-red-300/40'
+                    : 'bg-emerald-500 ring-emerald-300/40'
+                ].join(' ')}
+              />
+            </div>
           </div>
 
-          <button
-            onClick={finalizarVenta}
-            // Benjamin Orellana - 2026-01-28 - Se deshabilita si el carrito está vacío o si la venta ya está en curso (anti doble click/F2).
-            disabled={carrito.length === 0 || finalizandoVenta}
-            className={`w-full py-3 rounded-xl font-bold transition ${
-              carrito.length === 0 || finalizandoVenta
-                ? 'bg-gray-600 cursor-not-allowed'
-                : 'bg-green-500 hover:bg-green-600'
-            }`}
-          >
-            {finalizandoVenta ? 'Generando...' : 'Finalizar Venta (F2)'}
-          </button>
-        </div>
-      </div>
-      {modalVerProductosOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modalTitle"
-          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-6"
-        >
-          <div
-            className="bg-white rounded-2xl p-6 max-w-xl w-full shadow-xl max-h-[70vh] flex flex-col"
-            tabIndex={-1}
-          >
-            {/* Header */}
-            <div className="flex justify-between items-center mb-4">
-              <h3
-                id="modalTitle"
-                className="text-2xl titulo uppercase font-semibold text-gray-900 select-none"
-              >
-                Seleccioná un producto
-              </h3>
-              <button
-                aria-label="Cerrar modal"
-                onClick={() => setModalVerProductosOpen(false)}
-                className="text-gray-400 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded"
-                type="button"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
+          <div className="mt-2">
+            {clienteSeleccionado ? (
+              <div className="flex items-center gap-3 text-emerald-700 dark:text-emerald-400">
+                <FaCheckCircle className="text-emerald-600 dark:text-emerald-500" />
+                <span className="text-slate-800 dark:text-white/90">
+                  {clienteSeleccionado.nombre} ({clienteSeleccionado.dni})
+                </span>
+                <button
+                  className="ml-4 text-xs text-emerald-700 underline hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
+                  onClick={() => setClienteSeleccionado(null)}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Buscador al clickear ver productos */}
-            <div className="relative mb-4">
-              <input
-                type="text"
-                placeholder="Filtrar productos..."
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm transition"
-                value={modalSearch}
-                onChange={(e) => setModalSearch(e.target.value)}
-                autoFocus
-                aria-label="Buscar productos"
-              />
-              <svg
-                className="w-5 h-5 text-gray-400 absolute left-3 top-3 pointer-events-none"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 10.5a7.5 7.5 0 0012.9 6.15z"
-                />
-              </svg>
-            </div>
-
-            {/* Resultados y lista */}
-            {filteredProductosModal.length === 0 ? (
-              <p className="text-center text-gray-500 mt-8">
-                No se encontraron productos.
-              </p>
+                  Cambiar
+                </button>
+              </div>
             ) : (
-              <ul
-                className="overflow-y-auto max-h-[50vh] space-y-2 scrollbar-thin scrollbar-thumb-emerald-400 scrollbar-track-gray-100"
-                tabIndex={0}
-                aria-label="Lista de productos"
-              >
-                {filteredProductosModal.map((prod) => (
-                  <li key={prod.stock_id}>
-                    <button
-                      onClick={() => seleccionarProductoModal(prod)}
-                      className="flex justify-between items-center w-full p-4 bg-gray-50 rounded-lg shadow-sm hover:bg-emerald-50 focus:bg-emerald-100 focus:outline-none transition"
-                      type="button"
-                    >
-                      <div className="flex flex-col text-left">
-                        <span className="font-semibold text-gray-900">
-                          {prod.nombre}
-                          {prod.medida ? ` - Talle ${prod.medida}` : ''}
-                        </span>
-                        <span className="text-sm text-gray-500 mt-0.5">
-                          Stock: {prod.cantidad_disponible}
-                        </span>
+              <div className="flex items-center gap-2 text-slate-500 dark:text-gray-400">
+                <FaUserAlt />
+                <span>
+                  Cliente no seleccionado (
+                  <b className="text-emerald-600 dark:text-emerald-400">
+                    Consumidor Final
+                  </b>
+                  )
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* lector de codigo de barras invicible */}
+        <div>
+          <input
+            ref={inputRef}
+            type="text"
+            style={{
+              opacity: 0,
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: 1,
+              height: 1,
+              pointerEvents: 'none'
+            }}
+            onBlur={() => setModoEscaner(false)}
+            onKeyDown={handleKeyDown}
+          />
+        </div>
+
+        {/* Buscador por fuera*/}
+        <div className="w-full max-w-3xl mb-6 sm:mx-0 mx-auto">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+            <div className="relative flex-grow">
+              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-emerald-600 dark:text-emerald-500 text-lg" />
+              {/* Benjamin Orellana - 2026-02-17 - Buscador tema-aware: no queda “demasiado blanco” en dark */}
+              <input
+                ref={buscadorRef}
+                type="text"
+                placeholder="Buscar por nombre, SKU o ID..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="
+              pl-10 pr-4 py-3 w-full rounded-xl shadow-md
+              bg-white/90 text-gray-900 placeholder-gray-500
+              focus:outline-none focus:ring-2 focus:ring-emerald-500
+              dark:bg-white/10 dark:text-white dark:placeholder-white/45
+              dark:ring-1 dark:ring-white/10
+              dark:focus:ring-emerald-400
+            "
+                onFocus={() => setModoEscaner(false)}
+              />
+            </div>
+
+            {/* Benjamin Orellana - 2026-02-17 - Refuerza compatibilidad visual (fallback de background + evita flex gap) para que el texto no se pierda en navegadores viejos. */}
+
+            {/* Botón principal */}
+            <button
+              onClick={abrirModalVerProductos}
+              className="
+    w-full sm:w-auto px-3 py-2 rounded-xl font-bold text-white
+    min-h-[44px]
+    bg-emerald-600 bg-gradient-to-br from-emerald-500 to-emerald-600
+    shadow-md transition
+    hover:bg-emerald-700 hover:from-emerald-600 hover:to-emerald-700
+    hover:scale-105
+    focus:ring-2 focus:ring-emerald-400 focus:outline-none
+  "
+              type="button"
+            >
+              <span className="inline-flex items-center space-x-1">
+                <FaBoxOpen className="shrink-0 -ml-1" />
+                <span className="whitespace-nowrap">Ver Productos</span>
+              </span>
+            </button>
+
+            <button
+              onClick={abrirModalVerCombos}
+              className="
+    w-full sm:w-auto px-3 py-2 rounded-xl font-bold text-white
+    min-h-[44px]
+    bg-purple-600 bg-gradient-to-br from-purple-500 to-purple-600
+    shadow-md transition
+    hover:bg-purple-700 hover:from-purple-600 hover:to-purple-700
+    hover:scale-105
+    focus:ring-2 focus:ring-purple-400 focus:outline-none
+  "
+              type="button"
+            >
+              <span className="inline-flex items-center space-x-1">
+                <FaCubes className="shrink-0 -ml-1" />
+                <span className="whitespace-nowrap">Ver Combos</span>
+              </span>
+            </button>
+
+            <button
+              onClick={() => setModalStockOpen(true)}
+              className="
+    w-full sm:w-auto px-3 py-2 rounded-xl font-bold text-white
+    min-h-[44px]
+    bg-sky-600 bg-gradient-to-br from-sky-500 to-sky-600
+    shadow-md transition
+    hover:bg-sky-700 hover:from-sky-600 hover:to-sky-700
+    hover:scale-105
+    focus:ring-2 focus:ring-sky-400 focus:outline-none
+  "
+              type="button"
+              title="Consultar stock"
+            >
+              <span className="inline-flex items-center space-x-1">
+                <FaWarehouse className="shrink-0 -ml-1" />
+                <span className="whitespace-nowrap">Consultar Stock</span>
+              </span>
+            </button>
+
+            <button
+              onClick={() => setModalCBUsOpen(true)}
+              className="
+    w-full sm:w-auto px-3 py-2 rounded-xl font-bold text-white
+    min-h-[44px]
+    bg-amber-600 bg-gradient-to-br from-amber-500 to-amber-600
+    shadow-md transition
+    hover:bg-amber-700 hover:from-amber-600 hover:to-amber-700
+    hover:scale-105
+    focus:ring-2 focus:ring-amber-400 focus:outline-none
+  "
+              type="button"
+              title="Consultar CBUs"
+            >
+              <span className="inline-flex items-center space-x-1">
+                <FaMoneyCheckAlt className="shrink-0 -ml-1" />
+                <span className="whitespace-nowrap">Consultar CBUs</span>
+              </span>
+            </button>
+
+            {/* Botón escanear */}
+            <button
+              onClick={() => setModoEscaner(true)}
+              className={`
+    inline-flex items-center space-x-1 w-full sm:w-auto
+    px-4 py-2 rounded-xl border-2 font-semibold shadow-sm transition
+    min-h-[44px]
+    ${
+      modoEscaner
+        ? 'border-emerald-500 ring-2 ring-emerald-300 bg-emerald-50 text-emerald-800 scale-105 dark:bg-emerald-500/15 dark:ring-emerald-400/20 dark:text-emerald-200'
+        : 'border-gray-200 bg-white text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 dark:border-white/10 dark:bg-white/10 dark:text-emerald-200 dark:hover:bg-white/15'
+    }
+  `}
+              type="button"
+            >
+              <FaBarcode className="shrink-0" />
+              <span className="whitespace-nowrap">Escanear</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Productos y Carrito */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            {/* Header */}
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold titulo uppercase tracking-wide text-slate-900 dark:text-white">
+                  Productos
+                </h2>
+
+                {/* Benjamin Orellana - 2026-02-17 - Ajusta contraste del helper de resultados para light/dark */}
+                <div className="text-[12px] text-slate-500 dark:text-slate-300/70">
+                  {productos.length > 0
+                    ? `${productos.length} resultado${productos.length === 1 ? '' : 's'}`
+                    : 'Sin resultados'}
+                </div>
+              </div>
+
+              <div className="hidden sm:flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-300/70">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-black/10 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-white/5">
+                  <span className="h-2 w-2 rounded-full bg-rose-500/90 dark:bg-rose-400" />
+                  Desarrollado por SOFTFUSION +54 9 3815 43-0503
+                </span>
+              </div>
+            </div>
+
+            {/* Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 overflow-y-auto max-h-[60vh] pr-1">
+              {productos.length === 0 && (
+                <div className="col-span-full rounded-2xl border border-black/10 bg-white/70 p-6 dark:border-white/10 dark:bg-white/[0.04]">
+                  <p className="text-slate-500 dark:text-slate-300/70">
+                    Sin resultados…
+                  </p>
+                </div>
+              )}
+
+              {productos.map((producto) => {
+                const tieneDescuento =
+                  producto.descuento_porcentaje > 0 &&
+                  producto.precio_con_descuento < producto.precio;
+
+                const usarDescuento =
+                  usarDescuentoPorProducto[producto.producto_id] ?? true; // true por defecto
+
+                const sinStock = !producto.cantidad_disponible;
+
+                // Visibilidad de precio: si es vendedor NO muestra precios
+                const canSeePrices = userLevel !== 'vendedor';
+
+                return (
+                  <div
+                    key={producto.stock_id}
+                    className={[
+                      'group relative overflow-hidden rounded-2xl border p-4',
+                      // Benjamin Orellana - 2026-02-17 - Card tema-aware: light (blanco + borde suave), dark (glass oscuro actual)
+                      'border-black/10 bg-white/80 backdrop-blur-xl',
+                      'shadow-[0_18px_60px_rgba(0,0,0,.12)]',
+                      'dark:border-white/10 dark:bg-white/[0.04]',
+                      'dark:shadow-[0_18px_60px_rgba(0,0,0,.35)]',
+                      'transition-transform duration-150',
+                      sinStock
+                        ? 'opacity-70'
+                        : 'hover:-translate-y-0.5 hover:shadow-[0_28px_90px_rgba(0,0,0,.16)] dark:hover:shadow-[0_28px_90px_rgba(0,0,0,.45)]'
+                    ].join(' ')}
+                  >
+                    {/* Halo */}
+                    <div className="pointer-events-none absolute -inset-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <div className="absolute inset-0 bg-[radial-gradient(600px_200px_at_30%_20%,rgba(16,185,129,.18),transparent_60%),radial-gradient(500px_240px_at_90%_10%,rgba(59,130,246,.14),transparent_55%)] blur-2xl" />
+                    </div>
+
+                    {/* Top row */}
+                    <div className="relative flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-start gap-2">
+                          <span className="text-[15px] font-extrabold tracking-wide text-slate-900 dark:text-white line-clamp-2">
+                            {producto.nombre}
+                          </span>
+                        </div>
+
+                        {/* Chips */}
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <span
+                            className={[
+                              'inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                              'border backdrop-blur',
+                              sinStock
+                                ? 'border-rose-500/20 bg-rose-500/10 text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-200'
+                                : 'border-emerald-600/20 bg-emerald-600/10 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-200'
+                            ].join(' ')}
+                          >
+                            <span
+                              className={[
+                                'h-1.5 w-1.5 rounded-full',
+                                sinStock
+                                  ? 'bg-rose-500 dark:bg-rose-400'
+                                  : 'bg-emerald-600 dark:bg-emerald-400'
+                              ].join(' ')}
+                            />
+                            {sinStock ? 'Sin stock' : 'Disponible'}
+                          </span>
+
+                          {tieneDescuento && (
+                            <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold border border-emerald-600/20 bg-emerald-600/10 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-200">
+                              -{producto.descuento_porcentaje.toFixed(2)}% OFF
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      {prod.cantidad_disponible <= 3 && (
-                        <span className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded-full select-none">
-                          ¡Stock bajo!
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
 
-            {/* Footer */}
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => navigate('/dashboard/stock/stock')}
-                className="flex items-center gap-2 px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold shadow transition-all"
-                type="button"
-              >
-                <FaPlus />
-                Agregar Producto
-              </button>
-              <button
-                onClick={() => setModalVerProductosOpen(false)}
-                className="px-5 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg font-semibold text-gray-800 transition"
-                type="button"
-              >
-                Cerrar
-              </button>
+                      {/* Action */}
+                      <button
+                        onClick={() =>
+                          manejarAgregarProducto(producto, usarDescuento)
+                        }
+                        className={[
+                          'relative z-10 inline-flex h-10 w-10 items-center justify-center rounded-2xl',
+                          'border border-emerald-600/20 bg-emerald-600/10 text-emerald-700',
+                          'shadow-[0_12px_35px_rgba(16,185,129,.12)]',
+                          'dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-200',
+                          'dark:shadow-[0_12px_35px_rgba(16,185,129,.18)]',
+                          'transition',
+                          sinStock
+                            ? 'opacity-40 cursor-not-allowed'
+                            : 'hover:bg-emerald-600/15 hover:text-emerald-900 dark:hover:bg-emerald-500/25 dark:hover:text-white'
+                        ].join(' ')}
+                        title={sinStock ? 'Sin stock' : 'Agregar al carrito'}
+                        disabled={sinStock}
+                        aria-label="Agregar al carrito"
+                      >
+                        <FaPlus />
+                      </button>
+                    </div>
+
+                    {/* Bottom */}
+                    <div className="relative mt-4 space-y-3">
+                      {/* Toggle descuento */}
+                      {tieneDescuento && (
+                        <label className="flex items-center justify-between gap-3 rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-[12px] text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200/80">
+                          <span className="font-semibold">
+                            Aplicar descuento
+                          </span>
+
+                          <input
+                            type="checkbox"
+                            checked={usarDescuento}
+                            onChange={() =>
+                              toggleDescuento(producto.producto_id)
+                            }
+                            className="h-4 w-4 accent-emerald-600 dark:accent-emerald-400"
+                          />
+                        </label>
+                      )}
+
+                      {/* Precio / oculto para vendedor */}
+                      {canSeePrices ? (
+                        <div className="rounded-xl border border-black/10 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-white/5">
+                          <div className="text-[11px] uppercase tracking-widest text-slate-500 dark:text-slate-300/60">
+                            Precio
+                          </div>
+
+                          <div className="mt-1 text-[14px] font-extrabold text-emerald-700 dark:text-emerald-200">
+                            {tieneDescuento && usarDescuento ? (
+                              <div className="flex flex-wrap items-baseline gap-2">
+                                <span className="text-rose-600/80 line-through font-bold dark:text-rose-300/80">
+                                  {formatearPrecio(producto.precio)}
+                                </span>
+                                <span>
+                                  {formatearPrecio(
+                                    producto.precio_con_descuento
+                                  )}
+                                </span>
+                                <span className="text-[11px] font-semibold text-emerald-700/90 dark:text-emerald-300/90">
+                                  Descuento aplicado
+                                </span>
+                              </div>
+                            ) : (
+                              <span>{formatearPrecio(producto.precio)}</span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-black/10 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-white/5">
+                          {/* <div className="text-[11px] uppercase tracking-widest text-slate-300/60">
+                      Precio
+                    </div>
+                    <div className="mt-1 text-[13px] font-semibold text-slate-200/70">
+                      Oculto para vendedor
+                    </div> */}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </div>
-      )}
-      {modalVerCombosOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modalCombosTitle"
-          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-6"
-        >
-          <div
-            className="bg-white rounded-2xl p-6 max-w-xl w-full shadow-xl max-h-[70vh] flex flex-col"
-            tabIndex={-1}
-          >
-            {/* Header */}
-            <div className="flex justify-between items-center mb-4">
-              <h3
-                id="modalCombosTitle"
-                className="text-2xl titulo uppercase font-semibold text-gray-900 select-none"
-              >
-                Seleccioná un combo
-              </h3>
+
+          {/* Carrito */}
+          <div className="bg-white/80 ring-1 ring-black/10 p-4 rounded-xl sticky top-24 h-fit space-y-4 text-slate-900 dark:bg-white/10 dark:ring-white/10 dark:text-white">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-xl font-semibold flex items-center gap-2 m-0 titulo uppercase">
+                <FaShoppingCart /> Carrito del cliente
+              </h2>
+
+              {/* Tuerca para abrir el modal */}
               <button
-                aria-label="Cerrar modal"
-                onClick={() => setModalVerCombosOpen(false)}
-                className="text-gray-400 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 rounded"
-                type="button"
+                className="p-2 rounded-full hover:bg-slate-900/5 text-xl shrink-0 dark:hover:bg-white/10"
+                title="Gestionar medios de pago"
+                onClick={() => setShowModal(true)}
               >
+                <FaCog />
+              </button>
+            </div>
+
+            {carrito.length === 0 ? (
+              <p className="text-slate-500 dark:text-gray-400">
+                Aún no hay artículos - ítems {carrito.length}
+              </p>
+            ) : (
+              <div className="max-h-64 overflow-y-auto pr-1 space-y-3">
+                <p className="text-slate-500 dark:text-gray-400">
+                  Ítems: {carrito.length}
+                </p>
+
+                {carrito.map((item) => (
+                  <div
+                    key={item.stock_id}
+                    className="flex justify-between items-center bg-slate-900/5 ring-1 ring-black/10 px-3 py-2 rounded-lg text-sm gap-3 dark:bg-white/5 dark:ring-white/10"
+                  >
+                    {/* Benjamin Orellana - 2026-01-28 - Permite el nombre del producto en 2 líneas (sin corte brusco) para mantener legibilidad en el carrito. */}
+                    <div className="text-slate-900 dark:text-white font-medium min-w-0 flex-1 leading-snug break-words [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden">
+                      {item.nombre}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 text-slate-700 dark:text-white/85">
+                      <button
+                        onClick={() => cambiarCantidad(item.stock_id, -1)}
+                        className="p-1 hover:text-slate-900 dark:hover:text-white"
+                        title="Restar"
+                      >
+                        <FaMinus />
+                      </button>
+                      <span className="min-w-[18px] text-center text-slate-800 dark:text-white">
+                        {item.cantidad}
+                      </span>
+                      <button
+                        onClick={() => cambiarCantidad(item.stock_id, 1)}
+                        className="p-1 hover:text-slate-900 dark:hover:text-white"
+                        title="Sumar"
+                      >
+                        <FaPlus />
+                      </button>
+                    </div>
+
+                    {userLevel !== 'vendedor' && (
+                      <div className="text-emerald-700 w-24 text-right shrink-0 dark:text-emerald-300">
+                        {formatearPrecio(item.precio * item.cantidad)}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => quitarProducto(item.stock_id)}
+                      className="text-red-500 hover:text-red-600 shrink-0 dark:text-red-400 dark:hover:text-red-300"
+                      title="Quitar producto"
+                    >
+                      <FaTrash />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Total */}
+            {carrito.length > 0 &&
+              totalCalculado &&
+              totalCalculado.total >= 0 && (
+                <TotalConOpciones
+                  totalCalculado={totalCalculado}
+                  formatearPrecio={formatearPrecio}
+                  aplicarDescuento={aplicarDescuento}
+                  setAplicarDescuento={setAplicarDescuento}
+                  descuentoPersonalizado={descuentoPersonalizado}
+                  setDescuentoPersonalizado={setDescuentoPersonalizado}
+                  mostrarValorTicket={mostrarValorTicket}
+                  setMostrarValorTicket={setMostrarValorTicket}
+                  mediosPago={mediosPago}
+                  setMedioPago={setMedioPago}
+                  medioPago={medioPago}
+                  redondeoStep={1000}
+                  userLevel={userLevel}
+                />
+              )}
+
+            {/* Comprobante + Medios de pago + Cuotas (layout compacto) */}
+            <div className="space-y-3">
+              {/* Comprobante */}
+              <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 dark:bg-white/5 dark:ring-white/10">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
+                      Comprobante
+                    </div>
+
+                    <div className="mt-0.5 text-[14px] font-semibold text-slate-900 truncate dark:text-white">
+                      {cbteMeta.title}
+                      {cbteMeta.subtitle ? ` – ${cbteMeta.subtitle}` : ''}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => openCbteSelectorRef.current?.()}
+                    className="shrink-0 rounded-xl bg-slate-900/5 hover:bg-slate-900/10 ring-1 ring-black/10 hover:ring-black/15 px-3 py-1.5 text-[11px] text-slate-700 transition dark:bg-white/5 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20 dark:text-white/85"
+                    title="F11"
+                  >
+                    F11 · Cambiar
+                  </button>
+                </div>
+              </div>
+
+              {/* Medios + Cuotas */}
+              <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 space-y-2 dark:bg-white/5 dark:ring-white/10">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
+                    Medio de pago
+                  </div>
+
+                  {/* Benjamin Orellana - 2026-01-28 - Mueve el selector de cuotas al header del bloque de medios para evitar que quede muy abajo y mejorar la lectura. */}
+                  {cuotasDisponibles.length > 0 && (
+                    <div className="flex items-center gap-2 text-[12px] text-slate-600 shrink-0 dark:text-white/80">
+                      <span className="text-slate-500 dark:text-white/60">
+                        Cuotas
+                      </span>
+                      <select
+                        id="cuotas"
+                        value={cuotasSeleccionadas}
+                        onChange={(e) =>
+                          setCuotasSeleccionadas(Number(e.target.value))
+                        }
+                        className="bg-white border border-black/10 text-slate-900 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:bg-black/20 dark:border-white/15 dark:text-white dark:focus:ring-emerald-400/40"
+                      >
+                        {cuotasUnicas.map((num) => (
+                          <option
+                            key={num}
+                            value={num}
+                            className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white"
+                          >
+                            {num} cuota{num > 1 ? 's' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                {loadingMediosPago ? (
+                  <div className="text-slate-600 text-sm dark:text-gray-300">
+                    Cargando...
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {mediosPago
+                      .filter((m) => m.activo)
+                      .sort((a, b) => a.orden - b.orden)
+                      .map((m) => {
+                        const selected = medioPago === m.id;
+
+                        // Benjamin Orellana - 2026-01-28 - Chip de porcentaje con color semántico (+ recargo / 0 neutro / - descuento) para lectura rápida.
+                        const p =
+                          parseFloat(
+                            String(m?.ajuste_porcentual ?? '0').replace(
+                              ',',
+                              '.'
+                            )
+                          ) || 0;
+
+                        // Benjamin Orellana - 2026-02-17 - Chip tema-aware (en light usa textos oscuros, en dark conserva el estilo actual)
+                        const chipClass =
+                          p > 0
+                            ? 'bg-orange-500/15 text-orange-700 ring-orange-600/20 dark:bg-orange-500/15 dark:text-orange-200 dark:ring-orange-400/20'
+                            : p < 0
+                              ? 'bg-emerald-600/15 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20'
+                              : 'bg-slate-900/5 text-slate-600 ring-black/10 dark:bg-white/5 dark:text-white/70 dark:ring-white/10';
+
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setMedioPago(m.id)}
+                            className={[
+                              // Benjamin Orellana - 2026-01-28 - Agrega min-height para que el grid se vea parejo aunque algunos nombres ocupen varias líneas.
+                              'w-full min-h-[52px] flex items-start gap-2 rounded-xl px-3 py-2 transition ring-1',
+                              'text-[12px] font-semibold',
+                              selected
+                                ? 'bg-emerald-600 text-white ring-emerald-500/30'
+                                : 'bg-slate-900/5 text-slate-800 hover:bg-slate-900/10 ring-black/10 hover:ring-black/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20'
+                            ].join(' ')}
+                            title={m.nombre}
+                          >
+                            <span className="text-[14px] shrink-0 mt-[1px]">
+                              {dynamicIcon(m.icono)}
+                            </span>
+
+                            {/* Benjamin Orellana - 2026-01-28 - Permite el nombre completo (sin clamp) haciendo wrap; el botón crece en alto si hace falta. */}
+                            <span className="min-w-0 flex-1 leading-snug whitespace-normal break-words">
+                              {m.nombre}
+                            </span>
+
+                            {typeof m.ajuste_porcentual !== 'undefined' && (
+                              <span
+                                className={`ml-auto text-[10px] px-2 py-1 rounded-full ring-1 shrink-0 mt-[1px] ${chipClass}`}
+                                title={`${p > 0 ? '+' : ''}${p.toFixed(2)}%`}
+                              >
+                                {p > 0
+                                  ? `+${p.toFixed(2)}%`
+                                  : `${p.toFixed(2)}%`}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={finalizarVenta}
+              // Benjamin Orellana - 2026-01-28 - Se deshabilita si el carrito está vacío o si la venta ya está en curso (anti doble click/F2).
+              disabled={carrito.length === 0 || finalizandoVenta}
+              className={`w-full py-3 rounded-xl font-bold transition ${
+                carrito.length === 0 || finalizandoVenta
+                  ? 'bg-slate-300 text-slate-600 cursor-not-allowed dark:bg-gray-600 dark:text-white'
+                  : 'bg-green-500 hover:bg-green-600 text-white'
+              }`}
+            >
+              {finalizandoVenta ? 'Generando...' : 'Finalizar Venta (F2)'}
+            </button>
+          </div>
+        </div>
+
+        {modalVerProductosOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modalTitle"
+            className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-6"
+          >
+            <div
+              className="bg-white text-slate-900 rounded-2xl p-6 max-w-xl w-full shadow-xl max-h-[70vh] flex flex-col"
+              tabIndex={-1}
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center mb-4">
+                <h3
+                  id="modalTitle"
+                  className="text-2xl titulo uppercase font-semibold text-gray-900 select-none"
+                >
+                  Seleccioná un producto
+                </h3>
+                <button
+                  aria-label="Cerrar modal"
+                  onClick={() => setModalVerProductosOpen(false)}
+                  className="text-gray-400 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded"
+                  type="button"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Buscador al clickear ver productos */}
+              <div className="relative mb-4">
+                <input
+                  type="text"
+                  placeholder="Filtrar productos..."
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm transition"
+                  value={modalSearch}
+                  onChange={(e) => setModalSearch(e.target.value)}
+                  autoFocus
+                  aria-label="Buscar productos"
+                />
                 <svg
+                  className="w-5 h-5 text-gray-400 absolute left-3 top-3 pointer-events-none"
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -3055,222 +3057,323 @@ export default function PuntoVenta() {
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
+                    d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 10.5a7.5 7.5 0 0012.9 6.15z"
                   />
                 </svg>
-              </button>
-            </div>
+              </div>
 
-            {/* Buscador */}
-            <div className="relative mb-4">
-              <input
-                type="text"
-                placeholder="Filtrar combos..."
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm transition"
-                value={modalComboSearch}
-                onChange={(e) => setModalComboSearch(e.target.value)}
-                autoFocus
-                aria-label="Buscar combos"
-              />
-              <svg
-                className="w-5 h-5 text-gray-400 absolute left-3 top-3 pointer-events-none"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 10.5a7.5 7.5 0 0012.9 6.15z"
-                />
-              </svg>
-            </div>
+              {/* Resultados y lista */}
+              {filteredProductosModal.length === 0 ? (
+                <p className="text-center text-gray-500 mt-8">
+                  No se encontraron productos.
+                </p>
+              ) : (
+                <ul
+                  className="overflow-y-auto max-h-[50vh] space-y-2 scrollbar-thin scrollbar-thumb-emerald-400 scrollbar-track-gray-100"
+                  tabIndex={0}
+                  aria-label="Lista de productos"
+                >
+                  {filteredProductosModal.map((prod) => (
+                    <li key={prod.stock_id}>
+                      <button
+                        onClick={() => seleccionarProductoModal(prod)}
+                        className="flex justify-between items-center w-full p-4 bg-gray-50 rounded-lg shadow-sm hover:bg-emerald-50 focus:bg-emerald-100 focus:outline-none transition"
+                        type="button"
+                      >
+                        <div className="flex flex-col text-left">
+                          <span className="font-semibold text-gray-900">
+                            {prod.nombre}
+                            {prod.medida ? ` - Talle ${prod.medida}` : ''}
+                          </span>
+                          <span className="text-sm text-gray-500 mt-0.5">
+                            Stock: {prod.cantidad_disponible}
+                          </span>
+                        </div>
+                        {prod.cantidad_disponible <= 3 && (
+                          <span className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded-full select-none">
+                            ¡Stock bajo!
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-            {/* Lista */}
-            {filteredCombosModal.length === 0 ? (
-              <p className="text-center text-gray-500 mt-8">
-                No se encontraron combos.
-              </p>
-            ) : (
-              <ul
-                className="overflow-y-auto max-h-[50vh] space-y-2 scrollbar-thin scrollbar-thumb-purple-400 scrollbar-track-gray-100"
-                tabIndex={0}
-                aria-label="Lista de combos"
-              >
-                {filteredCombosModal.map((combo) => (
-                  <li key={combo.id}>
-                    <button
-                      onClick={() => {
-                        seleccionarCombo(combo); // lo definimos abajo
-                      }}
-                      className="flex flex-col items-start w-full p-4 bg-gray-50 rounded-lg shadow-sm hover:bg-purple-50 focus:bg-purple-100 focus:outline-none transition"
-                      type="button"
-                    >
-                      <span className="font-semibold text-gray-900 text-left">
-                        {combo.nombre}
-                      </span>
-                      <span className="text-sm text-gray-600">
-                        {combo.descripcion}
-                      </span>
-                      <span className="text-sm mt-1 text-gray-500">
-                        {combo.cantidad_items} items por $
-                        {parseFloat(combo.precio_fijo).toLocaleString()}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {/* Footer */}
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setModalVerCombosOpen(false)}
-                className="px-5 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg font-semibold text-gray-800 transition"
-                type="button"
-              >
-                Cerrar
-              </button>
+              {/* Footer */}
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => navigate('/dashboard/stock/stock')}
+                  className="flex items-center gap-2 px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold shadow transition-all"
+                  type="button"
+                >
+                  <FaPlus />
+                  Agregar Producto
+                </button>
+                <button
+                  onClick={() => setModalVerProductosOpen(false)}
+                  className="px-5 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg font-semibold text-gray-800 transition"
+                  type="button"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      {/* Modal de gestión */}
-      <ModalMediosPago
-        show={showModal}
-        onClose={() => setShowModal(false)}
-        mediosPago={mediosPago}
-        setMediosPago={setMediosPago}
-      />
-      {/* {ventaFinalizada && (
+        )}
+        {modalVerCombosOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modalCombosTitle"
+            className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-6"
+          >
+            <div
+              className="bg-white text-slate-900 rounded-2xl p-6 max-w-xl w-full shadow-xl max-h-[70vh] flex flex-col"
+              tabIndex={-1}
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center mb-4">
+                <h3
+                  id="modalCombosTitle"
+                  className="text-2xl titulo uppercase font-semibold text-gray-900 select-none"
+                >
+                  Seleccioná un combo
+                </h3>
+                <button
+                  aria-label="Cerrar modal"
+                  onClick={() => setModalVerCombosOpen(false)}
+                  className="text-gray-400 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 rounded"
+                  type="button"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Buscador */}
+              <div className="relative mb-4">
+                <input
+                  type="text"
+                  placeholder="Filtrar combos..."
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm transition"
+                  value={modalComboSearch}
+                  onChange={(e) => setModalComboSearch(e.target.value)}
+                  autoFocus
+                  aria-label="Buscar combos"
+                />
+                <svg
+                  className="w-5 h-5 text-gray-400 absolute left-3 top-3 pointer-events-none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 10.5a7.5 7.5 0 0012.9 6.15z"
+                  />
+                </svg>
+              </div>
+
+              {/* Lista */}
+              {filteredCombosModal.length === 0 ? (
+                <p className="text-center text-gray-500 mt-8">
+                  No se encontraron combos.
+                </p>
+              ) : (
+                <ul
+                  className="overflow-y-auto max-h-[50vh] space-y-2 scrollbar-thin scrollbar-thumb-purple-400 scrollbar-track-gray-100"
+                  tabIndex={0}
+                  aria-label="Lista de combos"
+                >
+                  {filteredCombosModal.map((combo) => (
+                    <li key={combo.id}>
+                      <button
+                        onClick={() => {
+                          seleccionarCombo(combo); // lo definimos abajo
+                        }}
+                        className="flex flex-col items-start w-full p-4 bg-gray-50 rounded-lg shadow-sm hover:bg-purple-50 focus:bg-purple-100 focus:outline-none transition"
+                        type="button"
+                      >
+                        <span className="font-semibold text-gray-900 text-left">
+                          {combo.nombre}
+                        </span>
+                        <span className="text-sm text-gray-600">
+                          {combo.descripcion}
+                        </span>
+                        <span className="text-sm mt-1 text-gray-500">
+                          {combo.cantidad_items} items por $
+                          {parseFloat(combo.precio_fijo).toLocaleString()}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Footer */}
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setModalVerCombosOpen(false)}
+                  className="px-5 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg font-semibold text-gray-800 transition"
+                  type="button"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Modal de gestión */}
+        <ModalMediosPago
+          show={showModal}
+          onClose={() => setShowModal(false)}
+          mediosPago={mediosPago}
+          setMediosPago={setMediosPago}
+        />
+        {/* {ventaFinalizada && (
         <TicketVentaModal
           venta={ventaFinalizada}
           onClose={() => setVentaFinalizada(null)}
           mostrarValorTicket={mostrarValorTicket}
         />
       )} */}
-      {ventaFinalizada && (
-        <FacturaA4Modal
-          open={!!ventaFinalizada}
-          venta={ventaFinalizada}
-          onClose={() => setVentaFinalizada(null)}
-          // logoUrl no hace falta pasarlo: FacturaA4Modal lo resuelve solo por local (ticket-config)
+        {ventaFinalizada && (
+          <FacturaA4Modal
+            open={!!ventaFinalizada}
+            venta={ventaFinalizada}
+            onClose={() => setVentaFinalizada(null)}
+            // logoUrl no hace falta pasarlo: FacturaA4Modal lo resuelve solo por local (ticket-config)
+          />
+        )}
+
+        <ModalNuevoCliente
+          open={modalNuevoClienteOpen}
+          onClose={() => setModalNuevoClienteOpen(false)}
+          onClienteCreado={async (cliente) => {
+            // si tu modal ya hace onClose, esto es opcional
+            setModalNuevoClienteOpen(false);
+
+            //  mini delay por si queda overlay 1 frame
+            setTimeout(() => {
+              onClienteCreadoDesdeModal(cliente);
+            }, 80);
+          }}
         />
-      )}
 
-      <ModalNuevoCliente
-        open={modalNuevoClienteOpen}
-        onClose={() => setModalNuevoClienteOpen(false)}
-        onClienteCreado={async (cliente) => {
-          // si tu modal ya hace onClose, esto es opcional
-          setModalNuevoClienteOpen(false);
+        {mostrarModalCaja && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+            <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md relative border-t-4 border-pink-500">
+              <h2 className="text-xl font-bold text-pink-600 mb-4 text-center">
+                ¡Atención!
+              </h2>
+              <p className="text-gray-700 text-center mb-4">{mensajeCaja}</p>
 
-          //  mini delay por si queda overlay 1 frame
-          setTimeout(() => {
-            onClienteCreadoDesdeModal(cliente);
-          }, 80);
-        }}
-      />
-
-      {mostrarModalCaja && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-4">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md relative border-t-4 border-pink-500">
-            <h2 className="text-xl font-bold text-pink-600 mb-4 text-center">
-              ¡Atención!
-            </h2>
-            <p className="text-gray-700 text-center mb-4">{mensajeCaja}</p>
-
-            {!confirmarAbrirCaja ? (
-              <div className="flex flex-col items-center gap-4">
-                <p className="text-center text-gray-700">
-                  ¿Deseás abrir una nueva caja para continuar con la venta?
-                </p>
-                <div className="flex justify-center gap-4 mt-2">
-                  <button
-                    onClick={() => setMostrarModalCaja(false)}
-                    className="text-black px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={() => setConfirmarAbrirCaja(true)}
-                    className="px-4 py-2 rounded-lg bg-pink-500 text-white hover:bg-pink-600 transition"
-                  >
-                    Sí, abrir caja
-                  </button>
+              {!confirmarAbrirCaja ? (
+                <div className="flex flex-col items-center gap-4">
+                  <p className="text-center text-gray-700">
+                    ¿Deseás abrir una nueva caja para continuar con la venta?
+                  </p>
+                  <div className="flex justify-center gap-4 mt-2">
+                    <button
+                      onClick={() => setMostrarModalCaja(false)}
+                      className="text-black px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => setConfirmarAbrirCaja(true)}
+                      className="px-4 py-2 rounded-lg bg-pink-500 text-white hover:bg-pink-600 transition"
+                    >
+                      Sí, abrir caja
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <>
-                {/* Campo de saldo inicial */}
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">
-                    Ingresá el saldo inicial
-                  </label>
-                  <input
-                    type="number"
-                    value={saldoInicial}
-                    onChange={(e) => setSaldoInicial(e.target.value)}
-                    className="text-black w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-pink-400"
-                    placeholder="Ej: 1000"
-                  />
-                </div>
+              ) : (
+                <>
+                  {/* Campo de saldo inicial */}
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">
+                      Ingresá el saldo inicial
+                    </label>
+                    <input
+                      type="number"
+                      value={saldoInicial}
+                      onChange={(e) => setSaldoInicial(e.target.value)}
+                      className="text-black w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-pink-400"
+                      placeholder="Ej: 1000"
+                    />
+                  </div>
 
-                {/* Botones */}
-                <div className="flex justify-end gap-2 mt-6">
-                  <button
-                    onClick={() => {
-                      setConfirmarAbrirCaja(false);
-                      setMostrarModalCaja(false);
-                    }}
-                    className="text-black px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={async () => {
-                      const exito = await abrirCaja();
-                      if (exito) {
-                        setMostrarModalCaja(false);
+                  {/* Botones */}
+                  <div className="flex justify-end gap-2 mt-6">
+                    <button
+                      onClick={() => {
                         setConfirmarAbrirCaja(false);
-                        finalizarVenta(); // Reintenta la venta
-                      }
-                    }}
-                    className="px-4 py-2 rounded-lg bg-pink-500 text-white hover:bg-pink-600 transition"
-                  >
-                    Abrir Caja
-                  </button>
-                </div>
-              </>
-            )}
+                        setMostrarModalCaja(false);
+                      }}
+                      className="text-black px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const exito = await abrirCaja();
+                        if (exito) {
+                          setMostrarModalCaja(false);
+                          setConfirmarAbrirCaja(false);
+                          finalizarVenta(); // Reintenta la venta
+                        }
+                      }}
+                      className="px-4 py-2 rounded-lg bg-pink-500 text-white hover:bg-pink-600 transition"
+                    >
+                      Abrir Caja
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      )}
-      <ModalOtrosLocales
-        open={modalOtrosOpen}
-        onClose={() => setModalOtrosOpen(false)}
-        productos={otrosLocales}
-        userId={userId}
-        userLocalId={userLocalId}
-        onRequested={(pedidoId) => {
-          // opcional: refrescá listados/contadores
-          // loadPedidos();
-        }}
-      />
-      {/* Modales */}
-      <ModalConsultarStock
-        open={modalStockOpen}
-        onClose={() => setModalStockOpen(false)}
-        API_URL={API_URL}
-      />
+        )}
+        <ModalOtrosLocales
+          open={modalOtrosOpen}
+          onClose={() => setModalOtrosOpen(false)}
+          productos={otrosLocales}
+          userId={userId}
+          userLocalId={userLocalId}
+          onRequested={(pedidoId) => {
+            // opcional: refrescá listados/contadores
+            // loadPedidos();
+          }}
+        />
+        {/* Modales */}
+        <ModalConsultarStock
+          open={modalStockOpen}
+          onClose={() => setModalStockOpen(false)}
+          API_URL={API_URL}
+        />
 
-      <ModalConsultarCBUs
-        open={modalCBUsOpen}
-        onClose={() => setModalCBUsOpen(false)}
-        API_URL={API_URL}
-      />
-    </div>
+        <ModalConsultarCBUs
+          open={modalCBUsOpen}
+          onClose={() => setModalCBUsOpen(false)}
+          API_URL={API_URL}
+        />
+      </div>
+    </>
   );
 }

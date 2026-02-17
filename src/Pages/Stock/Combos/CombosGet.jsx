@@ -418,7 +418,13 @@ const CombosGet = () => {
               placeholder="Nombre del combo"
               value={formNombre}
               onChange={(e) => setFormNombre(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              className={[
+                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
+                'w-full px-4 py-2 rounded-lg border border-gray-300',
+                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
+                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
+                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+              ].join(' ')}
               required
             />
             <input
@@ -426,7 +432,13 @@ const CombosGet = () => {
               placeholder="Precio fijo"
               value={formPrecioFijo}
               onChange={(e) => setFormPrecioFijo(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              className={[
+                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
+                'w-full px-4 py-2 rounded-lg border border-gray-300',
+                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
+                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
+                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+              ].join(' ')}
               required
             />
             <input
@@ -434,20 +446,38 @@ const CombosGet = () => {
               placeholder="Cantidad de productos requeridos"
               value={formCantidadItems}
               onChange={(e) => setFormCantidadItems(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              className={[
+                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
+                'w-full px-4 py-2 rounded-lg border border-gray-300',
+                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
+                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
+                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+              ].join(' ')}
               required
             />
             <textarea
               placeholder="Descripción del combo"
               value={formDescripcion}
               onChange={(e) => setFormDescripcion(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              className={[
+                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
+                'w-full px-4 py-2 rounded-lg border border-gray-300',
+                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
+                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
+                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+              ].join(' ')}
               rows="3"
             />
             <select
               value={formEstado}
               onChange={(e) => setFormEstado(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              className={[
+                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
+                'w-full px-4 py-2 rounded-lg border border-gray-300',
+                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
+                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
+                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+              ].join(' ')}
             >
               <option value="activo">Activo</option>
               <option value="inactivo">Inactivo</option>

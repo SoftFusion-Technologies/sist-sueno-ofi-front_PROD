@@ -180,7 +180,8 @@ const LoginForm = () => {
               type="email"
               name="email"
               placeholder="ejemplo@correo.com"
-              className="w-full mt-1 p-3 bg-pink-50 rounded-lg border border-white-300 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all"
+              // Benjamin Orellana - 2026-02-17 - Fuerza color de texto/placeholder en inputs del Login para que no hereden el tema global y sigan legibles en dark/light
+              className="w-full mt-1 p-3 bg-pink-50 text-slate-900 placeholder-slate-400 rounded-lg border border-white/30 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all"
               onChange={handleInput}
             />
             {errors.email && <Alerta>{errors.email}</Alerta>}
@@ -201,13 +202,15 @@ const LoginForm = () => {
                 type={showPassword ? 'text' : 'password'}
                 name="password"
                 placeholder="••••••••"
-                className="w-full mt-1 p-3 bg-pink-50 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all pr-10"
+                // Benjamin Orellana - 2026-02-17 - Fuerza color de texto/placeholder en inputs del Login para que no hereden el tema global y sigan legibles en dark/light
+                className="w-full mt-1 p-3 bg-pink-50 text-slate-900 placeholder-slate-400 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all pr-10"
                 onChange={handleInput}
               />
               <button
                 type="button"
                 onClick={toggleShowPassword}
-                className="absolute top-1/2 right-3 transform -translate-y-1/2 text-white-500 hover:text-pink-500"
+                // Benjamin Orellana - 2026-02-17 - Ajuste de color del botón de visibilidad para que sea consistente y válido en Tailwind
+                className="absolute top-1/2 right-3 transform -translate-y-1/2 text-dark/80 hover:text-pink-500"
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>

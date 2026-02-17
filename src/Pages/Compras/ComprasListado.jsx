@@ -802,7 +802,8 @@ export default function ComprasListado() {
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, y: -6 }}
                                   className={classNames(
-                                    'border-t border-gray-100 hover:bg-gray-50/70 transition',
+                                    'border-t border-gray-100 dark:border-white/10',
+                                    'hover:bg-gray-50/70 dark:hover:bg-white/5 transition',
                                     r.estado === 'confirmada' &&
                                       'hover:shadow-[inset_4px_0_0_0_rgba(16,185,129,0.6)]',
                                     r.estado === 'borrador' &&
@@ -811,16 +812,16 @@ export default function ComprasListado() {
                                       'hover:shadow-[inset_4px_0_0_0_rgba(244,63,94,0.6)]'
                                   )}
                                 >
-                                  <td className="px-3 py-2 font-mono text-gray-800">
+                                  <td className="px-3 py-2 font-mono text-slate-700 dark:text-slate-200">
                                     {r.id}
                                   </td>
                                   <td className="px-3 py-2">
-                                    <div className="font-medium text-gray-900">
+                                    <div className="font-medium text-slate-900 dark:text-slate-100">
                                       {r?.proveedor?.razon_social ||
                                         `Proveedor #${r.proveedor_id}`}
                                     </div>
                                     {r?.proveedor?.cuit && (
-                                      <div className="text-xs text-gray-500">
+                                      <div className="text-xs text-slate-500 dark:text-slate-400">
                                         CUIT: {r.proveedor.cuit}
                                       </div>
                                     )}
@@ -831,10 +832,10 @@ export default function ComprasListado() {
                                     </span>
                                   </td>
 
-                                  <td className="px-3 py-2 font-mono">
+                                  <td className="px-3 py-2 font-mono text-slate-900 dark:text-slate-100">
                                     {fmtComprobante(r)}
                                   </td>
-                                  <td className="px-3 py-2">
+                                  <td className="px-3 py-2 text-slate-900 dark:text-slate-100">
                                     {r?.fecha
                                       ? new Date(r.fecha).toLocaleDateString(
                                           'es-AR'
@@ -849,7 +850,7 @@ export default function ComprasListado() {
                                   <td className="px-3 py-2">
                                     <ChipEstado estado={r.estado} />
                                   </td>
-                                  <td className="px-3 py-2 text-right font-semibold">
+                                  <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-slate-100">
                                     {moneyAR(r.total)}
                                   </td>
                                   <td className="px-3 py-2">

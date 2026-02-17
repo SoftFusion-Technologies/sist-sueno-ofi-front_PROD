@@ -44,8 +44,25 @@ const DashboardTile = ({ title, description, to, icon: Icon, delay = 0 }) => {
       transition={{ duration: 0.45, delay }}
       className="relative"
     >
-      <Link to={to} className="group block h-full text-left focus:outline-none">
-        <div className="relative h-full overflow-hidden rounded-2xl border border-white/10 bg-white/90 shadow-[0_18px_45px_rgba(15,23,42,0.22)] backdrop-blur-xl transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_24px_60px_rgba(15,23,42,0.32)]">
+      <Link
+        to={to}
+        className="group block h-full text-left focus:outline-none focus:ring-2 focus:ring-emerald-400/50 rounded-2xl"
+      >
+        {/* Benjamin Orellana - 2026-02-17 - Unifica estilos light/dark en tiles (glass) para que no dependan de fondos globales. */}
+        <div
+          className={[
+            'relative h-full overflow-hidden rounded-2xl border backdrop-blur-xl transition-all duration-300',
+            'group-hover:-translate-y-1',
+            // Light
+            'border-black/10 bg-white/90 text-slate-900',
+            'shadow-[0_18px_45px_rgba(15,23,42,0.18)]',
+            'group-hover:shadow-[0_24px_60px_rgba(15,23,42,0.24)]',
+            // Dark
+            'dark:border-white/10 dark:bg-white/[0.04] dark:text-white',
+            'dark:shadow-[0_18px_60px_rgba(0,0,0,.35)]',
+            'dark:group-hover:shadow-[0_28px_90px_rgba(0,0,0,.45)]'
+          ].join(' ')}
+        >
           {/* halo suave */}
           <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-emerald-400/12 via-orange-500/10 to-sky-500/12" />
 
@@ -53,22 +70,39 @@ const DashboardTile = ({ title, description, to, icon: Icon, delay = 0 }) => {
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 {Icon && (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900/5 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-300">
+                  <div
+                    className={[
+                      'flex h-10 w-10 items-center justify-center rounded-xl transition-colors duration-300',
+                      // Light
+                      'bg-slate-900/5 text-emerald-600',
+                      'group-hover:bg-emerald-500 group-hover:text-white',
+                      // Dark
+                      'dark:bg-white/10 dark:text-emerald-300',
+                      'dark:group-hover:bg-emerald-500 dark:group-hover:text-white'
+                    ].join(' ')}
+                  >
                     <Icon className="h-5 w-5" />
                   </div>
                 )}
-                <h3 className="titulo uppercase text-xl tracking-wide text-slate-900 group-hover:text-slate-900">
+
+                <h3
+                  className={[
+                    'titulo uppercase text-xl tracking-wide',
+                    'text-slate-900 dark:text-white'
+                  ].join(' ')}
+                >
                   {title}
                 </h3>
               </div>
             </div>
 
             {description && (
-              <p className="text-xs text-slate-500 leading-snug">
+              <p className="text-xs leading-snug text-slate-600 dark:text-slate-200/70">
                 {description}
               </p>
             )}
-            <span className="text-[11px] uppercase tracking-widest text-slate-400 group-hover:text-emerald-600">
+
+            <span className="text-[11px] uppercase tracking-widest text-slate-500 group-hover:text-emerald-600 dark:text-slate-200/55 dark:group-hover:text-emerald-300">
               Abrir
             </span>
           </div>
@@ -107,7 +141,8 @@ const AdminPage = () => {
       <NavbarStaff />
 
       <section className="relative w-full min-h-[calc(100vh-80px)]">
-        <div className="min-h-[calc(100vh-80px)] bg-gradient-to-b from-[#05050a] via-[#0b0b14] to-[#151521]">
+        {/* Benjamin Orellana - 2026-02-17 - Fondo del dashboard con gradiente light/dark consistente con el theme switch. */}
+        <div className="min-h-[calc(100vh-80px)] bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-900 dark:from-[#05050a] dark:via-[#0b0b14] dark:to-[#151521] dark:text-white">
           <ParticlesBackground />
 
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 lg:py-14">
@@ -118,7 +153,7 @@ const AdminPage = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5 }}
-                  className="text-2xl sm:text-3xl lg:text-4xl titulo tracking-[.18em] uppercase text-white"
+                  className="text-2xl sm:text-3xl lg:text-4xl titulo tracking-[.18em] uppercase text-slate-900 dark:text-white"
                 >
                   Panel principal
                 </motion.h1>
@@ -129,7 +164,7 @@ const AdminPage = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.1 }}
-                  className="mt-1 text-sm text-slate-200/80 max-w-xl"
+                  className="mt-1 text-sm text-slate-600 max-w-xl dark:text-slate-200/80"
                 >
                   Hola{' '}
                   <span className="font-semibold">{userName || 'equipo'}</span>,
@@ -145,11 +180,11 @@ const AdminPage = () => {
                 transition={{ duration: 0.5, delay: 0.15 }}
                 className="flex items-center gap-3"
               >
-                <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2 backdrop-blur-md">
-                  <p className="text-[11px] uppercase tracking-wide text-slate-200/70">
+                <div className="rounded-2xl border border-black/10 bg-white/80 px-4 py-2 backdrop-blur-md shadow-sm dark:border-white/15 dark:bg-white/10 dark:shadow-none">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-600 dark:text-slate-200/70">
                     Rol actual
                   </p>
-                  <p className="text-sm font-semibold text-white">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
                     {nivelLabel}
                   </p>
                 </div>
@@ -196,6 +231,7 @@ const AdminPage = () => {
                 icon={FaCashRegister}
                 delay={0.14}
               />
+
               {/* ARCA: se mantiene con RoleGate; además oculto para vendedor */}
               {!isVendedor && (
                 <RoleGate allow={['administrativo', 'socio', 'contador']}>
@@ -208,6 +244,7 @@ const AdminPage = () => {
                   />
                 </RoleGate>
               )}
+
               {/* ARCA: se mantiene con RoleGate; además oculto para vendedor */}
               {!isVendedor && (
                 <RoleGate allow={['administrativo', 'socio', 'contador']}>

@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* Benjamin Orellana - 2026-02-17 - Habilita `dark:` por clase .dark (no por prefers-color-scheme) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --font-family-base: 'Montserrat', sans-serif;
   --font-weight-regular: 400;
@@ -16,7 +19,6 @@
   font-family: var(--font-family-base);
   font-weight: var(--font-weight-regular);
 }
-
 
 @keyframes slideInFromLeft {
   0% {
@@ -58,11 +60,13 @@
   background-image: radial-gradient(white 1px, transparent 1px);
   background-size: 5px 5px;
   opacity: 0.15;
-  animation: twinkle 3s infinite alternate ease-in-out;
+  animation: twinkleDots 3s infinite alternate ease-in-out; /* Benjamin Orellana - 2026-02-17 - Renombrado para evitar colisión con otra animación twinkle */
   z-index: 0;
   pointer-events: none;
 }
-@keyframes twinkle {
+
+/* Benjamin Orellana - 2026-02-17 - Renombrado: antes había 2 @keyframes twinkle, el segundo pisaba al primero */
+@keyframes twinkleDots {
   0%,
   100% {
     opacity: 0.2;
@@ -87,13 +91,14 @@
   transform: rotate(45deg);
   border-radius: 20%;
   filter: drop-shadow(0 0 3px #a8c4ff);
-  animation-name: twinkle;
+  animation-name: twinkleStars; /* Benjamin Orellana - 2026-02-17 - Renombrado para que no colisione con twinkleDots */
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
   /* width, height, top, left se ponen inline */
 }
 
-@keyframes twinkle {
+/* Benjamin Orellana - 2026-02-17 - Renombrado: antes se llamaba twinkle y colisionaba con la animación de galaxy-stars */
+@keyframes twinkleStars {
   0%,
   100% {
     opacity: 0.3;
@@ -107,8 +112,9 @@
 
 .star-orbit {
   position: absolute;
-  top: 0; left: 0;
-  width: 20px;  /* tamaño de la órbita */
+  top: 0;
+  left: 0;
+  width: 20px; /* tamaño de la órbita */
   height: 20px;
   animation-name: orbit;
   animation-timing-function: linear;
@@ -124,13 +130,15 @@
   }
 }
 
-
-
 .nebula-layer::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, rgba(255,255,255,0.04) 0%, transparent 70%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.04) 0%,
+    transparent 70%
+  );
   background-repeat: no-repeat;
   animation: pulsate 20s ease-in-out infinite;
   pointer-events: none;
@@ -138,7 +146,8 @@
 }
 
 @keyframes pulsate {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 0.1;
   }
@@ -149,7 +158,8 @@
 }
 
 /* App.css o index.css */
-.ticket-pdf *, .ticket-pdf {
+.ticket-pdf *,
+.ticket-pdf {
   color: #222 !important;
   background: #fff !important;
   border-color: #059669 !important;
@@ -181,18 +191,25 @@
 }
 
 @keyframes fade-in {
-  from { opacity: 0; transform: scale(0.98); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 .animate-fade-in {
-  animation: fade-in 0.23s cubic-bezier(0.4,0,0.2,1) both;
+  animation: fade-in 0.23s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 @media print {
   body * {
     visibility: hidden !important;
   }
-  .barcode-etiqueta, .barcode-etiqueta * {
+  .barcode-etiqueta,
+  .barcode-etiqueta * {
     visibility: visible !important;
   }
   .barcode-etiqueta {
@@ -213,8 +230,36 @@
   }
 }
 
-
 /* SweetAlert2 siempre por encima de tus modales */
 .swal2-container {
   z-index: 30000 !important;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-white text-slate-900;
+  }
+
+  html.dark body {
+    @apply bg-slate-950 text-slate-50;
+  }
+
+  /* Benjamin Orellana - 2026-02-17 - Fix global mínimo: evita inputs ilegibles en dark por herencia de color (sin tocar el diseño de cada módulo) */
+  input,
+  textarea,
+  select {
+    color: inherit;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    opacity: 0.75;
+  }
 }

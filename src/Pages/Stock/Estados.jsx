@@ -393,7 +393,13 @@ const EstadosGet = () => {
               placeholder="Nombre del estado"
               value={formNombre}
               onChange={(e) => setFormNombre(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-400"
+              className={[
+                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
+                'w-full px-4 py-2 rounded-lg border border-gray-300',
+                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
+                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
+                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+              ].join(' ')}
               required
             />
             <div className="text-right">
