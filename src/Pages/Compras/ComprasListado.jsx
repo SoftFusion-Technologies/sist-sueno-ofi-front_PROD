@@ -105,10 +105,10 @@ const Skeleton = ({ rows = 8 }) => (
                 j < 2
                   ? 'span 2 / span 2'
                   : j < 5
-                  ? 'span 3 / span 3'
-                  : j < 7
-                  ? 'span 2 / span 2'
-                  : 'span 1 / span 1'
+                    ? 'span 3 / span 3'
+                    : j < 7
+                      ? 'span 2 / span 2'
+                      : 'span 1 / span 1'
             }}
           />
         ))}
@@ -166,14 +166,16 @@ const CompraCard = ({ r, onDelete }) => (
     <div className="mt-3 flex items-center gap-2">
       <Link
         to={`/dashboard/compras/${r.id}`}
-        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/15
+           text-gray-700 dark:text-white/80 hover:bg-gray-50 dark:hover:bg-white/10"
       >
         <FaEye /> Ver
       </Link>
       {r.estado === 'borrador' && (
         <button
           onClick={() => onDelete(r.id)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-rose-300 text-rose-700 hover:bg-rose-50"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-rose-300 dark:border-rose-400/30
+           text-rose-700 dark:text-rose-200 hover:bg-rose-50 dark:hover:bg-rose-500/10"
         >
           <FaTrash /> Eliminar
         </button>
@@ -540,11 +542,12 @@ export default function ComprasListado() {
   return (
     <>
       <NavbarStaff />
-      <section className="relative w-full min-h-screen bg-white">
-        <div className="relative min-h-screen bg-gradient-to-b from-[#052e16] via-[#065f46] to-[#10b981]">
+      <section className="relative w-full min-h-screen bg-white dark:bg-slate-950">
+        {/* Benjamin Orellana - 2026-02-17 - Se agrega variante dark al fondo general para que el layout sea consistente con el modo oscuro sin alterar el modo light. */}
+        <div className="relative min-h-screen bg-gradient-to-b from-[#052e16] via-[#065f46] to-[#10b981] dark:from-[#05050a] dark:via-[#0b0b14] dark:to-[#151521]">
+          {' '}
           <ParticlesBackground />
           <ButtonBack />
-
           {/* Hero */}
           <div className="text-center pt-24 px-4">
             <motion.h1
@@ -559,7 +562,6 @@ export default function ComprasListado() {
               Gestioná compras con filtros, KPIs, estados y acciones rápidas.
             </p>
           </div>
-
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex items-start justify-between gap-4">
               <RoleGate allow={['socio', 'administrativo']}>
@@ -593,9 +595,11 @@ export default function ComprasListado() {
                   key={i}
                   className="relative rounded-3xl p-[1px] bg-gradient-to-br from-emerald-400/70 via-teal-300/50 to-cyan-400/70"
                 >
-                  <div className="rounded-3xl bg-white/95 backdrop-blur-xl ring-1 ring-white/40 p-4">
-                    <div className="text-xs text-gray-500">{k.t}</div>
-                    <div className="text-2xl font-bold text-gray-900">
+                  <div className="rounded-3xl bg-white/95 dark:bg-white/10 backdrop-blur-xl ring-1 ring-white/40 dark:ring-white/15 p-4">
+                    <div className="text-xs text-gray-500 dark:text-white/60">
+                      {k.t}
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
                       {k.v}
                     </div>
                   </div>
@@ -606,7 +610,8 @@ export default function ComprasListado() {
             {/* Toolbar filtros */}
             <div className="mt-6">
               <div className="relative rounded-3xl p-[1px] bg-gradient-to-r from-emerald-400/60 via-teal-300/40 to-cyan-400/60 shadow-[0_1px_30px_rgba(16,185,129,0.15)]">
-                <div className="rounded-3xl bg-white/90 backdrop-blur-xl ring-1 ring-white/30 p-4 md:p-5">
+                <div className="rounded-3xl bg-white/90 dark:bg-white/10 backdrop-blur-xl ring-1 ring-white/30 dark:ring-white/15 p-4 md:p-5">
+                  {' '}
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
                     {/* búsqueda */}
                     <div className="relative md:col-span-4">
@@ -616,12 +621,12 @@ export default function ComprasListado() {
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
                         placeholder="Buscar por observaciones o nro de comprobante…  (atajo: /)"
-                        className="w-full pl-10 pr-10 py-2.5 rounded-2xl border border-white/30 bg-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full pl-10 pr-10 py-2.5 rounded-2xl border border-white/30 dark:border-white/10 bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white placeholder-gray-500 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                       {q && (
                         <button
                           onClick={() => setQ('')}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-white/50 dark:hover:text-white/80"
                         >
                           ×
                         </button>
@@ -650,7 +655,7 @@ export default function ComprasListado() {
                             'px-3 py-2 rounded-2xl text-sm ring-1 transition',
                             estado === e.value
                               ? 'bg-emerald-600 text-white ring-emerald-600 shadow'
-                              : 'bg-white/70 text-gray-700 ring-gray-200 hover:bg-white'
+                              : 'bg-white/70 dark:bg-white/10 text-gray-700 dark:text-white/80 ring-gray-200 dark:ring-white/15 hover:bg-white dark:hover:bg-white/15'
                           )}
                         >
                           {e.label}
@@ -663,13 +668,13 @@ export default function ComprasListado() {
                       type="date"
                       value={desde}
                       onChange={(e) => setDesde(e.target.value)}
-                      className="md:col-span-1 w-full px-3 py-2.5 rounded-2xl border border-white/30 bg-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="md:col-span-1 w-full px-3 py-2.5 rounded-2xl border border-white/30 dark:border-white/10 bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                     <input
                       type="date"
                       value={hasta}
                       onChange={(e) => setHasta(e.target.value)}
-                      className="md:col-span-1 w-full px-3 py-2.5 rounded-2xl border border-white/30 bg-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="md:col-span-1 w-full px-3 py-2.5 rounded-2xl border border-white/30 dark:border-white/10 bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
 
                     {/* acciones filtros */}
@@ -684,13 +689,12 @@ export default function ComprasListado() {
                     <div className="md:col-span-1 flex gap-2">
                       <button
                         onClick={clearFilters}
-                        className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 w-full"
+                        className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl border border-gray-300 dark:border-white/15 text-gray-700 dark:text-white/80 bg-white dark:bg-white/10 hover:bg-gray-50 dark:hover:bg-white/15 w-full"
                       >
                         <FaSyncAlt /> Limpiar
                       </button>
                     </div>
                   </div>
-
                   {/* view modes */}
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                     <div className="text-sm text-gray-600">
@@ -712,8 +716,8 @@ export default function ComprasListado() {
                           className={classNames(
                             'inline-flex items-center gap-2 px-3 py-2 rounded-2xl text-sm ring-1 transition',
                             viewMode === key
-                              ? 'bg-gray-900 text-white ring-gray-900'
-                              : 'bg-white text-gray-700 ring-gray-200 hover:bg-gray-50'
+                              ? 'bg-gray-900 text-white ring-gray-900 dark:bg-emerald-500/20 dark:ring-emerald-400/25'
+                              : 'bg-white dark:bg-white/10 text-gray-700 dark:text-white/80 ring-gray-200 dark:ring-white/15 hover:bg-gray-50 dark:hover:bg-white/15'
                           )}
                         >
                           <Icon /> {label}
@@ -727,7 +731,8 @@ export default function ComprasListado() {
 
             {/* Contenedor principal con borde gradiente */}
             <div className="mt-6 relative rounded-3xl p-[1px] bg-gradient-to-br from-emerald-400/60 via-teal-300/40 to-cyan-400/60 shadow-[0_1px_30px_rgba(16,185,129,0.12)]">
-              <div className="rounded-3xl bg-white/95 backdrop-blur-xl ring-1 ring-white/40 p-2 sm:p-4">
+              <div className="rounded-3xl bg-white/95 dark:bg-white/10 backdrop-blur-xl ring-1 ring-white/40 dark:ring-white/15 p-2 sm:p-4">
+                {' '}
                 {loading ? (
                   <div className="p-4">
                     <Skeleton />
@@ -758,12 +763,17 @@ export default function ComprasListado() {
                             <tr>
                               <th
                                 colSpan={10}
-                                className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 bg-gradient-to-r from-white/95 to-white/70 backdrop-blur border-b border-gray-100"
+                                className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider
+                 text-gray-500 dark:text-white/65
+                 bg-gradient-to-r from-white/95 to-white/70
+                 dark:from-slate-950/85 dark:to-slate-900/65
+                 backdrop-blur border-b border-gray-100 dark:border-white/10"
                               >
                                 Resultados · {kpis.count} compras
                               </th>
                             </tr>
-                            <tr className="text-left text-gray-600 bg-white/95 backdrop-blur border-b border-gray-100">
+
+                            <tr className="text-left text-gray-600 dark:text-white/75 bg-white/95 dark:bg-slate-950/80 backdrop-blur border-b border-gray-100 dark:border-white/10">
                               <ThSortable
                                 label="#"
                                 active={orderBy === 'id'}
@@ -827,7 +837,12 @@ export default function ComprasListado() {
                                     )}
                                   </td>
                                   <td className="px-3 py-2">
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-pink-50 text-pink-700 ring-1 ring-pink-200">
+                                    <span
+                                      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs
+                 bg-pink-50 text-pink-700 ring-1 ring-pink-200
+                 dark:bg-pink-500/15 dark:text-pink-200 dark:ring-pink-400/20"
+                                    >
+                                      {' '}
                                       {getLocalNombre(r.local_id)}
                                     </span>
                                   </td>
@@ -843,7 +858,12 @@ export default function ComprasListado() {
                                       : '—'}
                                   </td>
                                   <td className="px-3 py-2">
-                                    <span className="px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
+                                    <span
+                                      className="px-2 py-0.5 rounded-full text-xs
+                 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200
+                 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20"
+                                    >
+                                      {' '}
                                       {r.canal || '—'}
                                     </span>
                                   </td>
@@ -896,7 +916,7 @@ export default function ComprasListado() {
                               initial={{ opacity: 0, y: 8 }}
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, y: -8 }}
-                              className="relative rounded-2xl border border-gray-100 bg-white hover:shadow-lg transition p-3"
+                              className="relative rounded-2xl border border-gray-100 dark:border-white/10 bg-white dark:bg-white/10 hover:shadow-lg transition p-3"
                             >
                               <div className="flex items-center justify-between">
                                 <div className="font-semibold text-gray-900 truncate max-w-[65%]">
@@ -978,7 +998,8 @@ export default function ComprasListado() {
 
                     {/* Paginación */}
                     <div className="mt-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                      <div className="text-xs text-gray-600">
+                      <div className="text-xs text-gray-600 dark:text-white/70">
+                        {' '}
                         Página {page} de{' '}
                         {Math.max(1, Math.ceil((kpis.count || 0) / pageSize))} ·{' '}
                         {kpis.count} resultados
@@ -993,7 +1014,7 @@ export default function ComprasListado() {
                               pageSize: Number(e.target.value)
                             }))
                           }
-                          className="px-2 py-1.5 rounded-xl border border-gray-200 bg-white text-sm"
+                          className="px-2 py-1.5 rounded-xl border border-gray-200 dark:border-white/15 bg-white dark:bg-white/10 text-sm text-slate-900 dark:text-white"
                         >
                           {[10, 12, 20, 30, 50].map((n) => (
                             <option key={n} value={n}>
@@ -1009,7 +1030,8 @@ export default function ComprasListado() {
                               page: Math.max(1, m.page - 1)
                             }))
                           }
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border disabled:opacity-40"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/15
+           bg-white dark:bg-white/10 text-slate-900 dark:text-white/80 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-white/15"
                         >
                           <FaChevronLeft /> Anterior
                         </button>
@@ -1030,7 +1052,8 @@ export default function ComprasListado() {
                               )
                             }))
                           }
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border disabled:opacity-40"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/15
+           bg-white dark:bg-white/10 text-slate-900 dark:text-white/80 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-white/15"
                         >
                           Siguiente <FaChevronRight />
                         </button>
@@ -1041,7 +1064,6 @@ export default function ComprasListado() {
               </div>
             </div>
           </div>
-
           {/* Modal Crear Compra */}
           <CompraFormModal
             open={open}
@@ -1050,7 +1072,6 @@ export default function ComprasListado() {
             initial={null}
             fetchData={fetchData}
           />
-
           {/* keyframes (solo para shimmer del skeleton) */}
           <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
         </div>
@@ -1066,7 +1087,9 @@ function ThSortable({ label, active, dir, onClick, className }) {
       onClick={onClick}
       className={classNames(
         'px-3 py-2 select-none cursor-pointer group',
-        active ? 'text-gray-900' : 'text-gray-600',
+        active
+          ? 'text-gray-900 dark:text-white'
+          : 'text-gray-600 dark:text-white/75',
         className
       )}
       aria-sort={active ? (dir === 'ASC' ? 'ascending' : 'descending') : 'none'}

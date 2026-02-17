@@ -4,21 +4,38 @@ const ParticlesBackground = ({ className = '' }) => {
   const canvasRef = useRef(null);
   const animationFrameId = useRef(null);
   const particles = useRef([]);
+  const isDarkRef = useRef(false);
 
-  const particleCount = 60; // ✅ reducido
+  const particleCount = 60; // reducido
   const maxVelocity = 0.25;
   const maxRadius = 1.2;
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
     let width = (canvas.width = canvas.offsetWidth);
     let height = (canvas.height = canvas.offsetHeight);
 
-    // Colores simples
-    const randomColor = () =>
-      ['#ffffff', '#c2d3ff', '#d2bfff'][Math.floor(Math.random() * 3)];
+    // Benjamin Orellana - 2026-02-17 - Colorea partículas según modo (light: negro / dark: claro) y reacciona a cambios del class "dark" en el root.
+    const root = document.documentElement;
+
+    const getIsDark = () =>
+      root?.classList?.contains('dark') ||
+      document.body?.classList?.contains('dark');
+
+    const getPalette = (isDark) =>
+      isDark
+        ? ['#ffffff', '#c2d3ff', '#d2bfff']
+        : ['#000000', '#111827', '#0f172a'];
+
+    const randomFrom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    isDarkRef.current = getIsDark();
+    const randomColor = () => randomFrom(getPalette(isDarkRef.current));
 
     particles.current = Array.from({ length: particleCount }).map(() => ({
       x: Math.random() * width,
@@ -29,6 +46,19 @@ const ParticlesBackground = ({ className = '' }) => {
       alpha: Math.random() * 0.5 + 0.4,
       color: randomColor()
     }));
+
+    const recolorIfThemeChanged = () => {
+      const nextIsDark = getIsDark();
+      if (nextIsDark === isDarkRef.current) return;
+
+      isDarkRef.current = nextIsDark;
+      const pal = getPalette(nextIsDark);
+
+      particles.current = particles.current.map((p) => ({
+        ...p,
+        color: randomFrom(pal)
+      }));
+    };
 
     const draw = () => {
       ctx.clearRect(0, 0, width, height);
@@ -59,9 +89,15 @@ const ParticlesBackground = ({ className = '' }) => {
     };
     window.addEventListener('resize', handleResize);
 
+    // Observa cambios en classList del root (cuando se agrega/quita "dark")
+    const observer = new MutationObserver(() => recolorIfThemeChanged());
+    if (root)
+      observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+
     return () => {
       cancelAnimationFrame(animationFrameId.current);
       window.removeEventListener('resize', handleResize);
+      observer.disconnect();
     };
   }, []);
 

@@ -55,16 +55,19 @@ const AdminPageVendedores = () => {
   return (
     <>
       <NavbarStaff />
-      <section className="relative w-full min-h-screen bg-white">
-        <div className="min-h-screen bg-gradient-to-b from-[#140321] via-[#1c052d] to-[#2a0a44]">
+
+      {/* Benjamin Orellana - 17-02-2026 - Fondo dual (light claro / dark profundo) para evitar que en light se vea oscuro detrás de Particles. */}
+      <section className="relative w-full min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+        <div className="min-h-screen bg-gradient-to-b from-violet-50 via-white to-slate-100 dark:from-[#140321] dark:via-[#1c052d] dark:to-[#2a0a44]">
           <ParticlesBackground />
           <ButtonBack />
+
           <div className="text-center pt-24 px-4">
             <motion.h1
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-4xl titulo uppercase font-bold text-white mb-8 drop-shadow-md"
+              className="text-4xl titulo uppercase font-bold text-slate-900 dark:text-white mb-8 drop-shadow-md"
             >
               Gestión de Vendedores
             </motion.h1>
@@ -84,10 +87,12 @@ const AdminPageVendedores = () => {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.4, delay: index * 0.1 }}
                       className={[
-                        'relative bg-white/90 backdrop-blur-xl shadow-lg transition-all duration-300 text-gray-800 font-semibold text-lg rounded-2xl w-full max-w-xs p-6 flex flex-col items-center justify-center border border-white/20 gap-3',
+                        // Benjamin Orellana - 17-02-2026 - Card: se mantiene clara en light y se agrega glass oscuro/contraste en dark sin cambiar el layout.
+                        'relative bg-white/90 dark:bg-white/10 dark:backdrop-blur-xl shadow-lg transition-all duration-300 text-gray-800 dark:text-white font-semibold text-lg rounded-2xl w-full max-w-xs p-6 flex flex-col items-center justify-center border gap-3',
+                        'border-black/10 dark:border-white/10',
                         isDisabled
                           ? 'opacity-55 cursor-not-allowed'
-                          : 'hover:shadow-purple-400 hover:scale-[1.03]'
+                          : 'hover:shadow-purple-400/40 dark:hover:shadow-purple-400/20 hover:scale-[1.03]'
                       ].join(' ')}
                       aria-disabled={isDisabled}
                       title={isDisabled ? disabledText || 'Bloqueado' : ''}
@@ -95,7 +100,9 @@ const AdminPageVendedores = () => {
                       <span
                         className={[
                           'text-4xl',
-                          isDisabled ? 'text-gray-400' : 'text-purple-600'
+                          isDisabled
+                            ? 'text-gray-400 dark:text-white/35'
+                            : 'text-purple-600 dark:text-purple-300'
                         ].join(' ')}
                       >
                         {icon}
@@ -104,7 +111,8 @@ const AdminPageVendedores = () => {
                       <span className="text-center">{label}</span>
 
                       {isDisabled && (
-                        <div className="absolute top-3 right-3 inline-flex items-center gap-2 rounded-full bg-black/10 px-3 py-1 text-xs font-extrabold text-gray-700">
+                        // Benjamin Orellana - 17-02-2026 - Chip bloqueado legible en dark sin alterar la apariencia en light.
+                        <div className="absolute top-3 right-3 inline-flex items-center gap-2 rounded-full bg-black/10 dark:bg-white/10 px-3 py-1 text-xs font-extrabold text-gray-700 dark:text-white/75">
                           <FaLock />
                           {disabledText || 'Bloqueado'}
                         </div>

@@ -24,7 +24,6 @@ import CompraFormModal from '../../Components/Compras/CompraFormModal';
 
 /**
  * THEME — Emerald/Jade con toques de vidrio + brillo.
- * Si querés el mismo de Bancos (teal/azul): cambia bg y accent.
  *
  * Benjamin Orellana - 07/02/2026 - Se adapta el diseño del AdminPageCompras para que sea similar al AdminPageCaja
  * (cards centradas con hover brillante), usando una paleta distinta (orangea/índigo) y manteniendo funcionalidades
@@ -32,16 +31,19 @@ import CompraFormModal from '../../Components/Compras/CompraFormModal';
  */
 const THEME = {
   title: 'Compras',
-  // Fondo oscuro con “profundidad” similar a Caja, pero con tinte orangea
-  bg: 'bg-gradient-to-b from-[#070816] via-[#0d1030] to-[#1a1a3a]',
-  accentText: 'text-orange-200/80',
+
+  // Benjamin Orellana - 17-02-2026 - Fondo dual: claro en light y profundo en dark (mantiene tinte orange sin oscurecer light detrás de Particles).
+  bg: 'bg-gradient-to-b from-orange-50 via-white to-slate-100 dark:from-[#070816] dark:via-[#0d1030] dark:to-[#1a1a3a]',
+
+  // Benjamin Orellana - 17-02-2026 - Accent legible en light y en dark (antes era muy claro para fondos blancos).
+  accentText: 'text-orange-700/80 dark:text-orange-200/80',
+
   accentIcon: 'text-orange-400',
   accentBorderHover: 'hover:border-orange-400',
   accentShadowHover:
     'hover:shadow-[0_0_20px_rgba(167,139,250,0.18)] hover:scale-[1.04]'
 };
 
-// Links del módulo (TODO: ajusta rutas reales si difieren)
 const links = [
   {
     to: '/dashboard/compras/listado',
@@ -61,12 +63,7 @@ const links = [
     sub: 'Un/múltiples medios',
     icon: <FaHandHoldingUsd />
   },
-  // {
-  //   to: '/dashboard/compras/movimientos-stock',
-  //   label: 'Movimientos de Stock',
-  //   sub: 'Ver stock movimientos de compras',
-  //   icon: <FaTruck />
-  // },
+
   {
     to: '/dashboard/compras/impuestos',
     label: 'Impuestos por Compra',
@@ -157,14 +154,15 @@ const CardItem = ({
             : undefined
       }}
       className={[
-        'relative bg-white shadow-lg border rounded-2xl',
+        // Benjamin Orellana - 17-02-2026 - Se agregan variantes dark: para mantener el mismo diseño en light (bg-white) y lograr glass oscuro/contraste correcto en dark.
+        'group relative bg-white dark:bg-white/10 dark:backdrop-blur-xl shadow-lg border rounded-2xl',
         'flex flex-col justify-center items-center h-36 gap-2',
-        'font-semibold text-base lg:text-lg text-gray-800',
+        'font-semibold text-base lg:text-lg text-gray-800 dark:text-white',
         'transition-all duration-300',
         isDisabled
-          ? 'opacity-55 cursor-not-allowed border-white/20'
+          ? 'opacity-55 cursor-not-allowed border-white/20 dark:border-white/10'
           : [
-              'cursor-pointer border-white/20',
+              'cursor-pointer border-white/20 dark:border-white/10',
               THEME.accentBorderHover,
               THEME.accentShadowHover
             ].join(' ')
@@ -175,7 +173,7 @@ const CardItem = ({
       <span
         className={[
           'text-3xl',
-          isDisabled ? 'text-gray-400' : THEME.accentIcon
+          isDisabled ? 'text-gray-400 dark:text-white/35' : THEME.accentIcon
         ].join(' ')}
       >
         {icon}
@@ -185,13 +183,14 @@ const CardItem = ({
 
       {/* Subtítulo sutil (opcional) */}
       {sub && (
-        <span className="text-[12px] text-gray-500 font-medium -mt-1">
+        <span className="text-[12px] text-gray-500 dark:text-white/60 font-medium -mt-1">
           {sub}
         </span>
       )}
 
       {isDisabled && (
-        <div className="absolute top-3 right-3 inline-flex items-center gap-2 rounded-full bg-black/10 px-3 py-1 text-xs font-bold text-gray-700">
+        // Benjamin Orellana - 17-02-2026 - Chip de bloqueado con bg/text legible en dark sin alterar su apariencia en light.
+        <div className="absolute top-3 right-3 inline-flex items-center gap-2 rounded-full bg-black/10 dark:bg-white/10 px-3 py-1 text-xs font-bold text-gray-700 dark:text-white/75">
           <FaLock />
           Bloqueado
         </div>
@@ -229,44 +228,14 @@ const CardItem = ({
   );
 };
 
-const StatCard = ({ label, value, hint }) => (
-  <div className="relative overflow-hidden">
-    <div className="absolute -top-14 -left-16 w-56 h-56 rounded-full blur-3xl opacity-35 bg-gradient-to-br from-orange-500/25 to-transparent" />
-    <div className="absolute -bottom-14 -right-16 w-56 h-56 rounded-full blur-3xl opacity-25 bg-gradient-to-tr from-indigo-500/25 to-transparent" />
-    <div className="relative bg-white/90 backdrop-blur-xl rounded-2xl border border-white/20 p-5 shadow-lg">
-      <div className="text-xs uppercase tracking-wide text-gray-500">
-        {label}
-      </div>
-      <div className="mt-1 text-2xl font-semibold text-gray-900">{value}</div>
-      {hint && <div className="mt-1 text-xs text-gray-500">{hint}</div>}
-    </div>
-  </div>
-);
-
 const AdminPageCompras = () => {
   const { userLevel } = useAuth();
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
   const roles = useMemo(
     () => (Array.isArray(userLevel) ? userLevel : [userLevel]),
     [userLevel]
   );
-
-  // 🔎 Búsqueda global (simple: redirige al listado con query)
-  const [q, setQ] = useState('');
-  const onSubmitSearch = (e) => {
-    e.preventDefault();
-    if (!q?.trim()) return;
-    navigate(`/dashboard/compras/listado?q=${encodeURIComponent(q.trim())}`);
-  };
-
-  // 📊 KPIs (placeholder) — reemplazar con fetch a tu backend
-  const [stats, setStats] = useState({ cxpTotal: 0, venceHoy: 0, pagosHoy: 0 });
-  useEffect(() => {
-    // TODO: fetch KPIs reales, ejemplo:
-    // fetch('/api/compras/kpis').then(r => r.json()).then(setStats).catch(()=>{});
-  }, []);
 
   // Benjamin Orellana - 07/02/2026 - Acción centralizada para cards con “onClickKey”.
   const resolveCardAction = (item) => {
@@ -283,15 +252,16 @@ const AdminPageCompras = () => {
           <ButtonBack />
 
           {/* Backdrop overlay (similar a Caja) */}
-          <div className="pointer-events-none absolute inset-0 bg-black/25" />
-
+          {/* Benjamin Orellana - 17-02-2026 - Overlay más suave en light y se mantiene profundo en dark. */}
+          <div className="pointer-events-none absolute inset-0 bg-black/10 dark:bg-black/25" />
           {/* Header */}
           <div className="text-center pt-24 px-4 relative">
             <motion.h1
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-4xl titulo uppercase font-bold text-white mb-3 drop-shadow-md"
+              /* Benjamin Orellana - 17-02-2026 - Título legible en light/dark sin cambiar animación ni layout. */
+              className="text-4xl titulo uppercase font-bold text-slate-900 dark:text-white mb-3 drop-shadow-md"
             >
               Módulo de {THEME.title}
             </motion.h1>
@@ -305,7 +275,6 @@ const AdminPageCompras = () => {
               Accesos rápidos a compras, cuentas por pagar, pagos e impuestos.
             </motion.p>
           </div>
-
 
           {/* Cuadrícula de accesos rápidos (estilo AdminPageCaja) */}
           <div className="mt-10 xl:px-0 sm:px-10 px-6 max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 pb-14 relative">
@@ -338,14 +307,6 @@ const AdminPageCompras = () => {
           </div>
         </div>
       </section>
-
-      {/* Modal Crear Compra */}
-      <CompraFormModal
-        open={open}
-        onClose={() => setOpen(false)}
-        onSubmit={() => {}}
-        initial={null}
-      />
     </>
   );
 };

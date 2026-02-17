@@ -520,7 +520,7 @@ export default function UsuariosGet() {
                   </span>
                 </div>
 
-                <h1 className="mt-4 text-3xl sm:text-4xl font-extrabold tracking-tight">
+                <h1 className="mt-4 titulo uppercase text-3xl sm:text-4xl font-extrabold tracking-tight">
                   Gestión de Usuarios
                 </h1>
                 <p className="mt-2 text-white/55 max-w-2xl">
@@ -1031,23 +1031,23 @@ export default function UsuariosGet() {
                 {modalMode === 'view'
                   ? getInitials(selectedUser?.nombre)
                   : editId
-                    ? getInitials(formData.nombre)
-                    : '＋'}
+                  ? getInitials(formData.nombre)
+                  : '＋'}
               </div>
               <div>
                 <p className="text-xs font-semibold text-white uppercase tracking-wide">
                   {modalMode === 'view'
                     ? 'Detalle de usuario'
                     : editId
-                      ? 'Edición de usuario'
-                      : 'Alta de usuario'}
+                    ? 'Edición de usuario'
+                    : 'Alta de usuario'}
                 </p>
                 <p className="mt-1 text-lg sm:text-xl font-extrabold text-emerald-500 uppercase tracking-tight">
                   {modalMode === 'view'
                     ? selectedUser?.nombre || 'Usuario'
                     : editId
-                      ? 'Editar Usuario'
-                      : 'Nuevo Usuario'}
+                    ? 'Editar Usuario'
+                    : 'Nuevo Usuario'}
                 </p>
                 <p className="mt-1 text-sm text-white">
                   {modalMode === 'view'

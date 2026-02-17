@@ -70,8 +70,10 @@ const AdminPageCaja = () => {
   return (
     <>
       <NavbarStaff />
-      <section className="relative w-full min-h-screen bg-white">
-        <div className="min-h-screen bg-gradient-to-b from-[#0a0a0f] via-[#12121b] to-[#1a1a2e]">
+
+      {/* Benjamin Orellana - 17-02-2026 - Fondo dual (light claro / dark profundo) para evitar que en light se vea oscuro detrás de Particles. */}
+      <section className="relative w-full min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+        <div className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-slate-100 dark:from-[#0a0a0f] dark:via-[#12121b] dark:to-[#1a1a2e]">
           <ParticlesBackground />
           <ButtonBack />
 
@@ -81,17 +83,18 @@ const AdminPageCaja = () => {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-4xl titulo uppercase font-bold text-white mb-3 drop-shadow-md"
+              className="text-4xl titulo uppercase font-bold text-slate-900 dark:text-white mb-3 drop-shadow-md"
             >
               Módulo de Caja
             </motion.h1>
 
             {/* Benjamin Orellana - 25/01/2026 - Copy específico para el panel Caja, separado del módulo Ventas. */}
+            {/* Benjamin Orellana - 17-02-2026 - Se agrega contraste para light/dark manteniendo el tono ámbar. */}
             <motion.p
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, delay: 0.08 }}
-              className="text-sm text-slate-200/80"
+              className="text-sm text-amber-700/80 dark:text-slate-200/80"
             >
               Accesos rápidos a arqueo, cajas abiertas y resúmenes.
             </motion.p>
@@ -110,10 +113,11 @@ const AdminPageCaja = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5, delay: index * 0.08 }}
                   className={[
-                    'relative bg-white shadow-lg border rounded-2xl flex flex-col justify-center items-center h-36 gap-2 font-semibold text-base lg:text-lg text-gray-800 transition-all duration-300',
+                    // Benjamin Orellana - 17-02-2026 - Variantes dark: manteniendo bg blanco en light y glass/contraste en dark sin cambiar el diseño del card.
+                    'relative bg-white dark:bg-white/10 dark:backdrop-blur-xl shadow-lg border rounded-2xl flex flex-col justify-center items-center h-36 gap-2 font-semibold text-base lg:text-lg text-gray-800 dark:text-white transition-all duration-300',
                     isDisabled
-                      ? 'opacity-55 cursor-not-allowed border-white/20'
-                      : 'cursor-pointer border-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.12)] hover:border-amber-400 hover:scale-[1.04]'
+                      ? 'opacity-55 cursor-not-allowed border-black/10 dark:border-white/10'
+                      : 'cursor-pointer border-black/10 dark:border-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.12)] hover:border-amber-400 hover:scale-[1.04]'
                   ].join(' ')}
                   title={isDisabled ? 'Acceso restringido' : desc}
                   aria-disabled={isDisabled}
@@ -121,7 +125,9 @@ const AdminPageCaja = () => {
                   <span
                     className={[
                       'text-3xl',
-                      isDisabled ? 'text-gray-400' : 'text-amber-500'
+                      isDisabled
+                        ? 'text-gray-400 dark:text-white/35'
+                        : 'text-amber-500 dark:text-amber-300'
                     ].join(' ')}
                   >
                     {icon}
@@ -132,7 +138,8 @@ const AdminPageCaja = () => {
                   </span>
 
                   {isDisabled && (
-                    <div className="absolute top-3 right-3 inline-flex items-center gap-2 rounded-full bg-black/10 px-3 py-1 text-xs font-bold text-gray-700">
+                    // Benjamin Orellana - 17-02-2026 - Chip de bloqueado legible en dark sin alterar su apariencia en light.
+                    <div className="absolute top-3 right-3 inline-flex items-center gap-2 rounded-full bg-black/10 dark:bg-white/10 px-3 py-1 text-xs font-bold text-gray-700 dark:text-white/75">
                       <FaLock />
                       Bloqueado
                     </div>
