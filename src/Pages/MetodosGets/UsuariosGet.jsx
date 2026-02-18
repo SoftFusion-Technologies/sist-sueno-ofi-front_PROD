@@ -49,18 +49,19 @@ function roleLabel(rol) {
   return map[rol] ?? rol ?? '-';
 }
 
+// Benjamin Orellana - 17-02-2026 - Badges de rol: se agrega equivalencia light/dark para mantener contraste sin cambiar el layout ni la UX.
 function roleBadgeClasses(rol) {
   switch (rol) {
     case 'socio':
-      return 'bg-indigo-500/15 text-indigo-200 ring-1 ring-indigo-400/25';
+      return 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-200 ring-1 ring-indigo-400/25';
     case 'administrativo':
-      return 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/25';
+      return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 ring-1 ring-emerald-400/25';
     case 'vendedor':
-      return 'bg-amber-500/15 text-amber-200 ring-1 ring-amber-400/25';
+      return 'bg-amber-500/15 text-amber-700 dark:text-amber-200 ring-1 ring-amber-400/25';
     case 'contador':
-      return 'bg-fuchsia-500/15 text-fuchsia-200 ring-1 ring-fuchsia-400/25';
+      return 'bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-200 ring-1 ring-fuchsia-400/25';
     default:
-      return 'bg-white/10 text-white/80 ring-1 ring-white/15';
+      return 'bg-slate-100 text-slate-700 ring-1 ring-black/10 dark:bg-white/10 dark:text-white/80 dark:ring-white/15';
   }
 }
 
@@ -77,22 +78,37 @@ function Pill({ children, className }) {
   );
 }
 
+// Benjamin Orellana - 17-02-2026 - StatCard: se habilita fondo claro en light y glass oscuro en dark siguiendo patrón aprobado.
 function StatCard({ icon: Icon, label, value, hint }) {
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-white/[0.06] backdrop-blur-xl ring-1 ring-white/10 shadow-[0_18px_55px_rgba(0,0,0,0.35)]">
-      <div className="absolute -top-16 -right-16 h-44 w-44 rounded-full bg-indigo-500/20 blur-2xl" />
-      <div className="absolute -bottom-20 -left-20 h-52 w-52 rounded-full bg-emerald-500/15 blur-2xl" />
+    <div
+      className={cn(
+        'relative overflow-hidden rounded-3xl backdrop-blur-xl ring-1',
+        'bg-white/90 ring-black/10 shadow-[0_18px_55px_rgba(15,23,42,0.12)]',
+        'dark:bg-white/[0.06] dark:ring-white/10 dark:shadow-[0_18px_55px_rgba(0,0,0,0.35)]'
+      )}
+    >
+      <div className="absolute -top-16 -right-16 h-44 w-44 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 blur-2xl" />
+      <div className="absolute -bottom-20 -left-20 h-52 w-52 rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 blur-2xl" />
+
       <div className="relative p-5">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs font-semibold text-white/55 tracking-wide uppercase">
+            <p className="text-xs font-semibold text-slate-600 dark:text-white/55 tracking-wide uppercase">
               {label}
             </p>
-            <p className="mt-2 text-2xl font-extrabold text-white">{value}</p>
-            {hint ? <p className="mt-1 text-sm text-white/55">{hint}</p> : null}
+            <p className="mt-2 text-2xl font-extrabold text-slate-900 dark:text-white">
+              {value}
+            </p>
+            {hint ? (
+              <p className="mt-1 text-sm text-slate-600 dark:text-white/55">
+                {hint}
+              </p>
+            ) : null}
           </div>
-          <div className="rounded-2xl bg-white/10 ring-1 ring-white/10 p-3">
-            <Icon className="text-white/90" />
+
+          <div className="rounded-2xl bg-black/5 ring-1 ring-black/10 p-3 dark:bg-white/10 dark:ring-white/10">
+            <Icon className="text-slate-700 dark:text-white/90" />
           </div>
         </div>
       </div>
@@ -109,14 +125,21 @@ function IconButton({
 }) {
   const base =
     'inline-flex items-center justify-center rounded-2xl px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50';
+
+  // Benjamin Orellana - 17-02-2026 - Botones: estilos duales para que en light no queden “blancos sobre blanco” y en dark mantengan el glass.
   const styles = {
-    ghost:
-      'bg-white/0 hover:bg-white/10 text-white/85 ring-1 ring-white/10 hover:ring-white/20',
-    danger:
-      'bg-rose-500/10 hover:bg-rose-500/20 text-rose-200 ring-1 ring-rose-400/25 hover:ring-rose-400/35',
+    ghost: cn(
+      'bg-white/70 hover:bg-white/90 text-slate-700 ring-1 ring-black/10 hover:ring-black/15',
+      'dark:bg-white/0 dark:hover:bg-white/10 dark:text-white/85 dark:ring-white/10 dark:hover:ring-white/20'
+    ),
+    danger: cn(
+      'bg-rose-500/10 hover:bg-rose-500/15 text-rose-700 ring-1 ring-rose-500/25 hover:ring-rose-500/35',
+      'dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-200 dark:ring-rose-400/25 dark:hover:ring-rose-400/35'
+    ),
     primary:
       'bg-indigo-500/90 hover:bg-indigo-500 text-white ring-1 ring-indigo-400/40 shadow-[0_12px_35px_rgba(79,70,229,0.35)]'
   };
+
   return (
     <button
       type="button"
@@ -129,25 +152,35 @@ function IconButton({
   );
 }
 
+// Benjamin Orellana - 17-02-2026 - Labels: contraste en light/dark manteniendo jerarquía y legibilidad (Windows 7).
 function FieldLabel({ icon: Icon, label, hint }) {
   return (
     <div className="mb-2 flex items-center justify-between">
-      <div className="flex items-center gap-2 text-sm font-semibold text-white/75">
-        {Icon ? <Icon className="text-white/55" /> : null}
+      <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-white/75">
+        {Icon ? <Icon className="text-slate-500 dark:text-white/55" /> : null}
         <span>{label}</span>
       </div>
-      {hint ? <span className="text-xs text-white/45">{hint}</span> : null}
+      {hint ? (
+        <span className="text-xs text-slate-500 dark:text-white/45">
+          {hint}
+        </span>
+      ) : null}
     </div>
   );
 }
 
+// Benjamin Orellana - 17-02-2026 - Toggle: se ajusta fondo/bordes/textos para ser legible en light sin perder estética en dark.
 function Toggle({ checked, onChange, label, description }) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-2xl bg-white/5 ring-1 ring-white/10 p-4">
+    <div className="flex items-start justify-between gap-4 rounded-2xl bg-white/90 ring-1 ring-black/10 p-4 dark:bg-white/5 dark:ring-white/10">
       <div>
-        <p className="text-sm font-semibold text-white/80">{label}</p>
+        <p className="text-sm font-semibold text-slate-800 dark:text-white/80">
+          {label}
+        </p>
         {description ? (
-          <p className="mt-1 text-xs text-white/50">{description}</p>
+          <p className="mt-1 text-xs text-slate-600 dark:text-white/50">
+            {description}
+          </p>
         ) : null}
       </div>
 
@@ -157,8 +190,8 @@ function Toggle({ checked, onChange, label, description }) {
         className={cn(
           'relative h-9 w-16 rounded-full transition ring-1',
           checked
-            ? 'bg-emerald-500/30 ring-emerald-400/35'
-            : 'bg-white/10 ring-white/15'
+            ? 'bg-emerald-500/20 ring-emerald-500/35 dark:bg-emerald-500/30 dark:ring-emerald-400/35'
+            : 'bg-white ring-black/10 dark:bg-white/10 dark:ring-white/15'
         )}
         aria-pressed={checked}
       >
@@ -166,15 +199,14 @@ function Toggle({ checked, onChange, label, description }) {
           className={cn(
             'absolute top-1 left-1 h-7 w-7 rounded-full transition shadow',
             checked
-              ? 'translate-x-7 bg-emerald-300'
-              : 'translate-x-0 bg-white/80'
+              ? 'translate-x-7 bg-emerald-600 dark:bg-emerald-300'
+              : 'translate-x-0 bg-slate-900/10 dark:bg-white/80'
           )}
         />
       </button>
     </div>
   );
 }
-
 export default function UsuariosGet() {
   const { userLevel } = useAuth();
 
@@ -488,22 +520,26 @@ export default function UsuariosGet() {
     }
   };
 
-  // Modal animaciones (react-modal)
+  // Benjamin Orellana - 2026-02-17 - Modal: overlay y panel con soporte light/dark, manteniendo animaciones.
   const modalOverlayClass =
-    'fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md px-3';
+    'fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-3';
+
   const modalClass =
     'w-full max-w-3xl outline-none rounded-[28px] overflow-hidden ' +
-    'bg-gradient-to-b from-[#0b1220]/92 via-[#0a1020]/92 to-[#070c18]/92 ' +
-    'ring-1 ring-white/10 shadow-[0_30px_120px_rgba(0,0,0,0.65)] ' +
-    'transform transition will-change-transform';
-
+    'bg-white/95 text-slate-900 ' +
+    'ring-1 ring-black/10 shadow-[0_30px_120px_rgba(15,23,42,0.18)] ' +
+    'transform transition will-change-transform ' +
+    'dark:bg-gradient-to-b dark:from-[#0b1220]/92 dark:via-[#0a1020]/92 dark:to-[#070c18]/92 ' +
+    'dark:text-white dark:ring-white/10 dark:shadow-[0_30px_120px_rgba(0,0,0,0.65)]';
   return (
-    <div className="min-h-screen relative text-white font-sans overflow-x-hidden">
+    // Benjamin Orellana - 17-02-2026 - Root: se elimina hardcode de text-white y se aplica patrón aprobado para light/dark.
+    <div className="min-h-screen relative font-sans overflow-x-hidden text-slate-900 dark:text-white">
       <ParticlesBackground />
 
       {/* Fondo premium */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0b1220] via-[#070a14] to-black" />
-      <div className="absolute inset-0 opacity-70 bg-[radial-gradient(1200px_600px_at_20%_10%,rgba(99,102,241,0.22),transparent_55%),radial-gradient(900px_500px_at_85%_25%,rgba(16,185,129,0.14),transparent_55%),radial-gradient(900px_600px_at_50%_100%,rgba(236,72,153,0.10),transparent_55%)]" />
+      {/* Benjamin Orellana - 17-02-2026 - Fondo claro en light (para que no se vea oscuro detrás del Particles) y se mantiene el premium oscuro en dark. */}
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-50 via-white to-slate-100 dark:bg-gradient-to-br dark:from-[#0b1220] dark:via-[#070a14] dark:to-black" />
+      <div className="absolute inset-0 opacity-70 bg-[radial-gradient(1200px_600px_at_20%_10%,rgba(99,102,241,0.10),transparent_55%),radial-gradient(900px_500px_at_85%_25%,rgba(16,185,129,0.08),transparent_55%),radial-gradient(900px_600px_at_50%_100%,rgba(236,72,153,0.06),transparent_55%)] dark:opacity-70 dark:bg-[radial-gradient(1200px_600px_at_20%_10%,rgba(99,102,241,0.22),transparent_55%),radial-gradient(900px_500px_at_85%_25%,rgba(16,185,129,0.14),transparent_55%),radial-gradient(900px_600px_at_50%_100%,rgba(236,72,153,0.10),transparent_55%)]" />
 
       <div className="relative z-10">
         <ButtonBack />
@@ -513,17 +549,18 @@ export default function UsuariosGet() {
           <div className="flex flex-col gap-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/5 ring-1 ring-white/10 px-4 py-2">
-                  <FaUserCog className="text-white/70" />
-                  <span className="text-xs font-semibold text-white/70">
+                {/* Benjamin Orellana - 17-02-2026 - Chip superior con equivalencia light/dark (glass). */}
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/90 ring-1 ring-black/10 px-4 py-2 dark:bg-white/5 dark:ring-white/10">
+                  <FaUserCog className="text-slate-600 dark:text-white/70" />
+                  <span className="text-xs font-semibold text-slate-600 dark:text-white/70">
                     Administración · Seguridad · Roles
                   </span>
                 </div>
 
-                <h1 className="mt-4 titulo uppercase text-3xl sm:text-4xl font-extrabold tracking-tight">
+                <h1 className="mt-4 titulo uppercase text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                   Gestión de Usuarios
                 </h1>
-                <p className="mt-2 text-white/55 max-w-2xl">
+                <p className="mt-2 text-slate-600 dark:text-white/55 max-w-2xl">
                   Listado unificado, filtros inteligentes y un panel de detalle
                   moderno. Edición y borrado controlados por rol.
                 </p>
@@ -582,18 +619,19 @@ export default function UsuariosGet() {
             </div>
 
             {/* Filtros */}
-            <div className="rounded-3xl bg-white/[0.06] backdrop-blur-xl ring-1 ring-white/10 shadow-[0_18px_55px_rgba(0,0,0,0.35)] overflow-hidden">
+            {/* Benjamin Orellana - 17-02-2026 - Card de filtros: light claro + dark glass según patrón aprobado. */}
+            <div className="rounded-3xl bg-white/90 backdrop-blur-xl ring-1 ring-black/10 shadow-[0_18px_55px_rgba(15,23,42,0.12)] overflow-hidden dark:bg-white/[0.06] dark:ring-white/10 dark:shadow-[0_18px_55px_rgba(0,0,0,0.35)]">
               <div className="p-5 sm:p-6">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <div className="rounded-2xl bg-white/10 ring-1 ring-white/10 p-3">
-                      <FaFilter className="text-white/80" />
+                    <div className="rounded-2xl bg-black/5 ring-1 ring-black/10 p-3 dark:bg-white/10 dark:ring-white/10">
+                      <FaFilter className="text-slate-700 dark:text-white/80" />
                     </div>
                     <div>
-                      <p className="text-sm font-extrabold tracking-tight">
+                      <p className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
                         Filtros
                       </p>
-                      <p className="text-xs text-white/50">
+                      <p className="text-xs text-slate-600 dark:text-white/50">
                         Encontrá usuarios por nombre, email, rol o local.
                       </p>
                     </div>
@@ -602,10 +640,10 @@ export default function UsuariosGet() {
                   <button
                     type="button"
                     onClick={clearFilters}
-                    className="text-xs font-semibold text-white/70 hover:text-white transition"
+                    className="text-xs font-semibold text-slate-700 hover:text-slate-900 transition dark:text-white/70 dark:hover:text-white"
                   >
                     Resetear
-                    <FaChevronRight className="inline ml-2 text-white/40" />
+                    <FaChevronRight className="inline ml-2 text-slate-500 dark:text-white/40" />
                   </button>
                 </div>
 
@@ -618,20 +656,21 @@ export default function UsuariosGet() {
                       hint="Nombre / email / rol"
                     />
                     <div className="relative">
-                      <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-white/35" />
+                      <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-white/35" />
                       <input
                         ref={searchInputRef}
                         type="text"
                         placeholder="Ej: Juan, juan@, administrativo…"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full rounded-2xl bg-white/5 ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500/40 px-11 py-3 text-sm text-white placeholder:text-white/30 outline-none"
+                        // Benjamin Orellana - 17-02-2026 - Input buscar: patrón aprobado (bg/border/text/placeholder) + focus ring.
+                        className="w-full rounded-2xl bg-white/90 dark:bg-white/10 ring-1 ring-black/10 dark:ring-white/10 focus:ring-2 focus:ring-indigo-500/40 px-11 py-3 text-sm text-slate-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-white/40 outline-none"
                       />
                       {search ? (
                         <button
                           type="button"
                           onClick={() => setSearch('')}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl bg-white/10 ring-1 ring-white/10 px-3 py-2 text-xs font-semibold text-white/70 hover:bg-white/15"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl bg-white/90 ring-1 ring-black/10 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-white dark:bg-white/10 dark:ring-white/10 dark:text-white/70 dark:hover:bg-white/15"
                           title="Limpiar búsqueda"
                         >
                           <FaTimes />
@@ -646,7 +685,8 @@ export default function UsuariosGet() {
                     <select
                       value={rolFiltro}
                       onChange={(e) => setRolFiltro(e.target.value)}
-                      className="w-full rounded-2xl bg-white/5 ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500/40 px-4 py-3 text-sm text-black outline-none"
+                      // Benjamin Orellana - 17-02-2026 - Select rol: se corrige text-black hardcodeado y se aplica patrón aprobado.
+                      className="w-full rounded-2xl bg-white/90 dark:bg-white/10 ring-1 ring-black/10 dark:ring-white/10 focus:ring-2 focus:ring-indigo-500/40 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none"
                     >
                       <option value="todos">Todos</option>
                       <option value="socio">Socio</option>
@@ -662,7 +702,8 @@ export default function UsuariosGet() {
                     <select
                       value={localFiltro}
                       onChange={(e) => setLocalFiltro(e.target.value)}
-                      className="w-full rounded-2xl bg-white/5 ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500/40 px-4 py-3 text-sm text-black outline-none"
+                      // Benjamin Orellana - 17-02-2026 - Select local: se corrige text-black hardcodeado y se aplica patrón aprobado.
+                      className="w-full rounded-2xl bg-white/90 dark:bg-white/10 ring-1 ring-black/10 dark:ring-white/10 focus:ring-2 focus:ring-indigo-500/40 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none"
                     >
                       <option value="todos">Todos</option>
                       {(locales || []).map((local) => (
@@ -683,13 +724,14 @@ export default function UsuariosGet() {
                     </Pill>
                   )}
                   {localFiltro !== 'todos' && (
-                    <Pill className="bg-sky-500/15 text-sky-200 ring-1 ring-sky-400/25">
+                    // Benjamin Orellana - 17-02-2026 - Chip local: variante light/dark para mantener legible el texto.
+                    <Pill className="bg-sky-500/15 text-sky-700 dark:text-sky-200 ring-1 ring-sky-400/25">
                       <FaBuilding className="text-[11px] opacity-70" />
                       {localNameById.get(parseInt(localFiltro)) || 'Local'}
                     </Pill>
                   )}
                   {search && (
-                    <Pill className="bg-white/10 text-white/80 ring-1 ring-white/15">
+                    <Pill className="bg-slate-100 text-slate-700 ring-1 ring-black/10 dark:bg-white/10 dark:text-white/80 dark:ring-white/15">
                       <FaSearch className="text-[11px] opacity-70" />“
                       {search.trim()}”
                     </Pill>
@@ -701,7 +743,7 @@ export default function UsuariosGet() {
                     <button
                       type="button"
                       onClick={clearFilters}
-                      className="ml-auto text-xs font-semibold text-white/70 hover:text-white transition"
+                      className="ml-auto text-xs font-semibold text-slate-700 hover:text-slate-900 transition dark:text-white/70 dark:hover:text-white"
                     >
                       Limpiar todo
                     </button>
@@ -711,18 +753,19 @@ export default function UsuariosGet() {
             </div>
 
             {/* Listado */}
-            <div className="rounded-3xl bg-white/[0.06] backdrop-blur-xl ring-1 ring-white/10 shadow-[0_18px_55px_rgba(0,0,0,0.35)] overflow-hidden">
-              <div className="px-5 sm:px-6 py-4 border-b border-white/10 flex items-center justify-between">
+            {/* Benjamin Orellana - 17-02-2026 - Listado: se agrega variante light/dark (card + table + mobile) para contraste sin cambiar lógica/estructura. */}
+            <div className="rounded-3xl bg-white/90 backdrop-blur-xl ring-1 ring-black/10 shadow-[0_18px_55px_rgba(15,23,42,0.12)] overflow-hidden dark:bg-white/[0.06] dark:ring-white/10 dark:shadow-[0_18px_55px_rgba(0,0,0,0.35)]">
+              <div className="px-5 sm:px-6 py-4 border-b border-black/10 flex items-center justify-between dark:border-white/10">
                 <div>
-                  <p className="text-sm font-extrabold tracking-tight">
+                  <p className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
                     Usuarios
                   </p>
-                  <p className="text-xs text-white/50">
+                  <p className="text-xs text-slate-600 dark:text-white/50">
                     Click en un usuario para ver el detalle.
                   </p>
                 </div>
 
-                <div className="text-xs text-white/55">
+                <div className="text-xs text-slate-600 dark:text-white/55">
                   {loading ? 'Cargando…' : `${filtered.length} resultados`}
                 </div>
               </div>
@@ -731,7 +774,8 @@ export default function UsuariosGet() {
               <div className="hidden md:block">
                 <div className="overflow-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-white/5 text-white/70">
+                    {/* Benjamin Orellana - 17-02-2026 - Thead: patrón de tabla aprobado (light claro + dark profundo). */}
+                    <thead className="bg-white/95 text-slate-700 border-b border-black/10 dark:bg-slate-950/80 dark:text-white/75 dark:border-white/10">
                       <tr>
                         <th className="px-6 py-4 text-left font-semibold">
                           Usuario
@@ -758,42 +802,42 @@ export default function UsuariosGet() {
                         Array.from({ length: 6 }).map((_, i) => (
                           <tr
                             key={i}
-                            className="border-t border-white/10 animate-pulse"
+                            className="border-t border-black/10 animate-pulse dark:border-white/10"
                           >
                             <td className="px-6 py-4">
-                              <div className="h-4 w-56 rounded bg-white/10" />
-                              <div className="mt-2 h-3 w-40 rounded bg-white/10" />
+                              <div className="h-4 w-56 rounded bg-black/10 dark:bg-white/10" />
+                              <div className="mt-2 h-3 w-40 rounded bg-black/10 dark:bg-white/10" />
                             </td>
                             <td className="px-6 py-4">
-                              <div className="h-6 w-28 rounded-full bg-white/10" />
+                              <div className="h-6 w-28 rounded-full bg-black/10 dark:bg-white/10" />
                             </td>
                             <td className="px-6 py-4">
-                              <div className="h-4 w-32 rounded bg-white/10" />
+                              <div className="h-4 w-32 rounded bg-black/10 dark:bg-white/10" />
                             </td>
                             <td className="px-6 py-4 text-center">
-                              <div className="mx-auto h-6 w-20 rounded-full bg-white/10" />
+                              <div className="mx-auto h-6 w-20 rounded-full bg-black/10 dark:bg-white/10" />
                             </td>
                             {canManageUsers && (
                               <td className="px-6 py-4 text-right">
-                                <div className="ml-auto h-9 w-28 rounded-2xl bg-white/10" />
+                                <div className="ml-auto h-9 w-28 rounded-2xl bg-black/10 dark:bg-white/10" />
                               </td>
                             )}
                           </tr>
                         ))
                       ) : filtered.length === 0 ? (
-                        <tr className="border-t border-white/10">
+                        <tr className="border-t border-black/10 dark:border-white/10">
                           <td
                             colSpan={canManageUsers ? 5 : 4}
                             className="px-6 py-10 text-center"
                           >
                             <div className="inline-flex flex-col items-center gap-2">
-                              <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-4">
-                                <FaSearch className="text-white/50 text-xl" />
+                              <div className="rounded-3xl bg-black/5 ring-1 ring-black/10 p-4 dark:bg-white/5 dark:ring-white/10">
+                                <FaSearch className="text-slate-500 dark:text-white/50 text-xl" />
                               </div>
-                              <p className="font-semibold text-white/80">
+                              <p className="font-semibold text-slate-900 dark:text-white/80">
                                 Sin resultados
                               </p>
-                              <p className="text-xs text-white/50">
+                              <p className="text-xs text-slate-600 dark:text-white/50">
                                 Probá con otros filtros o limpiá la búsqueda.
                               </p>
                             </div>
@@ -806,19 +850,20 @@ export default function UsuariosGet() {
                           return (
                             <tr
                               key={u.id}
-                              className="border-t border-white/10 hover:bg-white/5 transition cursor-pointer"
+                              className="border-t border-black/10 hover:bg-gray-50/70 transition cursor-pointer dark:border-white/10 dark:hover:bg-white/5"
                               onClick={() => openView(u)}
                             >
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
-                                  <div className="h-11 w-11 rounded-2xl bg-white/10 ring-1 ring-white/10 flex items-center justify-center font-extrabold">
+                                  <div className="h-11 w-11 rounded-2xl bg-black/5 ring-1 ring-black/10 flex items-center justify-center font-extrabold text-slate-900 dark:bg-white/10 dark:ring-white/10 dark:text-white">
                                     {getInitials(u.nombre)}
                                   </div>
                                   <div>
-                                    <p className="font-semibold text-white/90">
+                                    {/* Benjamin Orellana - 17-02-2026 - Textos críticos: asegurar contraste en light/dark. */}
+                                    <p className="font-semibold text-slate-900 dark:text-slate-100">
                                       {u.nombre}
                                     </p>
-                                    <p className="text-xs text-white/55">
+                                    <p className="text-xs text-slate-600 dark:text-white/55">
                                       {u.email}
                                     </p>
                                   </div>
@@ -832,9 +877,9 @@ export default function UsuariosGet() {
                                 </Pill>
                               </td>
 
-                              <td className="px-6 py-4 text-white/75">
+                              <td className="px-6 py-4 text-slate-700 dark:text-white/75">
                                 <div className="inline-flex items-center gap-2">
-                                  <FaBuilding className="text-white/35" />
+                                  <FaBuilding className="text-slate-400 dark:text-white/35" />
                                   <span>{localName}</span>
                                 </div>
                               </td>
@@ -842,13 +887,13 @@ export default function UsuariosGet() {
                               <td className="px-6 py-4">
                                 <div className="flex justify-center">
                                   {u.es_reemplazante ? (
-                                    <Pill className="bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/25">
-                                      <span className="h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
+                                    <Pill className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 ring-1 ring-emerald-400/25">
+                                      <span className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-300 animate-pulse" />
                                       Sí
                                     </Pill>
                                   ) : (
-                                    <Pill className="bg-rose-500/15 text-rose-200 ring-1 ring-rose-400/25">
-                                      <span className="h-2 w-2 rounded-full bg-rose-300" />
+                                    <Pill className="bg-rose-500/15 text-rose-700 dark:text-rose-200 ring-1 ring-rose-400/25">
+                                      <span className="h-2 w-2 rounded-full bg-rose-500 dark:bg-rose-300" />
                                       No
                                     </Pill>
                                   )}
@@ -861,10 +906,12 @@ export default function UsuariosGet() {
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <div className="flex justify-end gap-2">
+                                    {/* Benjamin Orellana - 17-02-2026 - Acciones: mantener botón existente y sumar equivalencia dark (no afecta IconButton global). */}
                                     <IconButton
                                       title="Editar"
                                       onClick={() => openEdit(u)}
                                       variant="ghost"
+                                      className="dark:border-white/15 dark:bg-white/10 dark:text-white/80 dark:hover:bg-white/15"
                                     >
                                       <FaEdit />
                                     </IconButton>
@@ -893,34 +940,34 @@ export default function UsuariosGet() {
                   Array.from({ length: 6 }).map((_, i) => (
                     <div
                       key={i}
-                      className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-4 animate-pulse"
+                      className="rounded-3xl bg-white/90 ring-1 ring-black/10 p-4 animate-pulse dark:bg-white/5 dark:ring-white/10"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="h-11 w-11 rounded-2xl bg-white/10" />
+                        <div className="h-11 w-11 rounded-2xl bg-black/10 dark:bg-white/10" />
                         <div className="flex-1">
-                          <div className="h-4 w-40 rounded bg-white/10" />
-                          <div className="mt-2 h-3 w-28 rounded bg-white/10" />
+                          <div className="h-4 w-40 rounded bg-black/10 dark:bg-white/10" />
+                          <div className="mt-2 h-3 w-28 rounded bg-black/10 dark:bg-white/10" />
                         </div>
                       </div>
                       <div className="mt-4 flex gap-2">
-                        <div className="h-6 w-20 rounded-full bg-white/10" />
-                        <div className="h-6 w-24 rounded-full bg-white/10" />
+                        <div className="h-6 w-20 rounded-full bg-black/10 dark:bg-white/10" />
+                        <div className="h-6 w-24 rounded-full bg-black/10 dark:bg-white/10" />
                       </div>
                     </div>
                   ))
                 ) : filtered.length === 0 ? (
-                  <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-8 text-center">
-                    <FaSearch className="mx-auto text-white/50 text-2xl" />
-                    <p className="mt-3 font-semibold text-white/85">
+                  <div className="rounded-3xl bg-white/90 ring-1 ring-black/10 p-8 text-center dark:bg-white/5 dark:ring-white/10">
+                    <FaSearch className="mx-auto text-slate-500 dark:text-white/50 text-2xl" />
+                    <p className="mt-3 font-semibold text-slate-900 dark:text-white/85">
                       Sin resultados
                     </p>
-                    <p className="mt-1 text-xs text-white/50">
+                    <p className="mt-1 text-xs text-slate-600 dark:text-white/50">
                       Ajustá filtros o limpiá la búsqueda.
                     </p>
                     <button
                       type="button"
                       onClick={clearFilters}
-                      className="mt-4 inline-flex items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10 px-4 py-3 text-xs font-semibold text-white/80"
+                      className="mt-4 inline-flex items-center justify-center rounded-2xl bg-white/90 ring-1 ring-black/10 px-4 py-3 text-xs font-semibold text-slate-700 hover:bg-white dark:bg-white/10 dark:ring-white/10 dark:text-white/80 dark:hover:bg-white/15"
                     >
                       Limpiar filtros
                     </button>
@@ -933,34 +980,39 @@ export default function UsuariosGet() {
                         key={u.id}
                         type="button"
                         onClick={() => openView(u)}
-                        className="w-full text-left rounded-3xl bg-white/5 ring-1 ring-white/10 p-4 hover:bg-white/8 transition"
+                        className="w-full text-left rounded-3xl bg-white/90 ring-1 ring-black/10 p-4 hover:bg-white transition dark:bg-white/5 dark:ring-white/10 dark:hover:bg-white/8"
                       >
                         <div className="flex items-start gap-3">
-                          <div className="h-12 w-12 rounded-2xl bg-white/10 ring-1 ring-white/10 flex items-center justify-center font-extrabold">
+                          <div className="h-12 w-12 rounded-2xl bg-black/5 ring-1 ring-black/10 flex items-center justify-center font-extrabold text-slate-900 dark:bg-white/10 dark:ring-white/10 dark:text-white">
                             {getInitials(u.nombre)}
                           </div>
                           <div className="flex-1">
-                            <p className="font-semibold text-white/90">
+                            <p className="font-semibold text-slate-900 dark:text-white/90">
                               {u.nombre}
                             </p>
-                            <p className="text-xs text-white/55">{u.email}</p>
+                            <p className="text-xs text-slate-600 dark:text-white/55">
+                              {u.email}
+                            </p>
                             <div className="mt-3 flex flex-wrap gap-2">
                               <Pill className={roleBadgeClasses(u.rol)}>
                                 <FaShieldAlt className="text-[11px] opacity-70" />
                                 {roleLabel(u.rol)}
                               </Pill>
-                              <Pill className="bg-sky-500/15 text-sky-200 ring-1 ring-sky-400/25">
+
+                              {/* Benjamin Orellana - 17-02-2026 - Chip local mobile: variante light/dark legible. */}
+                              <Pill className="bg-sky-500/15 text-sky-700 dark:text-sky-200 ring-1 ring-sky-400/25">
                                 <FaBuilding className="text-[11px] opacity-70" />
                                 {localName}
                               </Pill>
+
                               {u.es_reemplazante ? (
-                                <Pill className="bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/25">
-                                  <span className="h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
+                                <Pill className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 ring-1 ring-emerald-400/25">
+                                  <span className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-300 animate-pulse" />
                                   Reemplazante
                                 </Pill>
                               ) : (
-                                <Pill className="bg-rose-500/15 text-rose-200 ring-1 ring-rose-400/25">
-                                  <span className="h-2 w-2 rounded-full bg-rose-300" />
+                                <Pill className="bg-rose-500/15 text-rose-700 dark:text-rose-200 ring-1 ring-rose-400/25">
+                                  <span className="h-2 w-2 rounded-full bg-rose-500 dark:bg-rose-300" />
                                   No reemplaza
                                 </Pill>
                               )}
@@ -975,7 +1027,7 @@ export default function UsuariosGet() {
                                   title="Editar"
                                   onClick={() => openEdit(u)}
                                   variant="ghost"
-                                  className="flex-1 justify-center"
+                                  className="flex-1 justify-center dark:border-white/15 dark:bg-white/10 dark:text-white/80 dark:hover:bg-white/15"
                                 >
                                   <FaEdit className="mr-2" />
                                   Editar
@@ -1013,43 +1065,48 @@ export default function UsuariosGet() {
       >
         {/* Inline keyframes sin config externa */}
         <style>{`
-          .ReactModal__Overlay { opacity: 0; transition: opacity 180ms ease; }
-          .ReactModal__Overlay--after-open { opacity: 1; }
-          .ReactModal__Overlay--before-close { opacity: 0; }
+    .ReactModal__Overlay { opacity: 0; transition: opacity 180ms ease; }
+    .ReactModal__Overlay--after-open { opacity: 1; }
+    .ReactModal__Overlay--before-close { opacity: 0; }
 
-          .ReactModal__Content { transform: translateY(14px) scale(0.985); opacity: 0; transition: transform 180ms ease, opacity 180ms ease; }
-          .ReactModal__Content--after-open { transform: translateY(0) scale(1); opacity: 1; }
-          .ReactModal__Content--before-close { transform: translateY(10px) scale(0.99); opacity: 0; }
-        `}</style>
+    .ReactModal__Content { transform: translateY(14px) scale(0.985); opacity: 0; transition: transform 180ms ease, opacity 180ms ease; }
+    .ReactModal__Content--after-open { transform: translateY(0) scale(1); opacity: 1; }
+    .ReactModal__Content--before-close { transform: translateY(10px) scale(0.99); opacity: 0; }
+  `}</style>
 
         {/* Header Modal */}
         <div className="relative">
-          <div className="absolute inset-0 bg-[radial-gradient(900px_420px_at_20%_0%,rgba(99,102,241,0.25),transparent_60%),radial-gradient(900px_420px_at_85%_0%,rgba(16,185,129,0.16),transparent_60%)]" />
-          <div className="relative px-5 sm:px-7 py-5 border-b border-white/10 flex items-start justify-between gap-4">
+          {/* Benjamin Orellana - 2026-02-17 - Fondo del header: decorativo, no interactivo. */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_420px_at_20%_0%,rgba(99,102,241,0.18),transparent_60%),radial-gradient(900px_420px_at_85%_0%,rgba(16,185,129,0.12),transparent_60%)] dark:bg-[radial-gradient(900px_420px_at_20%_0%,rgba(99,102,241,0.25),transparent_60%),radial-gradient(900px_420px_at_85%_0%,rgba(16,185,129,0.16),transparent_60%)]" />
+
+          <div className="relative px-5 sm:px-7 py-5 border-b border-black/10 flex items-start justify-between gap-4 dark:border-white/10">
             <div className="flex items-start gap-3">
-              <div className="h-12 w-12 rounded-2xl bg-white/10 ring-1 ring-white/10 flex items-center justify-center font-extrabold">
+              <div className="h-12 w-12 rounded-2xl bg-black/5 ring-1 ring-black/10 flex items-center justify-center font-extrabold text-slate-900 dark:bg-white/10 dark:ring-white/10 dark:text-white">
                 {modalMode === 'view'
                   ? getInitials(selectedUser?.nombre)
                   : editId
-                  ? getInitials(formData.nombre)
-                  : '＋'}
+                    ? getInitials(formData.nombre)
+                    : '＋'}
               </div>
+
               <div>
-                <p className="text-xs font-semibold text-white uppercase tracking-wide">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-white/70">
                   {modalMode === 'view'
                     ? 'Detalle de usuario'
                     : editId
-                    ? 'Edición de usuario'
-                    : 'Alta de usuario'}
+                      ? 'Edición de usuario'
+                      : 'Alta de usuario'}
                 </p>
-                <p className="mt-1 text-lg sm:text-xl font-extrabold text-emerald-500 uppercase tracking-tight">
+
+                <p className="mt-1 text-lg sm:text-xl font-extrabold text-emerald-600 uppercase tracking-tight dark:text-emerald-500">
                   {modalMode === 'view'
                     ? selectedUser?.nombre || 'Usuario'
                     : editId
-                    ? 'Editar Usuario'
-                    : 'Nuevo Usuario'}
+                      ? 'Editar Usuario'
+                      : 'Nuevo Usuario'}
                 </p>
-                <p className="mt-1 text-sm text-white">
+
+                <p className="mt-1 text-sm text-slate-700 dark:text-white">
                   {modalMode === 'view'
                     ? selectedUser?.email
                     : 'Completá los campos y guardá cambios.'}
@@ -1064,10 +1121,12 @@ export default function UsuariosGet() {
                     title="Editar"
                     onClick={() => openEdit(selectedUser)}
                     variant="ghost"
+                    className="bg-black/5 hover:bg-black/10 text-slate-700 ring-1 ring-black/10 hover:ring-black/15 dark:bg-white/0 dark:hover:bg-white/10 dark:text-white/85 dark:ring-white/10 dark:hover:ring-white/20"
                   >
                     <FaEdit className="mr-2" />
                     Editar
                   </IconButton>
+
                   <IconButton
                     title="Eliminar"
                     onClick={() => handleDelete(selectedUser.id)}
@@ -1079,7 +1138,12 @@ export default function UsuariosGet() {
                 </>
               )}
 
-              <IconButton title="Cerrar" onClick={closeModal} variant="ghost">
+              <IconButton
+                title="Cerrar"
+                onClick={closeModal}
+                variant="ghost"
+                className="bg-black/5 hover:bg-black/10 text-slate-700 ring-1 ring-black/10 hover:ring-black/15 dark:bg-white/0 dark:hover:bg-white/10 dark:text-white/85 dark:ring-white/10 dark:hover:ring-white/20"
+              >
                 <FaTimes className="mr-2" />
                 Cerrar
               </IconButton>
@@ -1093,93 +1157,98 @@ export default function UsuariosGet() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Panel principal */}
               <div className="lg:col-span-2 space-y-4">
-                <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-5">
-                  <p className="text-sm font-extrabold tracking-tight text-white">
+                <div className="rounded-3xl bg-black/5 ring-1 ring-black/10 p-5 dark:bg-white/5 dark:ring-white/10">
+                  <p className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
                     Información
                   </p>
 
                   <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-4">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-white/60 uppercase tracking-wide">
-                        <FaIdBadge className="text-white/35" />
+                    <div className="rounded-2xl bg-black/5 ring-1 ring-black/10 p-4 dark:bg-white/5 dark:ring-white/10">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-white/60">
+                        <FaIdBadge className="text-slate-400 dark:text-white/35" />
                         ID
                       </div>
-                      <p className="mt-2 text-sm font-bold text-white/90">
+                      <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white/90">
                         #{selectedUser?.id ?? '-'}
                       </p>
                     </div>
 
-                    <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-4">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-white/60 uppercase tracking-wide">
-                        <FaEnvelope className="text-white/35" />
+                    <div className="rounded-2xl bg-black/5 ring-1 ring-black/10 p-4 dark:bg-white/5 dark:ring-white/10">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-white/60">
+                        <FaEnvelope className="text-slate-400 dark:text-white/35" />
                         Email
                       </div>
-                      <p className="mt-2 text-sm font-bold text-white/90 break-all">
+                      <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white/90 break-all">
                         {selectedUser?.email ?? '-'}
                       </p>
                     </div>
 
-                    <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-4">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-white/60 uppercase tracking-wide">
-                        <FaShieldAlt className="text-white/35" />
+                    <div className="rounded-2xl bg-black/5 ring-1 ring-black/10 p-4 dark:bg-white/5 dark:ring-white/10">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-white/60">
+                        <FaShieldAlt className="text-slate-400 dark:text-white/35" />
                         Rol
                       </div>
                       <div className="mt-2">
-                        <Pill className={roleBadgeClasses(selectedUser?.rol)}>
+                        <Pill
+                          className={cn(
+                            roleBadgeClasses(selectedUser?.rol),
+                            'text-slate-700 dark:text-white'
+                          )}
+                        >
                           <FaShieldAlt className="text-[11px] opacity-70" />
                           {roleLabel(selectedUser?.rol)}
                         </Pill>
                       </div>
                     </div>
 
-                    <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-4">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-white/60 uppercase tracking-wide">
-                        <FaBuilding className="text-white/35" />
+                    <div className="rounded-2xl bg-black/5 ring-1 ring-black/10 p-4 dark:bg-white/5 dark:ring-white/10">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-white/60">
+                        <FaBuilding className="text-slate-400 dark:text-white/35" />
                         Local
                       </div>
-                      <p className="mt-2 text-sm font-bold text-white/90">
+                      <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white/90">
                         {localNameById.get(selectedUser?.local_id) || '-'}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-5">
-                  <p className="text-sm font-extrabold tracking-tight text-white">
+                <div className="rounded-3xl bg-black/5 ring-1 ring-black/10 p-5 dark:bg-white/5 dark:ring-white/10">
+                  <p className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
                     Permisos / Flags
                   </p>
 
                   <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-4">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-white/60 uppercase tracking-wide">
+                    <div className="rounded-2xl bg-black/5 ring-1 ring-black/10 p-4 dark:bg-white/5 dark:ring-white/10">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-white/60">
                         {selectedUser?.es_reemplazante ? (
-                          <FaCheckCircle className="text-emerald-300/80" />
+                          <FaCheckCircle className="text-emerald-600 dark:text-emerald-300/80" />
                         ) : (
-                          <FaTimesCircle className="text-rose-300/80" />
+                          <FaTimesCircle className="text-rose-600 dark:text-rose-300/80" />
                         )}
                         Reemplazante
                       </div>
-                      <p className="mt-2 text-sm font-bold text-white/90">
+                      <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white/90">
                         {selectedUser?.es_reemplazante
                           ? 'Habilitado'
                           : 'No habilitado'}
                       </p>
-                      <p className="mt-1 text-xs text-white/50">
+                      <p className="mt-1 text-xs text-slate-600 dark:text-white/50">
                         Define si puede cubrir reemplazos en operaciones.
                       </p>
                     </div>
 
-                    <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-4">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-white/60 uppercase tracking-wide">
-                        <FaShieldAlt className="text-white/35" />
+                    <div className="rounded-2xl bg-black/5 ring-1 ring-black/10 p-4 dark:bg-white/5 dark:ring-white/10">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-white/60">
+                        <FaShieldAlt className="text-slate-400 dark:text-white/35" />
                         Gestión de usuarios
                       </div>
-                      <p className="mt-2 text-sm font-bold text-white/90">
+                      <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white/90">
                         {manageRoles.includes(selectedUser?.rol)
                           ? 'Permitida'
                           : 'Restringida'}
                       </p>
-                      <p className="mt-1 text-xs text-white/50">
+                      <p className="mt-1 text-xs text-slate-600 dark:text-white/50">
                         Solo {manageRoles.join(' / ')} pueden
                         crear/editar/borrar.
                       </p>
@@ -1190,8 +1259,8 @@ export default function UsuariosGet() {
 
               {/* Panel lateral */}
               <div className="space-y-4">
-                <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-5">
-                  <p className="text-sm font-extrabold tracking-tight text-white">
+                <div className="rounded-3xl bg-black/5 ring-1 ring-black/10 p-5 dark:bg-white/5 dark:ring-white/10">
+                  <p className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
                     Acciones rápidas
                   </p>
 
@@ -1202,7 +1271,7 @@ export default function UsuariosGet() {
                         closeModal();
                         requestAnimationFrame(() => openCreate());
                       }}
-                      className="w-full inline-flex items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10 px-4 py-3 text-sm font-semibold text-white/85 hover:bg-white/15 transition"
+                      className="w-full inline-flex items-center justify-center rounded-2xl bg-black/5 ring-1 ring-black/10 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-black/10 transition dark:bg-white/10 dark:ring-white/10 dark:text-white/85 dark:hover:bg-white/15"
                       disabled={!canManageUsers}
                       title={
                         canManageUsers ? 'Crear nuevo usuario' : 'Sin permisos'
@@ -1215,7 +1284,7 @@ export default function UsuariosGet() {
                     <button
                       type="button"
                       onClick={fetchAll}
-                      className="w-full inline-flex items-center justify-center rounded-2xl bg-white/5 ring-1 ring-white/10 px-4 py-3 text-sm font-semibold text-white/80 hover:bg-white/10 transition"
+                      className="w-full inline-flex items-center justify-center rounded-2xl bg-black/5 ring-1 ring-black/10 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-black/10 transition dark:bg-white/5 dark:ring-white/10 dark:text-white/80 dark:hover:bg-white/10"
                     >
                       <FaFilter className="mr-2" />
                       Refrescar listado
@@ -1224,21 +1293,21 @@ export default function UsuariosGet() {
 
                   {!canManageUsers && (
                     <div className="mt-4 rounded-2xl bg-amber-500/10 ring-1 ring-amber-400/20 p-3">
-                      <p className="text-xs text-amber-200/90 font-semibold">
+                      <p className="text-xs text-amber-700 dark:text-amber-200/90 font-semibold">
                         Acceso limitado
                       </p>
-                      <p className="mt-1 text-xs text-white/55">
+                      <p className="mt-1 text-xs text-slate-600 dark:text-white/55">
                         Tu rol no permite gestionar usuarios.
                       </p>
                     </div>
                   )}
                 </div>
 
-                <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-5">
-                  <p className="text-sm font-extrabold tracking-tight text-white">
+                <div className="rounded-3xl bg-black/5 ring-1 ring-black/10 p-5 dark:bg-white/5 dark:ring-white/10">
+                  <p className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
                     Tips de seguridad
                   </p>
-                  <ul className="mt-3 space-y-2 text-xs text-white/55 list-disc list-inside">
+                  <ul className="mt-3 space-y-2 text-xs text-slate-600 dark:text-white/55 list-disc list-inside">
                     <li>Usá emails reales y únicos por usuario.</li>
                     <li>Contraseñas: 8+ y combinación de 3 tipos.</li>
                     <li>Asigná el local correctamente para visibilidad.</li>
@@ -1256,11 +1325,11 @@ export default function UsuariosGet() {
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 space-y-4 sm:space-y-5">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
                   {/* Identidad */}
-                  <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-4 sm:p-5">
-                    <p className="text-sm font-extrabold tracking-tight text-emerald-500">
+                  <div className="rounded-3xl bg-black/5 ring-1 ring-black/10 p-4 sm:p-5 dark:bg-white/5 dark:ring-white/10">
+                    <p className="text-sm font-extrabold tracking-tight text-emerald-600 dark:text-emerald-500">
                       Identidad
                     </p>
-                    <p className="mt-1 text-xs text-white/50">
+                    <p className="mt-1 text-xs text-slate-600 dark:text-white/50">
                       Datos básicos del usuario.
                     </p>
 
@@ -1273,7 +1342,7 @@ export default function UsuariosGet() {
                           onChange={(e) =>
                             setFormData({ ...formData, nombre: e.target.value })
                           }
-                          className="w-full rounded-2xl bg-white/5 ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500/40 px-4 py-2.5 sm:py-3 text-sm text-white placeholder:text-white/30 outline-none"
+                          className="w-full rounded-2xl bg-white ring-1 ring-black/10 focus:ring-2 focus:ring-indigo-500/30 px-4 py-2.5 sm:py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none dark:bg-white/5 dark:ring-white/10 dark:focus:ring-indigo-500/40 dark:text-white dark:placeholder:text-white/30"
                           placeholder="Ej: Juan Pérez"
                           required
                           disabled={!canManageUsers || submitting}
@@ -1288,7 +1357,7 @@ export default function UsuariosGet() {
                           onChange={(e) =>
                             setFormData({ ...formData, email: e.target.value })
                           }
-                          className="w-full rounded-2xl bg-white/5 ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500/40 px-4 py-2.5 sm:py-3 text-sm text-white placeholder:text-white/30 outline-none"
+                          className="w-full rounded-2xl bg-white ring-1 ring-black/10 focus:ring-2 focus:ring-indigo-500/30 px-4 py-2.5 sm:py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none dark:bg-white/5 dark:ring-white/10 dark:focus:ring-indigo-500/40 dark:text-white dark:placeholder:text-white/30"
                           placeholder="Ej: juan@empresa.com"
                           required
                           disabled={!canManageUsers || submitting}
@@ -1298,11 +1367,11 @@ export default function UsuariosGet() {
                   </div>
 
                   {/* Organización */}
-                  <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-4 sm:p-5">
-                    <p className="text-sm font-extrabold tracking-tight text-emerald-500">
+                  <div className="rounded-3xl bg-black/5 ring-1 ring-black/10 p-4 sm:p-5 dark:bg-white/5 dark:ring-white/10">
+                    <p className="text-sm font-extrabold tracking-tight text-emerald-600 dark:text-emerald-500">
                       Organización
                     </p>
-                    <p className="mt-1 text-xs text-white/50">
+                    <p className="mt-1 text-xs text-slate-600 dark:text-white/50">
                       Rol, local y habilitaciones.
                     </p>
 
@@ -1314,7 +1383,7 @@ export default function UsuariosGet() {
                           onChange={(e) =>
                             setFormData({ ...formData, rol: e.target.value })
                           }
-                          className="w-full rounded-2xl text-black bg-white/5 ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500/40 px-4 py-2.5 sm:py-3 text-sm  outline-none"
+                          className="w-full rounded-2xl bg-white ring-1 ring-black/10 focus:ring-2 focus:ring-indigo-500/30 px-4 py-2.5 sm:py-3 text-sm text-slate-900 outline-none dark:bg-white/5 dark:ring-white/10 dark:focus:ring-indigo-500/40 dark:text-white"
                           required
                           disabled={!canManageUsers || submitting}
                         >
@@ -1323,7 +1392,7 @@ export default function UsuariosGet() {
                           <option value="vendedor">Vendedor</option>
                           <option value="contador">Contador</option>
                         </select>
-                        <p className="mt-2 text-xs text-white/45">
+                        <p className="mt-2 text-xs text-slate-600 dark:text-white/45">
                           Rol asignable. Gestión de usuarios depende del rol
                           actual del operador.
                         </p>
@@ -1339,17 +1408,13 @@ export default function UsuariosGet() {
                               local_id: e.target.value
                             })
                           }
-                          className="w-full rounded-2xl bg-white/5 ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500/40 px-4 py-2.5 sm:py-3 text-sm text-white outline-none"
+                          className="w-full rounded-2xl bg-white ring-1 ring-black/10 focus:ring-2 focus:ring-indigo-500/30 px-4 py-2.5 sm:py-3 text-sm text-slate-900 outline-none dark:bg-white/5 dark:ring-white/10 dark:focus:ring-indigo-500/40 dark:text-white"
                           required
                           disabled={!canManageUsers || submitting}
                         >
                           <option value="">Seleccioná un local</option>
                           {(locales || []).map((l) => (
-                            <option
-                              className="text-black"
-                              key={l.id}
-                              value={l.id}
-                            >
+                            <option key={l.id} value={l.id}>
                               {l.nombre}
                             </option>
                           ))}
@@ -1369,11 +1434,11 @@ export default function UsuariosGet() {
                 </div>
 
                 {/* Seguridad */}
-                <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-4 sm:p-5">
-                  <p className="text-sm font-extrabold tracking-tight text-emerald-500">
+                <div className="rounded-3xl bg-black/5 ring-1 ring-black/10 p-4 sm:p-5 dark:bg-white/5 dark:ring-white/10">
+                  <p className="text-sm font-extrabold tracking-tight text-emerald-600 dark:text-emerald-500">
                     Seguridad
                   </p>
-                  <p className="mt-1 text-xs text-white/50">
+                  <p className="mt-1 text-xs text-slate-600 dark:text-white/50">
                     {editId
                       ? 'Si dejás la contraseña vacía, no se modifica.'
                       : 'Definí una contraseña fuerte para el nuevo usuario.'}
@@ -1392,11 +1457,11 @@ export default function UsuariosGet() {
                     />
                   </div>
 
-                  <div className="mt-4 rounded-2xl bg-white/5 ring-1 ring-white/10 p-4">
-                    <p className="text-xs font-semibold text-white/70 uppercase tracking-wide">
+                  <div className="mt-4 rounded-2xl bg-black/5 ring-1 ring-black/10 p-4 dark:bg-white/5 dark:ring-white/10">
+                    <p className="text-xs font-semibold text-slate-600 dark:text-white/70 uppercase tracking-wide">
                       Recomendación
                     </p>
-                    <p className="mt-1 text-xs text-white/55">
+                    <p className="mt-1 text-xs text-slate-600 dark:text-white/55">
                       8+ caracteres y combiná al menos 3 tipos: mayúsculas,
                       minúsculas, números y símbolos.
                     </p>
@@ -1405,9 +1470,9 @@ export default function UsuariosGet() {
               </div>
 
               {/* FOOTER FIJO (NO SE PIERDE AL SCROLLEAR) */}
-              <div className="mt-4 border-t border-white/10 pt-4 bg-[#070c18]/60 backdrop-blur-xl">
+              <div className="mt-4 border-t border-black/10 pt-4 bg-white/80 backdrop-blur-xl dark:border-white/10 dark:bg-[#070c18]/60">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-xs text-white/55">
+                  <div className="text-xs text-slate-600 dark:text-white/55">
                     {canManageUsers
                       ? 'Tus cambios se registran con usuario_log_id.'
                       : 'Sin permisos para guardar cambios.'}
@@ -1418,7 +1483,7 @@ export default function UsuariosGet() {
                       title="Cancelar"
                       onClick={closeModal}
                       variant="ghost"
-                      className="w-full sm:w-auto px-4 py-3 justify-center"
+                      className="w-full sm:w-auto px-4 py-3 justify-center bg-black/5 hover:bg-black/10 text-slate-700 ring-1 ring-black/10 hover:ring-black/15 dark:bg-white/0 dark:hover:bg-white/10 dark:text-white/85 dark:ring-white/10 dark:hover:ring-white/20"
                     >
                       Cancelar
                     </IconButton>
@@ -1429,7 +1494,7 @@ export default function UsuariosGet() {
                       className={cn(
                         'w-full sm:w-auto inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-extrabold transition focus:outline-none focus:ring-2 focus:ring-indigo-500/50',
                         !canManageUsers || submitting
-                          ? 'bg-white/10 text-white/40 ring-1 ring-white/10 cursor-not-allowed'
+                          ? 'bg-black/5 text-slate-400 ring-1 ring-black/10 cursor-not-allowed dark:bg-white/10 dark:text-white/40 dark:ring-white/10'
                           : 'bg-indigo-500/90 hover:bg-indigo-500 text-white ring-1 ring-indigo-400/40 shadow-[0_12px_35px_rgba(79,70,229,0.35)]'
                       )}
                     >

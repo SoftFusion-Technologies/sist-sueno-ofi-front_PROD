@@ -199,17 +199,19 @@ const LocalesGet = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 py-10 px-6 text-white relative overflow-hidden">
+    // Benjamin Orellana - 2026-02-17 - Fondo dual: light claro y dark mantiene el gradient oscuro original del módulo.
+    <div className="min-h-screen py-10 px-6 relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-slate-100 text-slate-900 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950 dark:text-white">
       <ButtonBack />
       <ParticlesBackground />
+
       <div className="max-w-6xl mx-auto z-10 relative space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
           <div>
-            <h1 className="text-3xl sm:text-4xl titulo uppercase font-extrabold text-emerald-300 flex items-center gap-3 drop-shadow-lg">
+            <h1 className="text-3xl sm:text-4xl titulo uppercase font-extrabold text-emerald-700 dark:text-emerald-300 flex items-center gap-3 drop-shadow-lg">
               <FaSearchLocation className="animate-pulse" /> Locales & Tickets
             </h1>
-            <p className="text-sm text-emerald-100/80 mt-1">
+            <p className="text-sm text-slate-600 dark:text-emerald-100/80 mt-1">
               Gestioná tus sucursales y asigná la plantilla de ticket que
               corresponde a cada una.
             </p>
@@ -217,7 +219,7 @@ const LocalesGet = () => {
           {canManageUsers && (
             <button
               onClick={() => openModal()}
-              className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 transition-all px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-emerald-500/30 flex items-center gap-2 text-sm"
+              className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 transition-all px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-emerald-500/30 flex items-center gap-2 text-sm text-white"
             >
               <FaPlus /> Nuevo Local
             </button>
@@ -230,7 +232,7 @@ const LocalesGet = () => {
             <select
               value={orderBy}
               onChange={(e) => setOrderBy(e.target.value)}
-              className="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-sm"
+              className="px-3 py-2 rounded-lg bg-white/90 border border-black/10 text-slate-900 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 dark:bg-slate-900 dark:border-slate-700 dark:text-white"
               aria-label="Ordenar por"
             >
               <option value="id">ID</option>
@@ -239,22 +241,24 @@ const LocalesGet = () => {
               <option value="ciudad">Ciudad</option>
               <option value="provincia">Provincia</option>
             </select>
+
             <select
               value={orderDir}
               onChange={(e) => setOrderDir(e.target.value)}
-              className="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-sm"
+              className="px-3 py-2 rounded-lg bg-white/90 border border-black/10 text-slate-900 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 dark:bg-slate-900 dark:border-slate-700 dark:text-white"
               aria-label="Dirección de orden"
             >
               <option value="ASC">Ascendente</option>
               <option value="DESC">Descendente</option>
             </select>
+
             <select
               value={limit}
               onChange={(e) => {
                 setLimit(Number(e.target.value));
                 setPage(1);
               }}
-              className="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-sm"
+              className="px-3 py-2 rounded-lg bg-white/90 border border-black/10 text-slate-900 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 dark:bg-slate-900 dark:border-slate-700 dark:text-white"
               aria-label="Items por página"
             >
               <option value={6}>6</option>
@@ -272,28 +276,29 @@ const LocalesGet = () => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="flex-1 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 placeholder:text-slate-400"
+            className="flex-1 px-4 py-3 rounded-xl border border-black/10 bg-white/90 text-slate-900 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 placeholder:text-gray-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-400"
           />
         </div>
 
         {/* Info + Paginador superior */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-          <div className="text-white/80 text-xs sm:text-sm">
+          <div className="text-slate-600 dark:text-white/80 text-xs sm:text-sm">
             Total: <b>{total}</b> · Página <b>{currPage}</b> de{' '}
             <b>{totalPages}</b>
           </div>
+
           <div className="-mx-2 sm:mx-0">
             <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
               <div className="inline-flex items-center whitespace-nowrap gap-2 text-sm">
                 <button
-                  className="px-3 py-2 rounded-lg bg-slate-800 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 border border-black/10 text-slate-900 shadow-sm disabled:opacity-40 hover:bg-slate-50/70 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700/80"
                   onClick={() => setPage(1)}
                   disabled={!hasPrev}
                 >
                   «
                 </button>
                 <button
-                  className="px-3 py-2 rounded-lg bg-slate-800 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 border border-black/10 text-slate-900 shadow-sm disabled:opacity-40 hover:bg-slate-50/70 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700/80"
                   onClick={() => setPage((p) => Math.max(p - 1, 1))}
                   disabled={!hasPrev}
                 >
@@ -315,10 +320,10 @@ const LocalesGet = () => {
                         <button
                           key={num}
                           onClick={() => setPage(num)}
-                          className={`px-3 py-2 rounded-lg border text-sm ${
+                          className={`px-3 py-2 rounded-lg border text-sm shadow-sm ${
                             active
-                              ? 'bg-emerald-600 border-emerald-400'
-                              : 'bg-slate-900 border-slate-700 hover:bg-slate-800'
+                              ? 'bg-emerald-600 border-emerald-400 text-white'
+                              : 'bg-white/90 border-black/10 text-slate-900 hover:bg-slate-50/70 dark:bg-slate-900 dark:border-slate-700 dark:text-white dark:hover:bg-slate-800'
                           }`}
                           aria-current={active ? 'page' : undefined}
                         >
@@ -329,14 +334,14 @@ const LocalesGet = () => {
                 </div>
 
                 <button
-                  className="px-3 py-2 rounded-lg bg-slate-800 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 border border-black/10 text-slate-900 shadow-sm disabled:opacity-40 hover:bg-slate-50/70 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700/80"
                   onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                   disabled={!hasNext}
                 >
                   ›
                 </button>
                 <button
-                  className="px-3 py-2 rounded-lg bg-slate-800 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 border border-black/10 text-slate-900 shadow-sm disabled:opacity-40 hover:bg-slate-50/70 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700/80"
                   onClick={() => setPage(totalPages)}
                   disabled={!hasNext}
                 >
@@ -356,7 +361,7 @@ const LocalesGet = () => {
             ? Array.from({ length: Math.min(limit, 8) }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-40 rounded-2xl bg-white/5 border border-white/10 animate-pulse"
+                  className="h-40 rounded-2xl bg-black/5 border border-black/10 animate-pulse dark:bg-white/5 dark:border-white/10"
                 />
               ))
             : rows.map((local) => {
@@ -369,7 +374,8 @@ const LocalesGet = () => {
                     layout
                     whileHover={{ y: -4, scale: 1.01 }}
                     transition={{ type: 'spring', stiffness: 200, damping: 18 }}
-                    className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-white/5 via-slate-900/60 to-emerald-900/40 shadow-xl"
+                    // Benjamin Orellana - 2026-02-17 - En dark se fuerza bg transparente para evitar que el bg blanco de light aclare la card (el gradient dark era semitransparente).
+                    className="relative overflow-hidden rounded-2xl border border-black/10 bg-white/90 ring-1 ring-black/5 shadow-xl dark:border-emerald-500/20 dark:bg-transparent dark:bg-gradient-to-br dark:from-white/5 dark:via-slate-900/60 dark:to-emerald-900/40 dark:ring-0"
                   >
                     {/* Halo */}
                     <div className="pointer-events-none absolute -top-16 -right-16 w-40 h-40 bg-emerald-500/20 rounded-full blur-3xl" />
@@ -378,31 +384,34 @@ const LocalesGet = () => {
                       {/* Header */}
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="flex items-center gap-2 text-xs text-slate-300 mb-1">
-                            <span className="px-2 py-0.5 rounded-full bg-slate-800/80 border border-slate-600/60 flex items-center gap-1">
-                              <FaStore className="text-emerald-300" />
+                          <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 mb-1">
+                            <span className="px-2 py-0.5 rounded-full bg-slate-50/80 border border-black/10 flex items-center gap-1 dark:bg-slate-800/80 dark:border-slate-600/60">
+                              <FaStore className="text-emerald-600 dark:text-emerald-300" />
                               <span>Local #{local.id}</span>
                             </span>
                             {local.codigo && (
-                              <span className="px-2 py-0.5 rounded-full bg-slate-800/80 border border-slate-600/60">
+                              <span className="px-2 py-0.5 rounded-full bg-slate-50/80 border border-black/10 dark:bg-slate-800/80 dark:border-slate-600/60">
                                 Cod: {local.codigo}
                               </span>
                             )}
                           </div>
-                          <h2 className="text-lg font-bold text-white tracking-wide">
+                          <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-wide">
                             {local.nombre}
                           </h2>
                         </div>
+
                         <span
                           className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
                             activo
-                              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/40'
-                              : 'bg-rose-500/15 text-rose-300 border border-rose-400/40'
+                              ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/40'
+                              : 'bg-rose-500/10 text-rose-700 border border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-400/40'
                           }`}
                         >
                           <span
                             className={`w-2 h-2 rounded-full ${
-                              activo ? 'bg-emerald-400' : 'bg-rose-400'
+                              activo
+                                ? 'bg-emerald-500 dark:bg-emerald-400'
+                                : 'bg-rose-500 dark:bg-rose-400'
                             }`}
                           />
                           {local.estado.toUpperCase()}
@@ -410,15 +419,15 @@ const LocalesGet = () => {
                       </div>
 
                       {/* Info principal */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-200">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700 dark:text-slate-200">
                         <div className="space-y-1.5">
                           <div className="flex items-start gap-2">
-                            <FaMapMarkerAlt className="mt-0.5 text-emerald-300" />
+                            <FaMapMarkerAlt className="mt-0.5 text-emerald-600 dark:text-emerald-300" />
                             <div>
                               <p className="font-medium">
                                 {local.direccion || 'Sin dirección'}
                               </p>
-                              <p className="text-xs text-slate-400">
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
                                 {local.ciudad || 'Ciudad no definida'}
                                 {local.provincia && ` · ${local.provincia}`}
                               </p>
@@ -426,7 +435,7 @@ const LocalesGet = () => {
                           </div>
 
                           <div className="flex items-center gap-2">
-                            <FaClock className="text-emerald-300" />
+                            <FaClock className="text-emerald-600 dark:text-emerald-300" />
                             <p className="text-xs">
                               {local.horario_apertura} - {local.horario_cierre}
                             </p>
@@ -435,19 +444,19 @@ const LocalesGet = () => {
 
                         <div className="space-y-1.5">
                           <div className="flex items-center gap-2">
-                            <FaPhoneAlt className="text-emerald-300" />
+                            <FaPhoneAlt className="text-emerald-600 dark:text-emerald-300" />
                             <p className="text-xs">
                               {local.telefono || 'Sin teléfono'}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <FaEnvelope className="text-emerald-300" />
+                            <FaEnvelope className="text-emerald-600 dark:text-emerald-300" />
                             <p className="text-xs truncate">
                               {local.email || 'Sin email'}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <FaFileInvoice className="text-emerald-300" />
+                            <FaFileInvoice className="text-emerald-600 dark:text-emerald-300" />
                             <p className="text-xs">
                               <span className="font-semibold">Ticket: </span>
                               {ticketLabel}
@@ -457,19 +466,19 @@ const LocalesGet = () => {
                       </div>
 
                       {/* Responsable / impresora */}
-                      <div className="flex flex-wrap gap-2 text-[11px] text-slate-300 mt-1.5">
+                      <div className="flex flex-wrap gap-2 text-[11px] text-slate-600 dark:text-slate-300 mt-1.5">
                         {local.responsable_nombre && (
-                          <span className="px-2 py-1 rounded-full bg-slate-900/80 border border-slate-700 flex items-center gap-1">
+                          <span className="px-2 py-1 rounded-full bg-slate-100/80 border border-black/10 flex items-center gap-1 text-slate-700 dark:bg-slate-900/80 dark:border-slate-700 dark:text-slate-200">
                             👤 {local.responsable_nombre}
                             {local.responsable_dni && (
-                              <span className="text-slate-400">
+                              <span className="text-slate-500 dark:text-slate-400">
                                 · DNI {local.responsable_dni}
                               </span>
                             )}
                           </span>
                         )}
                         {local.printer_nombre && (
-                          <span className="px-2 py-1 rounded-full bg-slate-900/80 border border-slate-700">
+                          <span className="px-2 py-1 rounded-full bg-slate-100/80 border border-black/10 text-slate-700 dark:bg-slate-900/80 dark:border-slate-700 dark:text-slate-200">
                             🖨️ {local.printer_nombre}
                           </span>
                         )}
@@ -480,14 +489,14 @@ const LocalesGet = () => {
                         <div className="mt-4 flex justify-end gap-2">
                           <button
                             onClick={() => openModal(local)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-400/40 hover:bg-amber-400/20 flex items-center gap-1"
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-700 border border-amber-500/30 hover:bg-amber-500/15 flex items-center gap-1 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-400/40 dark:hover:bg-amber-400/20"
                           >
                             <FaEdit />
                             Editar
                           </button>
                           <button
                             onClick={() => handleDelete(local.id)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-400/40 hover:bg-rose-400/20 flex items-center gap-1"
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/10 text-rose-700 border border-rose-500/30 hover:bg-rose-500/15 flex items-center gap-1 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-400/40 dark:hover:bg-rose-400/20"
                           >
                             <FaTrash />
                             Eliminar
@@ -502,7 +511,7 @@ const LocalesGet = () => {
 
         {/* Paginador inferior */}
         <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="text-white/80 text-xs sm:text-sm">
+          <div className="text-slate-600 dark:text-white/80 text-xs sm:text-sm">
             Total: <b>{total}</b> · Página <b>{currPage}</b> de{' '}
             <b>{totalPages}</b>
           </div>
@@ -510,19 +519,20 @@ const LocalesGet = () => {
             <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
               <div className="inline-flex items-center whitespace-nowrap gap-2 text-sm">
                 <button
-                  className="px-3 py-2 rounded-lg bg-slate-800 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 border border-black/10 text-slate-900 shadow-sm disabled:opacity-40 hover:bg-slate-50/70 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700/80"
                   onClick={() => setPage(1)}
                   disabled={!hasPrev}
                 >
                   «
                 </button>
                 <button
-                  className="px-3 py-2 rounded-lg bg-slate-800 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 border border-black/10 text-slate-900 shadow-sm disabled:opacity-40 hover:bg-slate-50/70 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700/80"
                   onClick={() => setPage((p) => Math.max(p - 1, 1))}
                   disabled={!hasPrev}
                 >
                   ‹
                 </button>
+
                 <div className="flex flex-wrap gap-2 max-w-[80vw]">
                   {Array.from({ length: totalPages })
                     .slice(
@@ -538,10 +548,10 @@ const LocalesGet = () => {
                         <button
                           key={num}
                           onClick={() => setPage(num)}
-                          className={`px-3 py-2 rounded-lg border text-sm ${
+                          className={`px-3 py-2 rounded-lg border text-sm shadow-sm ${
                             active
-                              ? 'bg-emerald-600 border-emerald-400'
-                              : 'bg-slate-900 border-slate-700 hover:bg-slate-800'
+                              ? 'bg-emerald-600 border-emerald-400 text-white'
+                              : 'bg-white/90 border-black/10 text-slate-900 hover:bg-slate-50/70 dark:bg-slate-900 dark:border-slate-700 dark:text-white dark:hover:bg-slate-800'
                           }`}
                         >
                           {num}
@@ -549,15 +559,16 @@ const LocalesGet = () => {
                       );
                     })}
                 </div>
+
                 <button
-                  className="px-3 py-2 rounded-lg bg-slate-800 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 border border-black/10 text-slate-900 shadow-sm disabled:opacity-40 hover:bg-slate-50/70 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700/80"
                   onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                   disabled={!hasNext}
                 >
                   ›
                 </button>
                 <button
-                  className="px-3 py-2 rounded-lg bg-slate-800 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 border border-black/10 text-slate-900 shadow-sm disabled:opacity-40 hover:bg-slate-50/70 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700/80"
                   onClick={() => setPage(totalPages)}
                   disabled={!hasNext}
                 >
@@ -573,7 +584,8 @@ const LocalesGet = () => {
           isOpen={modalOpen}
           onRequestClose={() => setModalOpen(false)}
           overlayClassName="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50"
-          className="bg-white rounded-2xl p-6 max-w-3xl w-full mx-4 shadow-2xl border border-slate-200 overflow-y-auto max-h-[90vh] scrollbar-thin scrollbar-thumb-emerald-300"
+          // Benjamin Orellana - 2026-02-17 - Se fuerza texto slate en el modal para evitar herencia de text-white en dark (inputs blancos + texto blanco).
+          className="bg-white text-slate-900 rounded-2xl p-6 max-w-3xl w-full mx-4 shadow-2xl border border-slate-200 overflow-y-auto max-h-[90vh] scrollbar-thin scrollbar-thumb-emerald-300"
         >
           <h2 className="text-2xl font-bold mb-1 text-slate-900 flex items-center gap-2">
             {editId ? 'Editar Local' : 'Nuevo Local'}
@@ -602,7 +614,7 @@ const LocalesGet = () => {
                       name={key}
                       value={formValues[key]}
                       onChange={handleChange}
-                      className="w-full px-4 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                      className="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                     >
                       <option value="activo">Activo</option>
                       <option value="inactivo">Inactivo</option>
@@ -625,7 +637,7 @@ const LocalesGet = () => {
                       value={formValues[key]}
                       onChange={handleChange}
                       disabled={loadingTickets}
-                      className="w-full px-4 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white disabled:bg-slate-100"
+                      className="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:bg-slate-100"
                     >
                       <option value="">
                         {loadingTickets
@@ -654,14 +666,14 @@ const LocalesGet = () => {
                       key.includes('email')
                         ? 'email'
                         : key.includes('horario')
-                        ? 'time'
-                        : 'text'
+                          ? 'time'
+                          : 'text'
                     }
                     name={key}
                     value={formValues[key]}
                     onChange={handleChange}
                     placeholder={label}
-                    className="w-full px-4 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    className="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                   />
                 </div>
               );

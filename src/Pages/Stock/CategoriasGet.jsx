@@ -10,6 +10,7 @@ import AdminActions from '../../Components/AdminActions';
 import { getUserId } from '../../utils/authUtils';
 import RoleGate from '../../Components/auth/RoleGate';
 import CategoriaGuiaModal from '../../Components/Productos/CategoriaGuiaModal.jsx';
+import NavbarStaff from '../Dash/NavbarStaff.jsx';
 Modal.setAppElement('#root');
 
 const API = 'https://api.rioromano.com.ar/categorias';
@@ -145,41 +146,49 @@ const CategoriasGet = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-10 px-6 text-white">
+return (
+  <>
+    <NavbarStaff></NavbarStaff>
+    {/* Benjamin Orellana - 2026-02-17 - Fondo dual (light/dark) + glass consistente en filtros/cards/paginación y modales legibles en ambos modos. */}
+    <div className="min-h-screen py-10 px-6 relative bg-gradient-to-b from-blue-50 via-white to-slate-100 text-slate-900 dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:text-white">
       <ButtonBack />
       <ParticlesBackground />
+
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
-          <h1 className="text-3xl font-bold text-blue-400 flex items-center gap-2 uppercase">
+          <h1 className="text-3xl font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2 uppercase">
             <FaFolderOpen /> Categorías
           </h1>
+
           <RoleGate allow={['socio', 'administrativo']}>
             <div className="flex flex-col sm:flex-row gap-3">
               <BulkUploadButton
                 tabla="categorias"
                 onSuccess={fetchCategorias}
               />
+
               <button
                 onClick={() => openModal()}
-                className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+                className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 text-white shadow-sm"
               >
                 <FaPlus /> Nueva Categoría
               </button>
+
               <button
                 type="button"
                 onClick={() => setHelpOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-sm font-extrabold text-slate-800 shadow-sm transition"
+                // Benjamin Orellana - 2026-02-17 - Botón Ayuda unificado a glass para no romper en dark.
+                className="inline-flex items-center gap-2 rounded-xl border border-black/10 dark:border-white/15 bg-white/90 dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/15 px-4 py-2.5 text-sm font-extrabold text-slate-800 dark:text-white/85 shadow-sm ring-1 ring-black/5 dark:ring-white/15 transition"
                 title="Guía rápida del módulo"
               >
-                <FaQuestionCircle className="text-orange-600" />
+                <FaQuestionCircle className="text-blue-600 dark:text-blue-400" />
                 Ayuda
               </button>
             </div>
           </RoleGate>
         </div>
 
-        {/* Filtros */}
+        {/* FILTROS */}
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <input
             type="text"
@@ -189,25 +198,29 @@ const CategoriasGet = () => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="flex-1 px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            // Benjamin Orellana - 2026-02-17 - Input con contraste correcto (light/dark).
+            className="flex-1 px-4 py-2 rounded-lg border border-black/10 dark:border-white/10 bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-white/40 ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
           />
+
           <select
             value={estadoFilter}
             onChange={(e) => {
               setEstadoFilter(e.target.value);
               setPage(1);
             }}
-            className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
+            // Benjamin Orellana - 2026-02-17 - Select legible en ambos modos.
+            className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
             aria-label="Estado"
           >
             <option value="">Todos</option>
             <option value="activo">Activo</option>
             <option value="inactivo">Inactivo</option>
           </select>
+
           <select
             value={orderBy}
             onChange={(e) => setOrderBy(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
+            className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
             aria-label="Ordenar por"
           >
             <option value="id">ID</option>
@@ -217,22 +230,24 @@ const CategoriasGet = () => {
             {/* <option value="created_at">Creación</option>
             <option value="updated_at">Actualización</option> */}
           </select>
+
           <select
             value={orderDir}
             onChange={(e) => setOrderDir(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
+            className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
             aria-label="Dirección de orden"
           >
             <option value="ASC">Ascendente</option>
             <option value="DESC">Descendente</option>
           </select>
+
           <select
             value={limit}
             onChange={(e) => {
               setLimit(Number(e.target.value));
               setPage(1);
             }}
-            className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
+            className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
             aria-label="Items por página"
           >
             <option value={6}>6</option>
@@ -244,27 +259,30 @@ const CategoriasGet = () => {
 
         {/* Info + paginación superior */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-          <div className="text-white/80 text-xs sm:text-sm">
+          <div className="text-slate-700 dark:text-white/80 text-xs sm:text-sm">
             Total: <b>{total}</b> · Página <b>{currPage}</b> de{' '}
             <b>{totalPages}</b>
           </div>
+
           <div className="-mx-2 sm:mx-0">
             <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
               <div className="inline-flex items-center whitespace-nowrap gap-2">
                 <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
                   onClick={() => setPage(1)}
                   disabled={!hasPrev}
                 >
                   «
                 </button>
+
                 <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
                   onClick={() => setPage((p) => Math.max(p - 1, 1))}
                   disabled={!hasPrev}
                 >
                   ‹
                 </button>
+
                 <div className="flex flex-wrap gap-2 max-w-[80vw]">
                   {Array.from({ length: totalPages })
                     .slice(
@@ -276,14 +294,15 @@ const CategoriasGet = () => {
                       const num = start + idx;
                       if (num > totalPages) return null;
                       const active = num === currPage;
+
                       return (
                         <button
                           key={num}
                           onClick={() => setPage(num)}
-                          className={`px-3 py-2 rounded-lg border ${
+                          className={`px-3 py-2 rounded-lg border ring-1 transition ${
                             active
-                              ? 'bg-blue-600 border-blue-400'
-                              : 'bg-gray-800 border-gray-700 hover:bg-gray-700'
+                              ? 'bg-blue-600 border-blue-400 text-white ring-blue-500/20'
+                              : 'bg-white/90 border-black/10 text-slate-800 ring-black/5 hover:bg-slate-50 dark:bg-white/10 dark:border-white/15 dark:text-white/75 dark:ring-white/15 dark:hover:bg-white/15'
                           }`}
                           aria-current={active ? 'page' : undefined}
                         >
@@ -292,15 +311,17 @@ const CategoriasGet = () => {
                       );
                     })}
                 </div>
+
                 <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
                   onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                   disabled={!hasNext}
                 >
                   ›
                 </button>
+
                 <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
                   onClick={() => setPage(totalPages)}
                   disabled={!hasNext}
                 >
@@ -317,40 +338,52 @@ const CategoriasGet = () => {
             ? Array.from({ length: Math.min(limit, 8) }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-28 rounded-2xl bg-white/5 border border-white/10 animate-pulse"
+                  className="h-28 rounded-2xl bg-white/60 dark:bg-white/5 border border-black/10 dark:border-white/10 animate-pulse"
                 />
               ))
             : rows.map((cat) => (
                 <motion.div
                   key={cat.id}
                   layout
-                  className="bg-white/10 p-6 rounded-2xl shadow-md backdrop-blur-md border border-white/10 hover:scale-[1.02]"
+                  // Benjamin Orellana - 2026-02-17 - Card glass dual, mantiene dark y suma variante light prolija.
+                  className={[
+                    'relative p-6 rounded-2xl shadow-md backdrop-blur-xl border ring-1 transition hover:scale-[1.02]',
+                    'bg-white/90 border-black/10 ring-black/5 text-slate-900',
+                    'dark:bg-white/10 dark:border-white/10 dark:ring-white/15 dark:text-white'
+                  ].join(' ')}
                 >
-                  <h2 className="text-xl font-bold text-white">ID: {cat.id}</h2>
-                  <h2 className="text-xl font-bold text-blue-300">
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                    ID: {cat.id}
+                  </h2>
+
+                  <h2 className="text-xl font-bold text-blue-600 dark:text-blue-300">
                     {cat.nombre}
                   </h2>
+
                   {cat.descripcion && (
-                    <p className="text-sm text-gray-300 mt-1">
+                    <p className="text-sm text-slate-600 dark:text-white/70 mt-1">
                       {cat.descripcion}
                     </p>
                   )}
-                  <p className="text-sm mt-2">
-                    <span className="font-semibold text-blue-400">
+
+                  <p className="text-sm mt-2 text-slate-700 dark:text-white/80">
+                    <span className="font-semibold text-blue-600 dark:text-blue-400">
                       {cat.cantidadProductos}
                     </span>{' '}
                     producto{cat.cantidadProductos !== 1 && 's'} asignado
                     {cat.cantidadProductos !== 1 && 's'}
                   </p>
+
                   <p
                     className={`text-sm mt-2 font-semibold ${
                       cat.estado === 'activo'
-                        ? 'text-green-400'
-                        : 'text-red-400'
+                        ? 'text-emerald-600 dark:text-green-400'
+                        : 'text-rose-600 dark:text-red-400'
                     }`}
                   >
                     Estado: {cat.estado}
                   </p>
+
                   <AdminActions
                     onEdit={() => openModal(cat)}
                     onDelete={() => handleDelete(cat.id)}
@@ -361,27 +394,29 @@ const CategoriasGet = () => {
 
         {/* Paginación inferior */}
         <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="text-white/80 text-xs sm:text-sm">
+          <div className="text-slate-700 dark:text-white/80 text-xs sm:text-sm">
             Total: <b>{total}</b> · Página <b>{currPage}</b> de{' '}
             <b>{totalPages}</b>
           </div>
+
           <div className="-mx-2 sm:mx-0">
             <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
               <div className="inline-flex items-center whitespace-nowrap gap-2">
                 <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
                   onClick={() => setPage(1)}
                   disabled={!hasPrev}
                 >
                   «
                 </button>
                 <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
                   onClick={() => setPage((p) => Math.max(p - 1, 1))}
                   disabled={!hasPrev}
                 >
                   ‹
                 </button>
+
                 <div className="flex flex-wrap gap-2 max-w-[80vw]">
                   {Array.from({ length: totalPages })
                     .slice(
@@ -393,14 +428,15 @@ const CategoriasGet = () => {
                       const num = start + idx;
                       if (num > totalPages) return null;
                       const active = num === currPage;
+
                       return (
                         <button
                           key={num}
                           onClick={() => setPage(num)}
-                          className={`px-3 py-2 rounded-lg border ${
+                          className={`px-3 py-2 rounded-lg border ring-1 transition ${
                             active
-                              ? 'bg-blue-600 border-blue-400'
-                              : 'bg-gray-800 border-gray-700 hover:bg-gray-700'
+                              ? 'bg-blue-600 border-blue-400 text-white ring-blue-500/20'
+                              : 'bg-white/90 border-black/10 text-slate-800 ring-black/5 hover:bg-slate-50 dark:bg-white/10 dark:border-white/15 dark:text-white/75 dark:ring-white/15 dark:hover:bg-white/15'
                           }`}
                         >
                           {num}
@@ -408,15 +444,16 @@ const CategoriasGet = () => {
                       );
                     })}
                 </div>
+
                 <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
                   onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                   disabled={!hasNext}
                 >
                   ›
                 </button>
                 <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
                   onClick={() => setPage(totalPages)}
                   disabled={!hasNext}
                 >
@@ -432,11 +469,13 @@ const CategoriasGet = () => {
           isOpen={modalOpen}
           onRequestClose={() => setModalOpen(false)}
           overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
-          className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border-l-4 border-blue-500"
+          // Benjamin Orellana - 2026-02-17 - Modal dual: blanco en light / glass oscuro en dark, evita inputs ilegibles.
+          className="bg-white text-slate-900 dark:bg-slate-950/85 dark:text-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-black/10 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/15 backdrop-blur-xl border-l-4 border-blue-500 max-h-[90vh] overflow-y-auto"
         >
-          <h2 className="text-2xl font-bold mb-4 text-blue-600">
+          <h2 className="text-2xl font-bold mb-4 text-blue-600 dark:text-blue-300">
             {editId ? 'Editar Categoría' : 'Nueva Categoría'}
           </h2>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
               type="text"
@@ -446,14 +485,16 @@ const CategoriasGet = () => {
                 setFormValues({ ...formValues, nombre: e.target.value })
               }
               className={[
-                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
-                'w-full px-4 py-2 rounded-lg border border-gray-300',
-                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
-                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
-                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+                // Benjamin Orellana - 2026-02-17 - Input con contraste correcto dentro del modal en ambos modos.
+                'w-full px-4 py-2 rounded-lg border border-black/10 dark:border-white/10',
+                'bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white',
+                'placeholder:text-gray-500 dark:placeholder:text-white/40',
+                'caret-slate-900 dark:caret-white',
+                'focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-400/60'
               ].join(' ')}
               required
             />
+
             <textarea
               placeholder="Descripción"
               value={formValues.descripcion}
@@ -461,33 +502,35 @@ const CategoriasGet = () => {
                 setFormValues({ ...formValues, descripcion: e.target.value })
               }
               className={[
-                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
-                'w-full px-4 py-2 rounded-lg border border-gray-300',
-                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
-                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
-                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+                // Benjamin Orellana - 2026-02-17 - Textarea con el mismo patrón del input (legible en dark).
+                'w-full px-4 py-2 rounded-lg border border-black/10 dark:border-white/10',
+                'bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white',
+                'placeholder:text-gray-500 dark:placeholder:text-white/40',
+                'caret-slate-900 dark:caret-white',
+                'focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-400/60'
               ].join(' ')}
             />
+
             <select
               value={formValues.estado}
               onChange={(e) =>
                 setFormValues({ ...formValues, estado: e.target.value })
               }
               className={[
-                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
-                'w-full px-4 py-2 rounded-lg border border-gray-300',
-                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
-                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
-                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+                // Benjamin Orellana - 2026-02-17 - Select legible (evita text-black que rompe dark).
+                'w-full px-4 py-2 rounded-lg border border-black/10 dark:border-white/10',
+                'bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white',
+                'focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-400/60'
               ].join(' ')}
             >
               <option value="activo">Activo</option>
               <option value="inactivo">Inactivo</option>
             </select>
+
             <div className="text-right">
               <button
                 type="submit"
-                className="bg-blue-500 hover:bg-blue-600 px-6 py-2 text-white font-medium rounded-lg"
+                className="bg-blue-500 hover:bg-blue-600 px-6 py-2 text-white font-medium rounded-lg shadow-sm"
               >
                 {editId ? 'Actualizar' : 'Guardar'}
               </button>
@@ -500,19 +543,25 @@ const CategoriasGet = () => {
           isOpen={!!confirmDelete}
           onRequestClose={() => setConfirmDelete(null)}
           overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
-          className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border-l-4 border-yellow-500"
+          // Benjamin Orellana - 2026-02-17 - Confirm modal dual (texto y botones legibles en dark).
+          className="bg-white text-slate-900 dark:bg-slate-950/85 dark:text-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-black/10 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/15 backdrop-blur-xl border-l-4 border-yellow-500 max-h-[90vh] overflow-y-auto"
         >
-          <h2 className="text-xl font-bold text-yellow-600 mb-4">
+          <h2 className="text-xl font-bold text-yellow-600 dark:text-yellow-300 mb-4">
             Advertencia
           </h2>
-          <p className="mb-6 text-gray-800">{warningMessage}</p>
+
+          <p className="mb-6 text-slate-800 dark:text-white/80">
+            {warningMessage}
+          </p>
+
           <div className="flex justify-end gap-4">
             <button
               onClick={() => setConfirmDelete(null)}
-              className="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400"
+              className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-900 dark:bg-white/10 dark:hover:bg-white/15 dark:text-white/80 border border-black/10 dark:border-white/15"
             >
               Cancelar
             </button>
+
             <button
               onClick={async () => {
                 try {
@@ -534,9 +583,11 @@ const CategoriasGet = () => {
           </div>
         </Modal>
       </div>
+
       <CategoriaGuiaModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
-  );
+  </>
+);
 };
 
 export default CategoriasGet;

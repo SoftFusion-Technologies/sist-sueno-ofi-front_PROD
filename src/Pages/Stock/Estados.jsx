@@ -8,6 +8,7 @@ import ParticlesBackground from '../../Components/ParticlesBackground';
 import AdminActions from '../../Components/AdminActions';
 import RoleGate from '../../Components/auth/RoleGate';
 import { EstadoGuiaModal } from '../../Components/Productos/CategoriaGuiaModal';
+import NavbarStaff from '../Dash/NavbarStaff';
 Modal.setAppElement('#root');
 
 const API = 'https://api.rioromano.com.ar/estados';
@@ -115,346 +116,385 @@ const EstadosGet = () => {
   const hasNext = meta?.hasNext ?? false;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-10 px-6 text-white">
-      <ButtonBack />
-      <ParticlesBackground />
-      <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <h1 className="text-3xl font-bold text-pink-400 flex items-center gap-2 uppercase">
-            <FaFlag /> Estados
-          </h1>
+    <>
+      <NavbarStaff></NavbarStaff>
+  <div className="min-h-screen py-10 px-6 relative bg-gradient-to-b from-pink-50 via-white to-slate-100 text-slate-900 dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:text-white">
+    <ButtonBack />
+    <ParticlesBackground />
 
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <div className="flex items-center gap-2">
-              <select
-                value={orderBy}
-                onChange={(e) => setOrderBy(e.target.value)}
-                className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
-                aria-label="Ordenar por"
-              >
-                <option value="id">ID</option>
-                <option value="nombre">Nombre</option>
-                {/* <option value="created_at">Creación</option>
-                <option value="updated_at">Actualización</option> */}
-              </select>
-              <select
-                value={orderDir}
-                onChange={(e) => setOrderDir(e.target.value)}
-                className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
-                aria-label="Dirección de orden"
-              >
-                <option value="ASC">Ascendente</option>
-                <option value="DESC">Descendente</option>
-              </select>
-              <select
-                value={limit}
-                onChange={(e) => {
-                  setLimit(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
-                aria-label="Items por página"
-              >
-                <option value={6}>6</option>
-                <option value={12}>12</option>
-                <option value={24}>24</option>
-                <option value={48}>48</option>
-              </select>
-            </div>
+    <div className="max-w-5xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h1 className="text-3xl font-bold text-pink-600 dark:text-pink-400 flex items-center gap-2 uppercase">
+          <FaFlag /> Estados
+        </h1>
 
-            <div className="flex-1">
-              <input
-                type="text"
-                placeholder="Buscar estado..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                className="w-full px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-              />
-            </div>
-            <RoleGate allow={['socio', 'administrativo']}>
-              <button
-                onClick={() => openModal()}
-                className="bg-pink-500 hover:bg-pink-600 px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
-              >
-                <FaPlus /> Nuevo Estado
-              </button>
-              <button
-                type="button"
-                onClick={() => setHelpOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-sm font-extrabold text-slate-800 shadow-sm transition"
-                title="Guía rápida del módulo"
-              >
-                <FaQuestionCircle className="text-orange-600" />
-                Ayuda
-              </button>
-            </RoleGate>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2">
+            <select
+              value={orderBy}
+              onChange={(e) => setOrderBy(e.target.value)}
+              // Benjamin Orellana - 2026-02-17 - Selects legibles en light/dark siguiendo patrón glass.
+              className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-pink-500/60"
+              aria-label="Ordenar por"
+            >
+              <option value="id">ID</option>
+              <option value="nombre">Nombre</option>
+              {/* <option value="created_at">Creación</option>
+              <option value="updated_at">Actualización</option> */}
+            </select>
+
+            <select
+              value={orderDir}
+              onChange={(e) => setOrderDir(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-pink-500/60"
+              aria-label="Dirección de orden"
+            >
+              <option value="ASC">Ascendente</option>
+              <option value="DESC">Descendente</option>
+            </select>
+
+            <select
+              value={limit}
+              onChange={(e) => {
+                setLimit(Number(e.target.value));
+                setPage(1);
+              }}
+              className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-pink-500/60"
+              aria-label="Items por página"
+            >
+              <option value={6}>6</option>
+              <option value={12}>12</option>
+              <option value={24}>24</option>
+              <option value={48}>48</option>
+            </select>
           </div>
-        </div>
 
-        {/* Info + paginador superior */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-          <div className="text-white/80 text-xs sm:text-sm">
-            Total: <b>{total}</b> · Página <b>{meta?.page ?? 1}</b> de{' '}
-            <b>{totalPages}</b>
-          </div>
-          <div className="-mx-2 sm:mx-0">
-            <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
-              <div className="inline-flex items-center whitespace-nowrap gap-2">
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage(1)}
-                  disabled={!hasPrev}
-                  aria-label="Primera página"
-                >
-                  «
-                </button>
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                  disabled={!hasPrev}
-                  aria-label="Página anterior"
-                >
-                  ‹
-                </button>
-
-                <div className="flex flex-wrap gap-2 max-w-[80vw]">
-                  {Array.from({ length: totalPages })
-                    .slice(
-                      Math.max(0, (meta?.page ?? 1) - 3),
-                      Math.max(0, (meta?.page ?? 1) - 3) + 6
-                    )
-                    .map((_, idx) => {
-                      const start = Math.max(1, (meta?.page ?? 1) - 2);
-                      const num = start + idx;
-                      if (num > totalPages) return null;
-                      const active = num === (meta?.page ?? 1);
-                      return (
-                        <button
-                          key={num}
-                          onClick={() => setPage(num)}
-                          className={`px-3 py-2 rounded-lg border ${
-                            active
-                              ? 'bg-pink-600 border-pink-400'
-                              : 'bg-gray-800 border-gray-700 hover:bg-gray-700'
-                          }`}
-                          aria-current={active ? 'page' : undefined}
-                        >
-                          {num}
-                        </button>
-                      );
-                    })}
-                </div>
-
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() =>
-                    setPage((p) =>
-                      meta ? Math.min(p + 1, meta.totalPages) : p + 1
-                    )
-                  }
-                  disabled={!hasNext}
-                  aria-label="Página siguiente"
-                >
-                  ›
-                </button>
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage(meta?.totalPages || 1)}
-                  disabled={!hasNext}
-                  aria-label="Última página"
-                >
-                  »
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Grid */}
-        <motion.div
-          layout
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-        >
-          {loading
-            ? Array.from({ length: Math.min(limit, 9) }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-28 rounded-2xl bg-white/5 border border-white/10 animate-pulse"
-                />
-              ))
-            : data.map((estado) => (
-                <motion.div
-                  key={estado.id}
-                  layout
-                  className="bg-white/10 p-6 rounded-2xl shadow-md backdrop-blur-md border border-white/10 hover:scale-[1.02] "
-                >
-                  <h2 className="text-xl font-bold text-white">
-                    ID: {estado.id}
-                  </h2>
-                  <h2 className="text-xl font-bold text-pink-300">
-                    {estado.nombre}
-                  </h2>
-                  <AdminActions
-                    onEdit={() => openModal(estado)}
-                    onDelete={() => handleDelete(estado.id)}
-                  />
-                </motion.div>
-              ))}
-        </motion.div>
-
-        {/* Paginador inferior */}
-        <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="text-white/80 text-xs sm:text-sm">
-            Total: <b>{total}</b> · Página <b>{meta?.page ?? 1}</b> de{' '}
-            <b>{totalPages}</b>
-          </div>
-          <div className="-mx-2 sm:mx-0">
-            <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
-              <div className="inline-flex items-center whitespace-nowrap gap-2">
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage(1)}
-                  disabled={!hasPrev}
-                >
-                  «
-                </button>
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                  disabled={!hasPrev}
-                >
-                  ‹
-                </button>
-                <div className="flex flex-wrap gap-2 max-w-[80vw]">
-                  {Array.from({ length: totalPages })
-                    .slice(
-                      Math.max(0, (meta?.page ?? 1) - 3),
-                      Math.max(0, (meta?.page ?? 1) - 3) + 6
-                    )
-                    .map((_, idx) => {
-                      const start = Math.max(1, (meta?.page ?? 1) - 2);
-                      const num = start + idx;
-                      if (num > totalPages) return null;
-                      const active = num === (meta?.page ?? 1);
-                      return (
-                        <button
-                          key={num}
-                          onClick={() => setPage(num)}
-                          className={`px-3 py-2 rounded-lg border ${
-                            active
-                              ? 'bg-pink-600 border-pink-400'
-                              : 'bg-gray-800 border-gray-700 hover:bg-gray-700'
-                          }`}
-                        >
-                          {num}
-                        </button>
-                      );
-                    })}
-                </div>
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() =>
-                    setPage((p) =>
-                      meta ? Math.min(p + 1, meta.totalPages) : p + 1
-                    )
-                  }
-                  disabled={!hasNext}
-                >
-                  ›
-                </button>
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage(meta?.totalPages || 1)}
-                  disabled={!hasNext}
-                >
-                  »
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Modal Crear/Editar */}
-        <Modal
-          isOpen={modalOpen}
-          onRequestClose={() => setModalOpen(false)}
-          overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
-          className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border-l-4 border-pink-500"
-        >
-          <h2 className="uppercase text-2xl font-bold mb-4 text-pink-600">
-            {editId ? 'Editar Estado' : 'Nuevo Estado'}
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex-1">
             <input
               type="text"
-              placeholder="Nombre del estado"
-              value={formNombre}
-              onChange={(e) => setFormNombre(e.target.value)}
-              className={[
-                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
-                'w-full px-4 py-2 rounded-lg border border-gray-300',
-                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
-                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
-                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
-              ].join(' ')}
-              required
+              placeholder="Buscar estado..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              // Benjamin Orellana - 2026-02-17 - Input con contraste correcto en ambos modos (placeholder/border/bg).
+              className="w-full px-4 py-2 rounded-lg border border-black/10 dark:border-white/10 bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-white/40 ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-pink-500/60"
             />
-            <div className="text-right">
+          </div>
+
+          <RoleGate allow={['socio', 'administrativo']}>
+            <button
+              onClick={() => openModal()}
+              className="bg-pink-500 hover:bg-pink-600 px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 text-white shadow-sm"
+            >
+              <FaPlus /> Nuevo Estado
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              // Benjamin Orellana - 2026-02-17 - Botón Ayuda unificado a estilo glass para que no rompa en dark.
+              className="inline-flex items-center gap-2 rounded-xl border border-black/10 dark:border-white/15 bg-white/90 dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/15 px-4 py-2.5 text-sm font-extrabold text-slate-800 dark:text-white/85 shadow-sm ring-1 ring-black/5 dark:ring-white/15 transition"
+              title="Guía rápida del módulo"
+            >
+              <FaQuestionCircle className="text-pink-600 dark:text-pink-400" />
+              Ayuda
+            </button>
+          </RoleGate>
+        </div>
+      </div>
+
+      {/* Info + paginador superior */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+        <div className="text-slate-700 dark:text-white/80 text-xs sm:text-sm">
+          Total: <b>{total}</b> · Página <b>{meta?.page ?? 1}</b> de{' '}
+          <b>{totalPages}</b>
+        </div>
+
+        <div className="-mx-2 sm:mx-0">
+          <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
+            <div className="inline-flex items-center whitespace-nowrap gap-2">
               <button
-                type="submit"
-                className="bg-pink-500 hover:bg-pink-600  px-6 py-2 text-white font-medium rounded-lg"
+                // Benjamin Orellana - 2026-02-17 - Botones de paginación consistentes light/dark (sin cambiar la UX).
+                className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                onClick={() => setPage(1)}
+                disabled={!hasPrev}
+                aria-label="Primera página"
               >
-                {editId ? 'Actualizar' : 'Guardar'}
+                «
+              </button>
+
+              <button
+                className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                disabled={!hasPrev}
+                aria-label="Página anterior"
+              >
+                ‹
+              </button>
+
+              <div className="flex flex-wrap gap-2 max-w-[80vw]">
+                {Array.from({ length: totalPages })
+                  .slice(
+                    Math.max(0, (meta?.page ?? 1) - 3),
+                    Math.max(0, (meta?.page ?? 1) - 3) + 6
+                  )
+                  .map((_, idx) => {
+                    const start = Math.max(1, (meta?.page ?? 1) - 2);
+                    const num = start + idx;
+                    if (num > totalPages) return null;
+                    const active = num === (meta?.page ?? 1);
+
+                    return (
+                      <button
+                        key={num}
+                        onClick={() => setPage(num)}
+                        className={`px-3 py-2 rounded-lg border ring-1 transition ${
+                          active
+                            ? 'bg-pink-600 border-pink-400 text-white ring-pink-500/20'
+                            : 'bg-white/90 border-black/10 text-slate-800 ring-black/5 hover:bg-slate-50 dark:bg-white/10 dark:border-white/15 dark:text-white/75 dark:ring-white/15 dark:hover:bg-white/15'
+                        }`}
+                        aria-current={active ? 'page' : undefined}
+                      >
+                        {num}
+                      </button>
+                    );
+                  })}
+              </div>
+
+              <button
+                className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                onClick={() =>
+                  setPage((p) =>
+                    meta ? Math.min(p + 1, meta.totalPages) : p + 1
+                  )
+                }
+                disabled={!hasNext}
+                aria-label="Página siguiente"
+              >
+                ›
+              </button>
+
+              <button
+                className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                onClick={() => setPage(meta?.totalPages || 1)}
+                disabled={!hasNext}
+                aria-label="Última página"
+              >
+                »
               </button>
             </div>
-          </form>
-        </Modal>
+          </div>
+        </div>
+      </div>
 
-        {/* Modal Confirm Delete (forzado) */}
-        <Modal
-          isOpen={!!confirmDelete}
-          onRequestClose={() => setConfirmDelete(null)}
-          overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
-          className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border-l-4 border-yellow-500"
-        >
-          <h2 className="text-xl font-bold text-yellow-600 mb-4">
-            Advertencia
-          </h2>
-          <p className="mb-6 text-gray-800">{warningMessage}</p>
-          <div className="flex justify-end gap-4">
-            <button
-              onClick={() => setConfirmDelete(null)}
-              className="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={async () => {
-                try {
-                  await axios.delete(`${API}/${confirmDelete}?forzar=true`);
-                  setConfirmDelete(null);
-                  if (meta && data.length === 1 && page > 1) {
-                    setPage((p) => p - 1);
-                  } else {
-                    fetchEstados();
-                  }
-                } catch (error) {
-                  console.error('Error al eliminar con forzado:', error);
+      {/* Grid */}
+      <motion.div
+        layout
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+      >
+        {loading
+          ? Array.from({ length: Math.min(limit, 9) }).map((_, i) => (
+              <div
+                key={i}
+                className="h-28 rounded-2xl bg-white/60 dark:bg-white/5 border border-black/10 dark:border-white/10 animate-pulse"
+              />
+            ))
+          : data.map((estado) => (
+              <motion.div
+                key={estado.id}
+                layout
+                className={[
+                  // Benjamin Orellana - 2026-02-17 - Card glass: mantiene dark como estaba y agrega variante light agradable.
+                  'relative bg-white/90 text-slate-900 border border-black/10 ring-1 ring-black/5',
+                  'dark:bg-white/10 dark:text-white dark:border-white/10 dark:ring-white/15',
+                  'p-6 rounded-2xl shadow-md backdrop-blur-xl hover:scale-[1.02] transition'
+                ].join(' ')}
+              >
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                  ID: {estado.id}
+                </h2>
+                <h2 className="text-xl font-bold text-pink-600 dark:text-pink-300">
+                  {estado.nombre}
+                </h2>
+
+                <AdminActions
+                  onEdit={() => openModal(estado)}
+                  onDelete={() => handleDelete(estado.id)}
+                />
+              </motion.div>
+            ))}
+      </motion.div>
+
+      {/* Paginador inferior */}
+      <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="text-slate-700 dark:text-white/80 text-xs sm:text-sm">
+          Total: <b>{total}</b> · Página <b>{meta?.page ?? 1}</b> de{' '}
+          <b>{totalPages}</b>
+        </div>
+
+        <div className="-mx-2 sm:mx-0">
+          <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
+            <div className="inline-flex items-center whitespace-nowrap gap-2">
+              <button
+                className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                onClick={() => setPage(1)}
+                disabled={!hasPrev}
+              >
+                «
+              </button>
+              <button
+                className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                disabled={!hasPrev}
+              >
+                ‹
+              </button>
+
+              <div className="flex flex-wrap gap-2 max-w-[80vw]">
+                {Array.from({ length: totalPages })
+                  .slice(
+                    Math.max(0, (meta?.page ?? 1) - 3),
+                    Math.max(0, (meta?.page ?? 1) - 3) + 6
+                  )
+                  .map((_, idx) => {
+                    const start = Math.max(1, (meta?.page ?? 1) - 2);
+                    const num = start + idx;
+                    if (num > totalPages) return null;
+                    const active = num === (meta?.page ?? 1);
+
+                    return (
+                      <button
+                        key={num}
+                        onClick={() => setPage(num)}
+                        className={`px-3 py-2 rounded-lg border ring-1 transition ${
+                          active
+                            ? 'bg-pink-600 border-pink-400 text-white ring-pink-500/20'
+                            : 'bg-white/90 border-black/10 text-slate-800 ring-black/5 hover:bg-slate-50 dark:bg-white/10 dark:border-white/15 dark:text-white/75 dark:ring-white/15 dark:hover:bg-white/15'
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    );
+                  })}
+              </div>
+
+              <button
+                className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                onClick={() =>
+                  setPage((p) =>
+                    meta ? Math.min(p + 1, meta.totalPages) : p + 1
+                  )
                 }
-              }}
-              className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white"
+                disabled={!hasNext}
+              >
+                ›
+              </button>
+              <button
+                className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                onClick={() => setPage(meta?.totalPages || 1)}
+                disabled={!hasNext}
+              >
+                »
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal Crear/Editar */}
+      <Modal
+        isOpen={modalOpen}
+        onRequestClose={() => setModalOpen(false)}
+        // Benjamin Orellana - 2026-02-17 - Overlay consistente light/dark.
+        overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
+        // Benjamin Orellana - 2026-02-17 - Modal dual: blanco en light; glass oscuro en dark (evita inputs ilegibles).
+        className="bg-white text-slate-900 dark:bg-slate-950/85 dark:text-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-black/10 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/15 backdrop-blur-xl border-l-4 border-pink-500 max-h-[90vh] overflow-y-auto"
+      >
+        <h2 className="uppercase text-2xl font-bold mb-4 text-pink-600 dark:text-pink-300">
+          {editId ? 'Editar Estado' : 'Nuevo Estado'}
+        </h2>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="text"
+            placeholder="Nombre del estado"
+            value={formNombre}
+            onChange={(e) => setFormNombre(e.target.value)}
+            className={[
+              // Benjamin Orellana - 2026-02-17 - Input con patrón aprobado (bg/border/text/placeholder) para light/dark dentro del modal.
+              'w-full px-4 py-2 rounded-lg border border-black/10 dark:border-white/10',
+              'bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white',
+              'placeholder:text-gray-500 dark:placeholder:text-white/40',
+              'caret-slate-900 dark:caret-white',
+              'focus:outline-none focus:ring-2 focus:ring-pink-500/60 focus:border-pink-400/60'
+            ].join(' ')}
+            required
+          />
+
+          <div className="text-right">
+            <button
+              type="submit"
+              className="bg-pink-500 hover:bg-pink-600 px-6 py-2 text-white font-medium rounded-lg shadow-sm"
             >
-              Eliminar
+              {editId ? 'Actualizar' : 'Guardar'}
             </button>
           </div>
-        </Modal>
-      </div>
-      <EstadoGuiaModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+        </form>
+      </Modal>
+
+      {/* Modal Confirm Delete (forzado) */}
+      <Modal
+        isOpen={!!confirmDelete}
+        onRequestClose={() => setConfirmDelete(null)}
+        overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
+        // Benjamin Orellana - 2026-02-17 - Confirm modal dual para evitar texto negro sobre fondos oscuros.
+        className="bg-white text-slate-900 dark:bg-slate-950/85 dark:text-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-black/10 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/15 backdrop-blur-xl border-l-4 border-yellow-500 max-h-[90vh] overflow-y-auto"
+      >
+        <h2 className="text-xl font-bold text-yellow-600 dark:text-yellow-300 mb-4">
+          Advertencia
+        </h2>
+
+        <p className="mb-6 text-slate-800 dark:text-white/80">
+          {warningMessage}
+        </p>
+
+        <div className="flex justify-end gap-4">
+          <button
+            onClick={() => setConfirmDelete(null)}
+            // Benjamin Orellana - 2026-02-17 - Botón cancelar consistente light/dark.
+            className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-900 dark:bg-white/10 dark:hover:bg-white/15 dark:text-white/80 border border-black/10 dark:border-white/15"
+          >
+            Cancelar
+          </button>
+
+          <button
+            onClick={async () => {
+              try {
+                await axios.delete(`${API}/${confirmDelete}?forzar=true`);
+                setConfirmDelete(null);
+                if (meta && data.length === 1 && page > 1) {
+                  setPage((p) => p - 1);
+                } else {
+                  fetchEstados();
+                }
+              } catch (error) {
+                console.error('Error al eliminar con forzado:', error);
+              }
+            }}
+            className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white"
+          >
+            Eliminar
+          </button>
+        </div>
+      </Modal>
     </div>
-  );
+
+    <EstadoGuiaModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+  </div>
+  </>
+);
 };
 
 export default EstadosGet;
