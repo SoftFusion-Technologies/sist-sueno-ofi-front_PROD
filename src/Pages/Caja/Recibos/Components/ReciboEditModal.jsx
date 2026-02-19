@@ -66,7 +66,7 @@ function ReciboEditModal({
         {/* Panel full-screen */}
         <div className="fixed inset-0 z-[91] flex flex-col">
           {/* Header compacto (solo mobile) */}
-          <div className="px-4 pt-4 pb-3 bg-white/90 dark:bg-slate-950/85 backdrop-blur-xl border-b border-black/10 dark:border-white/10">
+          <div className="px-4 pt-4 pb-3 bg-white/90 dark:bg-cyan-950/75 backdrop-blur-xl border-b border-black/10 dark:border-white/10">
             <div className="text-base font-black text-slate-900 dark:text-white">
               Editar Recibo
             </div>
@@ -167,7 +167,7 @@ function ReciboEditModal({
           </div>
 
           {/* Footer fijo (solo mobile) */}
-          <div className="px-4 py-3 bg-white/90 dark:bg-slate-950/85 backdrop-blur-xl border-t border-black/10 dark:border-white/10">
+          <div className="px-4 py-3 bg-white/90 dark:bg-cyan-950/75 backdrop-blur-xl border-t border-black/10 dark:border-white/10">
             <div className="flex items-center justify-end gap-2">
               <button
                 className="px-4 py-2 rounded-xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/10 hover:bg-white/90 dark:hover:bg-white/15 text-slate-900 dark:text-white text-sm font-bold"

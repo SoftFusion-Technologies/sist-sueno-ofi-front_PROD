@@ -470,7 +470,7 @@ return (
           onRequestClose={() => setModalOpen(false)}
           overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
           // Benjamin Orellana - 2026-02-17 - Modal dual: blanco en light / glass oscuro en dark, evita inputs ilegibles.
-          className="bg-white text-slate-900 dark:bg-slate-950/85 dark:text-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-black/10 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/15 backdrop-blur-xl border-l-4 border-blue-500 max-h-[90vh] overflow-y-auto"
+          className="bg-white text-slate-900 dark:bg-cyan-950/75 dark:text-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-black/10 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/15 backdrop-blur-xl border-l-4 border-blue-500 max-h-[90vh] overflow-y-auto"
         >
           <h2 className="text-2xl font-bold mb-4 text-blue-600 dark:text-blue-300">
             {editId ? 'Editar Categoría' : 'Nueva Categoría'}
@@ -544,7 +544,7 @@ return (
           onRequestClose={() => setConfirmDelete(null)}
           overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
           // Benjamin Orellana - 2026-02-17 - Confirm modal dual (texto y botones legibles en dark).
-          className="bg-white text-slate-900 dark:bg-slate-950/85 dark:text-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-black/10 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/15 backdrop-blur-xl border-l-4 border-yellow-500 max-h-[90vh] overflow-y-auto"
+          className="bg-white text-slate-900 dark:bg-cyan-950/75 dark:text-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-black/10 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/15 backdrop-blur-xl border-l-4 border-yellow-500 max-h-[90vh] overflow-y-auto"
         >
           <h2 className="text-xl font-bold text-yellow-600 dark:text-yellow-300 mb-4">
             Advertencia

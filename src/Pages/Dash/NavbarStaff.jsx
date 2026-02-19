@@ -149,242 +149,244 @@ const NavbarStaff = () => {
     }
   };
 
-return (
-  <header className="sticky top-0 z-50">
-    {/* barra “glass” */}
-    <nav
-      className="
-        relative
-        border-b border-black/10
-        bg-white
-        text-slate-900
-        shadow-sm
-        supports-[backdrop-filter]:bg-white/80 supports-[backdrop-filter]:backdrop-blur-xl
+  return (
+    <header className="sticky top-0 z-50">
+      {/* barra “glass” */}
+      <nav
+        className="
+    relative
+    border-b border-black/10
+    bg-white
+    text-slate-900
+    shadow-[0_10px_35px_rgba(0,0,0,0.06)]
+    supports-[backdrop-filter]:bg-white supports-[backdrop-filter]:backdrop-blur-xl
 
-        dark:border-white/10
-        dark:bg-[rgba(12,14,36,0.70)]
-        dark:text-white
-        dark:shadow-none
-        dark:supports-[backdrop-filter]:bg-white/5
-      "
-      aria-label="Navegación principal"
-    >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* logo + marca */}
-        <div className="flex items-center gap-3">
-          <Link
-            to="/"
-            className="shrink-0 focus:outline-none focus:ring-2 focus:ring-pink-400 rounded-lg"
-          >
-            <img
-              src={logoSueno}
-              alt="Sueño"
-              className="h-10 w-auto rounded-md shadow-sm ring-1 ring-black/10 dark:ring-white/10"
-            />
-          </Link>
-          {/* Benjamin Orellana - 2026-02-17 - Ajuste de colores para que el label sea legible en tema claro/oscuro */}
-          <span className="hidden titulo sm:inline-block text-sm text-slate-600 dark:text-white/70 tracking-wide">
-            SOFT PANEL
-          </span>
-        </div>
+    dark:border-sky-200/10
+    dark:bg-[rgba(6,10,28,0.86)]
+    dark:text-sky-50
+    dark:shadow-[0_18px_70px_rgba(0,0,0,0.55)]
+    dark:supports-[backdrop-filter]:bg-[rgba(6,10,28,0.62)]
+  "
+        aria-label="Navegación principal"
+      >
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          {/* logo + marca */}
+          <div className="flex items-center gap-3">
+            <Link
+              to="/"
+              className="shrink-0 focus:outline-none focus:ring-2 focus:ring-pink-400 rounded-lg"
+            >
+              <img
+                src={logoSueno}
+                alt="Sueño"
+                className="h-10 w-auto rounded-md shadow-sm ring-1 ring-black/10 dark:ring-sky-200/10"
+              />
+            </Link>
+            {/* Benjamin Orellana - 2026-02-17 - Ajuste de colores para que el label sea legible en tema claro/oscuro */}
+            <span className="hidden titulo sm:inline-block text-sm text-slate-600 dark:text-sky-100/60 tracking-wide">
+              {' '}
+              SOFT PANEL
+            </span>
+          </div>
 
-        {/* links desktop */}
-        <ul className="hidden lg:flex items-center gap-2">
-          {filteredLinks.map((link) => {
-            const active = isActive(link.href);
-            return (
-              <li key={link.id}>
-                <Link
-                  to={`/${link.href}`}
-                  className="
-                    relative px-3 py-2 rounded-lg text-sm
-                    transition
-                    hover:text-slate-900/80 dark:hover:text-white/90
-                    focus:outline-none focus:ring-2 focus:ring-pink-400
-                  "
-                  aria-current={active ? 'page' : undefined}
-                >
-                  {/* Benjamin Orellana - 2026-02-17 - Ajuste de colores de links para tema claro/oscuro */}
-                  <span
-                    className={
-                      active
-                        ? 'text-slate-900 dark:text-white font-semibold'
-                        : 'text-slate-600 dark:text-white/70'
-                    }
+          {/* links desktop */}
+          <ul className="hidden lg:flex items-center gap-2">
+            {filteredLinks.map((link) => {
+              const active = isActive(link.href);
+              return (
+                <li key={link.id}>
+                  <Link
+                    to={`/${link.href}`}
+                    className="
+  relative px-3 py-2 rounded-lg text-sm
+  transition
+  hover:text-slate-900 dark:hover:text-sky-50
+  focus:outline-none focus:ring-2 focus:ring-sky-400/60
+"
+                    aria-current={active ? 'page' : undefined}
                   >
-                    {link.title}
-                  </span>
-                  {/* indicador animado */}
-                  <AnimatePresence>
-                    {active && (
-                      <motion.span
-                        layoutId="active-pill"
-                        className="absolute inset-0 -z-10 rounded-lg bg-black/5 dark:bg-white/10"
-                        transition={{
-                          type: 'spring',
-                          bounce: 0.25,
-                          duration: 0.5
-                        }}
-                      />
-                    )}
-                  </AnimatePresence>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+                    {/* Benjamin Orellana - 2026-02-17 - Ajuste de colores de links para tema claro/oscuro */}
+                    <span
+                      className={
+                        active
+                          ? 'text-slate-950 dark:text-sky-50 font-semibold'
+                          : 'text-slate-600 dark:text-sky-100/70'
+                      }
+                    >
+                      {link.title}
+                    </span>
+                    {/* indicador animado */}
+                    <AnimatePresence>
+                      {active && (
+                        <motion.span
+                          layoutId="active-pill"
+                          className="absolute inset-0 -z-10 rounded-lg bg-slate-100 dark:bg-sky-500/10"
+                          transition={{
+                            type: 'spring',
+                            bounce: 0.25,
+                            duration: 0.5
+                          }}
+                        />
+                      )}
+                    </AnimatePresence>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
 
-        {/* acciones derecha desktop */}
-        <div className="hidden lg:flex items-center gap-3">
-          {/* <NotificationBell /> */}
-          <ThemeSwitch
-            theme={theme}
-            onToggle={toggleTheme}
-            disabled={themeSyncing}
-          />
+          {/* acciones derecha desktop */}
+          <div className="hidden lg:flex items-center gap-3">
+            {/* <NotificationBell /> */}
+            <ThemeSwitch
+              theme={theme}
+              onToggle={toggleTheme}
+              disabled={themeSyncing}
+            />
 
-          <button
-            type="button"
-            className="
-              relative inline-flex items-center justify-center h-9 w-9 rounded-xl
-              bg-black/5 ring-1 ring-black/10 hover:bg-black/10
-              transition focus:outline-none focus:ring-2 focus:ring-pink-400
-              dark:bg-white/5 dark:ring-white/10 dark:hover:bg-white/10
-            "
-            title="Notificaciones"
-          >
-            {/* Benjamin Orellana - 2026-02-17 - Icono consistente con tema claro/oscuro */}
-            <FiBell className="text-slate-700 dark:text-white/80" />
-            {/* puntito opcional
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-pink-500" />
-            */}
-          </button>
-
-          {/* avatar + menú usuario */}
-          <div className="relative" ref={userMenuRef}>
             <button
               type="button"
-              onClick={() => setUserMenuOpen((v) => !v)}
               className="
-                group flex items-center gap-2 pl-1 pr-2 py-1
-                rounded-xl
-                bg-black/5 ring-1 ring-black/10 hover:bg-black/10
-                transition focus:outline-none focus:ring-2 focus:ring-pink-400
-                dark:bg-white/5 dark:ring-white/10 dark:hover:bg-white/10
-              "
-              aria-haspopup="menu"
-              aria-expanded={userMenuOpen}
+  relative inline-flex items-center justify-center h-9 w-9 rounded-xl
+  bg-slate-100 ring-1 ring-black/10 hover:bg-slate-200/70
+  transition focus:outline-none focus:ring-2 focus:ring-sky-400/60
+  dark:bg-white/5 dark:ring-sky-200/10 dark:hover:bg-sky-500/10
+"
+              title="Notificaciones"
             >
-              <span
-                aria-hidden
+              {/* Benjamin Orellana - 2026-02-17 - Icono consistente con tema claro/oscuro */}
+              <FiBell className="text-slate-700 dark:text-sky-100/80" />{' '}
+              {/* puntito opcional
+            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-pink-500" />
+            */}
+            </button>
+
+            {/* avatar + menú usuario */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((v) => !v)}
                 className="
+  group flex items-center gap-2 pl-1 pr-2 py-1
+  rounded-xl
+  bg-slate-100 ring-1 ring-black/10 hover:bg-slate-200/70
+  transition focus:outline-none focus:ring-2 focus:ring-sky-400/60
+  dark:bg-white/5 dark:ring-sky-200/10 dark:hover:bg-sky-500/10
+"
+                aria-haspopup="menu"
+                aria-expanded={userMenuOpen}
+              >
+                <span
+                  aria-hidden
+                  className="
                   grid place-items-center h-8 w-8 rounded-full
                   bg-gradient-to-br from-pink-500 to-rose-600
                   text-white font-bold text-sm ring-1 ring-white/20
                 "
-              >
-                {userInitial}
-              </span>
-              {/* Benjamin Orellana - 2026-02-17 - Texto del usuario consistente con tema claro/oscuro */}
-              <span className="hidden md:block text-sm text-slate-900 dark:text-white/90">
-                {displayUserName || 'Usuario'}
-              </span>
-              <FiChevronDown className="text-slate-600 group-hover:text-slate-900 transition dark:text-white/70 dark:group-hover:text-white" />
-            </button>
+                >
+                  {userInitial}
+                </span>
+                {/* Benjamin Orellana - 2026-02-17 - Texto del usuario consistente con tema claro/oscuro */}
+                <span className="hidden md:block text-sm text-slate-900 dark:text-sky-50/90">
+                  {' '}
+                  {displayUserName || 'Usuario'}
+                </span>
+                <FiChevronDown className="text-slate-600 group-hover:text-slate-900 transition dark:text-sky-100/70 dark:group-hover:text-sky-50" />{' '}
+              </button>
 
-            <AnimatePresence>
-              {userMenuOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                  transition={{ duration: 0.16 }}
-                  className="
+              <AnimatePresence>
+                {userMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                    transition={{ duration: 0.16 }}
+                    className="
                     absolute right-0 mt-2 w-56
                     rounded-2xl
                     bg-white/95 backdrop-blur-xl
                     border border-black/10 shadow-2xl p-2
                     dark:bg-[rgba(17,20,40,0.9)] dark:border-white/10
                   "
-                  role="menu"
-                >
-                  <div className="px-3 py-2">
-                    {/* Benjamin Orellana - 2026-02-17 - Ajuste de colores del menú para tema claro/oscuro */}
-                    <p className="text-xs text-slate-500 dark:text-white/50">
-                      Sesión
-                    </p>
-                    <p className="text-sm text-slate-900 dark:text-white font-medium">
-                      {displayUserName || 'Usuario'}
-                    </p>
-                    <p className="text-[11px] text-slate-500 dark:text-white/40 capitalize">
-                      Rol actual: {userLevel || '—'}
-                    </p>
-                  </div>
-                  <div className="my-2 h-px bg-black/10 dark:bg-white/10" />
-                  <button
-                    onClick={handleLogout}
-                    className="
+                    role="menu"
+                  >
+                    <div className="px-3 py-2">
+                      {/* Benjamin Orellana - 2026-02-17 - Ajuste de colores del menú para tema claro/oscuro */}
+                      <p className="text-xs text-slate-500 dark:text-white/50">
+                        Sesión
+                      </p>
+                      <p className="text-sm text-slate-900 dark:text-white font-medium">
+                        {displayUserName || 'Usuario'}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-white/40 capitalize">
+                        Rol actual: {userLevel || '—'}
+                      </p>
+                    </div>
+                    <div className="my-2 h-px bg-black/10 dark:bg-white/10" />
+                    <button
+                      onClick={handleLogout}
+                      className="
                       w-full inline-flex items-center gap-2 px-3 py-2
                       rounded-xl text-sm
                       text-rose-700 hover:bg-rose-500/10 hover:text-rose-800
                       transition
                       dark:text-rose-100 dark:hover:text-white
                     "
-                    role="menuitem"
-                  >
-                    <FiLogOut /> Cerrar sesión
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                      role="menuitem"
+                    >
+                      <FiLogOut /> Cerrar sesión
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
-        </div>
 
-        {/* botón burger móvil */}
-        <div className="lg:hidden flex items-center">
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            className="
+          {/* botón burger móvil */}
+          <div className="lg:hidden flex items-center">
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="
               inline-flex items-center justify-center h-10 w-10 rounded-xl
               bg-black/5 ring-1 ring-black/10 hover:bg-black/10
               transition focus:outline-none focus:ring-2 focus:ring-pink-400
               dark:bg-white/5 dark:ring-white/10 dark:hover:bg-white/10
             "
-            aria-label="Abrir menú"
-          >
-            <FiMenu className="text-slate-800 dark:text-white/85 text-xl" />
-          </button>
+              aria-label="Abrir menú"
+            >
+              <FiMenu className="text-slate-800 dark:text-white/85 text-xl" />
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* sombra inferior sutil */}
-      {/* Benjamin Orellana - 2026-02-17 - Ajuste de gradiente inferior para tema claro/oscuro */}
-      <div className="pointer-events-none h-[1px] w-full bg-gradient-to-r from-transparent via-black/10 to-transparent dark:via-white/10" />
-    </nav>
+        {/* sombra inferior sutil */}
+        {/* Benjamin Orellana - 2026-02-17 - Ajuste de gradiente inferior para tema claro/oscuro */}
+        <div className="pointer-events-none h-[1px] w-full bg-gradient-to-r from-transparent via-black/10 to-transparent dark:via-white/10" />
+      </nav>
 
-    {/* Drawer móvil */}
-    <AnimatePresence>
-      {drawerOpen && (
-        <>
-          {/* backdrop */}
-          <motion.div
-            key="backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.45 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black"
-            onClick={() => setDrawerOpen(false)}
-          />
+      {/* Drawer móvil */}
+      <AnimatePresence>
+        {drawerOpen && (
+          <>
+            {/* backdrop */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.45 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black"
+              onClick={() => setDrawerOpen(false)}
+            />
 
-          {/* panel */}
-          <motion.aside
-            key="panel"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 22, stiffness: 240 }}
-            className="
+            {/* panel */}
+            <motion.aside
+              key="panel"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 22, stiffness: 240 }}
+              className="
               fixed right-0 top-0 h-full w-[86%] max-w-sm
               bg-white/95 backdrop-blur-xl
               border-l border-black/10
@@ -392,50 +394,50 @@ return (
               flex flex-col
               dark:bg-[rgba(15,18,36,0.95)] dark:border-white/10
             "
-            aria-label="Menú móvil"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img
-                  src={logoSueno}
-                  alt="Sueño"
-                  className="h-9 w-9 rounded-md ring-1 ring-black/10 dark:ring-white/10"
-                />
-                <div>
-                  {/* Benjamin Orellana - 2026-02-17 - Textos del drawer consistentes con tema claro/oscuro */}
-                  <p className="text-slate-900 dark:text-white font-semibold leading-5">
-                    {displayUserName || 'Usuario'}
-                  </p>
-                  <p className="text-slate-500 dark:text-white/50 text-xs capitalize">
-                    Rol: {userLevel || '—'}
-                  </p>
+              aria-label="Menú móvil"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={logoSueno}
+                    alt="Sueño"
+                    className="h-9 w-9 rounded-md ring-1 ring-black/10 dark:ring-white/10"
+                  />
+                  <div>
+                    {/* Benjamin Orellana - 2026-02-17 - Textos del drawer consistentes con tema claro/oscuro */}
+                    <p className="text-slate-900 dark:text-white font-semibold leading-5">
+                      {displayUserName || 'Usuario'}
+                    </p>
+                    <p className="text-slate-500 dark:text-white/50 text-xs capitalize">
+                      Rol: {userLevel || '—'}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(false)}
-                className="
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(false)}
+                  className="
                   inline-flex h-10 w-10 items-center justify-center rounded-xl
                   bg-black/5 ring-1 ring-black/10 hover:bg-black/10
                   focus:outline-none focus:ring-2 focus:ring-pink-400
                   dark:bg-white/5 dark:ring-white/10 dark:hover:bg-white/10
                 "
-                aria-label="Cerrar menú"
-              >
-                <FiX className="text-slate-800 dark:text-white/85 text-xl" />
-              </button>
-            </div>
+                  aria-label="Cerrar menú"
+                >
+                  <FiX className="text-slate-800 dark:text-white/85 text-xl" />
+                </button>
+              </div>
 
-            <div className="mt-6">
-              <ul className="space-y-1">
-                {filteredLinks.map((link) => {
-                  const active = isActive(link.href);
-                  return (
-                    <li key={link.id}>
-                      <Link
-                        to={`/${link.href}`}
-                        onClick={() => setDrawerOpen(false)}
-                        className={`
+              <div className="mt-6">
+                <ul className="space-y-1">
+                  {filteredLinks.map((link) => {
+                    const active = isActive(link.href);
+                    return (
+                      <li key={link.id}>
+                        <Link
+                          to={`/${link.href}`}
+                          onClick={() => setDrawerOpen(false)}
+                          className={`
                           block px-3 py-3 rounded-xl text-sm transition
                           ${
                             active
@@ -443,33 +445,33 @@ return (
                               : 'text-slate-700 hover:text-slate-900 hover:bg-black/5 dark:text-white/80 dark:hover:text-white dark:hover:bg-white/5'
                           }
                         `}
-                        aria-current={active ? 'page' : undefined}
-                      >
-                        {link.title}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-
-            <div className="mt-6">
-              <div className="flex items-center justify-between px-1">
-                {/* Benjamin Orellana - 2026-02-17 - Label del tema legible en tema claro/oscuro */}
-                <p className="text-xs text-slate-700 dark:text-white">Tema</p>
-                <ThemeSwitch
-                  theme={theme}
-                  onToggle={toggleTheme}
-                  disabled={themeSyncing}
-                />{' '}
+                          aria-current={active ? 'page' : undefined}
+                        >
+                          {link.title}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
-            </div>
 
-            <div className="mt-auto pt-4 border-t border-black/10 dark:border-white/10">
-              {/* <NotificationBell /> */}
-              <button
-                onClick={handleLogout}
-                className="
+              <div className="mt-6">
+                <div className="flex items-center justify-between px-1">
+                  {/* Benjamin Orellana - 2026-02-17 - Label del tema legible en tema claro/oscuro */}
+                  <p className="text-xs text-slate-700 dark:text-white">Tema</p>
+                  <ThemeSwitch
+                    theme={theme}
+                    onToggle={toggleTheme}
+                    disabled={themeSyncing}
+                  />{' '}
+                </div>
+              </div>
+
+              <div className="mt-auto pt-4 border-t border-black/10 dark:border-white/10">
+                {/* <NotificationBell /> */}
+                <button
+                  onClick={handleLogout}
+                  className="
                   w-full inline-flex items-center justify-center gap-2
                   rounded-xl px-4 py-3
                   bg-gradient-to-r from-rose-500 to-pink-600
@@ -478,17 +480,17 @@ return (
                   shadow-lg shadow-rose-900/20
                   focus:outline-none focus:ring-2 focus:ring-pink-400
                 "
-              >
-                <FiLogOut className="text-white" />
-                Cerrar sesión
-              </button>
-            </div>
-          </motion.aside>
-        </>
-      )}
-    </AnimatePresence>
-  </header>
-);
+                >
+                  <FiLogOut className="text-white" />
+                  Cerrar sesión
+                </button>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </header>
+  );
 };
 
 export default NavbarStaff;

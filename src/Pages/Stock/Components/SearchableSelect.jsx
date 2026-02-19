@@ -166,48 +166,47 @@ export default function SearchableSelect({
   };
 
   // UI helpers
-const renderHighlighted = (text, query) => {
-  if (!query) return text;
+  const renderHighlighted = (text, query) => {
+    if (!query) return text;
 
-  const t = String(text || '');
-  const qn = normalizeSearch(query);
-  if (!qn) return t;
+    const t = String(text || '');
+    const qn = normalizeSearch(query);
+    if (!qn) return t;
 
-  // buscamos el match en versión normalizada, pero marcamos en el texto original
-  const tn = normalizeSearch(t);
-  const start = tn.indexOf(qn);
-  if (start === -1) return t;
+    // buscamos el match en versión normalizada, pero marcamos en el texto original
+    const tn = normalizeSearch(t);
+    const start = tn.indexOf(qn);
+    if (start === -1) return t;
 
-  // Mapeo simple: recorremos el original y contamos caracteres "base" (sin diacríticos)
-  let origStart = 0;
-  let origEnd = 0;
-  let count = 0;
+    // Mapeo simple: recorremos el original y contamos caracteres "base" (sin diacríticos)
+    let origStart = 0;
+    let origEnd = 0;
+    let count = 0;
 
-  for (let i = 0; i < t.length; i++) {
-    const ch = t[i];
-    const base = normalizeSearch(ch); // 1 char -> base sin acento
-    if (count === start) origStart = i;
-    if (base) count += 1;
-    if (count === start + qn.length) {
-      origEnd = i + 1;
-      break;
+    for (let i = 0; i < t.length; i++) {
+      const ch = t[i];
+      const base = normalizeSearch(ch); // 1 char -> base sin acento
+      if (count === start) origStart = i;
+      if (base) count += 1;
+      if (count === start + qn.length) {
+        origEnd = i + 1;
+        break;
+      }
     }
-  }
 
-  // fallback si no pudo calcular bien
-  if (!origEnd) origEnd = Math.min(t.length, origStart + query.length);
+    // fallback si no pudo calcular bien
+    if (!origEnd) origEnd = Math.min(t.length, origStart + query.length);
 
-  return (
-    <>
-      {t.slice(0, origStart)}
-      <mark className="bg-yellow-100 rounded px-0.5">
-        {t.slice(origStart, origEnd)}
-      </mark>
-      {t.slice(origEnd)}
-    </>
-  );
-};
-
+    return (
+      <>
+        {t.slice(0, origStart)}
+        <mark className="bg-yellow-100 rounded px-0.5">
+          {t.slice(origStart, origEnd)}
+        </mark>
+        {t.slice(origEnd)}
+      </>
+    );
+  };
 
   // ───────────────────────────────── UI
   const Button = (
@@ -253,7 +252,7 @@ const renderHighlighted = (text, query) => {
             setActiveIndex(-1);
           }}
           placeholder="Buscar…"
-          className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none"
+          className="w-full px-3 py-2 rounded-lg border text-black border-gray-300 focus:outline-none"
         />
       </div>
 
@@ -290,7 +289,7 @@ const renderHighlighted = (text, query) => {
                 setQ('');
                 setActiveIndex(-1);
               }}
-              className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-100
+              className={`px-3 py-2 text-sm text-black cursor-pointer hover:bg-gray-100
                          ${
                            isSel ? 'bg-cyan-50 text-cyan-700 font-semibold' : ''
                          }
@@ -311,7 +310,7 @@ const renderHighlighted = (text, query) => {
             setOpen(false);
             setActiveIndex(-1);
           }}
-          className="text-xs px-2 py-1 rounded-md border border-gray-300 hover:bg-gray-50"
+          className="text-xs px-2 py-1 text-black rounded-md border border-gray-300 hover:bg-gray-50"
         >
           Limpiar
         </button>

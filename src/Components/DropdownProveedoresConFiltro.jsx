@@ -99,48 +99,81 @@ export default function DropdownProveedoresConFiltro({
           e.preventDefault();
           setOpen(!open);
         }}
-        className="w-full text-left px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded-lg flex justify-between items-center hover:bg-gray-700 transition"
+        className={[
+          'w-full text-left px-4 py-2 rounded-lg flex justify-between items-center transition',
+          // Base (dual theme)
+          'border ring-1',
+          'bg-white/90 text-slate-900 border-black/10 ring-black/5 hover:bg-slate-50',
+          'dark:bg-white/10 dark:text-white dark:border-white/10 dark:ring-white/15 dark:hover:bg-white/15',
+          // Focus
+          'focus:outline-none focus:ring-2 focus:ring-cyan-500/60'
+        ].join(' ')}
       >
         <span className="truncate">{labelSelected}</span>
-        <FaChevronDown className="ml-2 text-sm shrink-0" />
+        <FaChevronDown className="ml-2 text-sm shrink-0 text-slate-600 dark:text-white/70" />
       </button>
 
       {/* Dropdown personalizado */}
       {open && (
-        <div className="absolute z-20 mt-2 w-full bg-gray-900 rounded-xl shadow-2xl border border-gray-700 overflow-hidden animate-fade-in">
+        <div
+          className={[
+            'absolute z-20 mt-2 w-full rounded-xl shadow-2xl overflow-hidden animate-fade-in',
+            // Panel dual
+            'border ring-1 backdrop-blur-xl',
+            'bg-white border-black/10 ring-black/5',
+            'dark:bg-slate-950/90 dark:border-white/10 dark:ring-white/15'
+          ].join(' ')}
+        >
           {/* Filtro por estado */}
-          <div className="p-3 border-b border-gray-700 text-sm text-gray-300 flex flex-wrap gap-4 bg-gray-800">
-            <label className="flex items-center gap-2">
+          <div
+            className={[
+              'p-3 border-b text-sm flex flex-wrap gap-4',
+              'bg-slate-50 border-black/10 text-slate-700',
+              'dark:bg-white/5 dark:border-white/10 dark:text-white/70'
+            ].join(' ')}
+          >
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
                 value="todos"
                 checked={estadoFiltro === 'todos'}
                 onChange={() => setEstadoFiltro('todos')}
+                className="accent-cyan-600 dark:accent-cyan-400"
               />
               Todos
             </label>
-            <label className="flex items-center gap-2">
+
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
                 value="activo"
                 checked={estadoFiltro === 'activo'}
                 onChange={() => setEstadoFiltro('activo')}
+                className="accent-cyan-600 dark:accent-cyan-400"
               />
               Activos
             </label>
-            <label className="flex items-center gap-2">
+
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
                 value="inactivo"
                 checked={estadoFiltro === 'inactivo'}
                 onChange={() => setEstadoFiltro('inactivo')}
+                className="accent-cyan-600 dark:accent-cyan-400"
               />
               Inactivos
             </label>
           </div>
 
           {/* Input de búsqueda */}
-          <div className="px-3 py-2 bg-gray-800 border-b border-gray-700">
+          <div
+            className={[
+              'px-3 py-2 border-b',
+              'bg-white border-black/10',
+              'dark:bg-white/5 dark:border-white/10'
+            ].join(' ')}
+          >
             <input
               type="text"
               value={searchTerm}
@@ -149,7 +182,12 @@ export default function DropdownProveedoresConFiltro({
                 if (e.key === 'Enter') e.preventDefault();
               }}
               placeholder="Buscar proveedor..."
-              className="w-full px-3 py-2 rounded-md bg-gray-700 text-white placeholder-gray-400 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className={[
+                'w-full px-3 py-2 rounded-md border outline-none transition',
+                'bg-white text-slate-900 placeholder:text-slate-400 border-black/10 ring-1 ring-black/5',
+                'dark:bg-white/10 dark:text-white dark:placeholder:text-white/35 dark:border-white/10 dark:ring-white/15',
+                'focus:ring-2 focus:ring-cyan-500/60'
+              ].join(' ')}
             />
           </div>
 
@@ -158,13 +196,18 @@ export default function DropdownProveedoresConFiltro({
             {/* Opción Todos */}
             <li
               onClick={() => {
-                onChange(null); // igual que categorías
+                onChange(null);
                 setOpen(false);
                 setSearchTerm('');
               }}
-              className={`px-4 py-2 cursor-pointer text-gray-200 hover:bg-gray-700 transition ${
-                selectedIdNum === null ? 'bg-gray-700 font-semibold' : ''
-              }`}
+              className={[
+                'px-4 py-2 cursor-pointer transition',
+                'text-slate-700 hover:bg-slate-100',
+                'dark:text-white/80 dark:hover:bg-white/10',
+                selectedIdNum === null
+                  ? 'bg-slate-100 font-semibold dark:bg-white/10'
+                  : ''
+              ].join(' ')}
             >
               Todos los proveedores
             </li>
@@ -196,13 +239,16 @@ export default function DropdownProveedoresConFiltro({
                   <li
                     key={pid}
                     onClick={() => {
-                      onChange(pid); // devuelve id num (consistente con categorías)
+                      onChange(pid);
                       setOpen(false);
                       setSearchTerm('');
                     }}
-                    className={`px-4 py-2 cursor-pointer text-gray-200 hover:bg-gray-700 transition ${
-                      isSel ? 'bg-gray-700 font-semibold' : ''
-                    }`}
+                    className={[
+                      'px-4 py-2 cursor-pointer transition',
+                      'text-slate-800 hover:bg-slate-100',
+                      'dark:text-white/80 dark:hover:bg-white/10',
+                      isSel ? 'bg-slate-100 font-semibold dark:bg-white/10' : ''
+                    ].join(' ')}
                     title={label}
                   >
                     {label}
@@ -210,7 +256,9 @@ export default function DropdownProveedoresConFiltro({
                 );
               })
             ) : (
-              <li className="px-4 py-2 text-gray-400">Sin coincidencias</li>
+              <li className="px-4 py-2 text-slate-500 dark:text-white/40">
+                Sin coincidencias
+              </li>
             )}
           </ul>
         </div>

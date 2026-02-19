@@ -32,6 +32,7 @@ import RoleGate from '../../Components/auth/RoleGate';
 import Swal from 'sweetalert2';
 import ModalAyudaProductos from '../../Components/Productos/ModalAyudaProductos.jsx';
 import { exportarProductosAExcel } from '../../utils/exportExcel.js';
+import NavbarStaff from '../Dash/NavbarStaff.jsx';
 const ACCENT = '#fc4b08';
 
 export const swalWarn = (title, text, opts = {}) => {
@@ -1104,782 +1105,804 @@ const ProductosGet = () => {
     }
   };
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-10 px-6 text-white relative">
-      <ParticlesBackground />
-      <ButtonBack />
-      <div className="max-w-6xl mx-auto">
+    <>
+      <NavbarStaff></NavbarStaff>
+      <div className="min-h-screen py-10 px-6 relative bg-gradient-to-b from-rose-50 via-white to-slate-100 text-slate-900 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 dark:text-white">
+        <ParticlesBackground />
+        <ButtonBack />
+
         <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-            {/* Título */}
-            <h1 className="text-4xl font-bold titulo text-rose-400 flex items-center gap-3 uppercase drop-shadow">
-              <FaBox /> Productos
-            </h1>
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+              {/* Título */}
+              <h1 className="text-4xl font-bold titulo text-rose-600 dark:text-rose-400 flex items-center gap-3 uppercase drop-shadow">
+                <FaBox /> Productos
+              </h1>
 
-            {/* Botones */}
-            <RoleGate allow={['socio', 'administrativo']}>
-              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                {userLevel === 'socio' && (
-                  <button
-                    onClick={() => setShowAjustePrecios(true)}
-                    className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2 text-white"
-                  >
-                    <FaPercentage /> Ajustar Precios
-                  </button>
-                )}
-
-                <BulkUploadButton
-                  tabla="productos"
-                  onSuccess={() => fetchData()} // refrescar lista si lo necesitas
-                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setModalExportOpen(true)}
-                  className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-xl font-semibold flex items-center justify-center gap-2 text-white"
-                >
-                  <FaDownload /> Exportar Excel
-                </button>
-
-                <button
-                  onClick={() => openModal()}
-                  className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 transition px-5 py-2 rounded-xl font-semibold flex items-center gap-2 shadow-lg"
-                >
-                  <FaPlus /> Nuevo Producto
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setHelpOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-sm font-extrabold text-slate-800 shadow-sm transition"
-                  title="Guía rápida del módulo"
-                >
-                  <FaQuestionCircle className="text-orange-600" />
-                  Ayuda
-                </button>
-              </div>
-            </RoleGate>
-          </div>
-        </div>
-
-        <input
-          type="text"
-          placeholder="Buscar producto..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full mb-6 px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        />
-
-        {/* Filtros */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          {/* Estado */}
-          <select
-            value={estadoFiltro}
-            onChange={(e) => setEstadoFiltro(e.target.value)}
-            className="px-4 py-2 rounded-lg border bg-gray-800 border-gray-600 text-white"
-          >
-            <option value="todos">Todos los estados</option>
-            <option value="activo">Activo</option>
-            <option value="inactivo">Inactivo</option>
-          </select>
-
-          {/* Categoría */}
-          <DropdownCategoriasConFiltro
-            categorias={categorias}
-            selected={categoriaFiltro}
-            onChange={setCategoriaFiltro}
-          />
-
-          {/* Benjamin Orellana - 19-01-2026 - Proveedor (Dropdown) */}
-          {/* Descripción: filtra por proveedor seleccionado. Si no hay proveedor, muestra todos. */}
-          <DropdownProveedoresConFiltro
-            proveedores={proveedores}
-            selected={proveedorFiltro ? Number(proveedorFiltro) : null}
-            onChange={(id) => setProveedorFiltro(id ? String(id) : '')}
-          />
-
-          {/* Orden */}
-          <select
-            value={ordenCampo}
-            onChange={(e) => setOrdenCampo(e.target.value)}
-            className="px-4 py-2 rounded-lg border bg-gray-800 border-gray-600 text-white"
-          >
-            <option value="nombre">Ordenar por nombre</option>
-            <option value="precio">Ordenar por precio</option>
-          </select>
-
-          {/* Precio mínimo */}
-          <input
-            type="number"
-            placeholder="Precio mínimo"
-            value={precioMin}
-            onChange={(e) => setPrecioMin(e.target.value)}
-            className="px-4 py-2 rounded-lg border bg-gray-800 border-gray-600 text-white"
-          />
-
-          {/* Precio máximo */}
-          <input
-            type="number"
-            placeholder="Precio máximo"
-            value={precioMax}
-            onChange={(e) => setPrecioMax(e.target.value)}
-            className="px-4 py-2 rounded-lg border bg-gray-800 border-gray-600 text-white"
-          />
-        </div>
-
-        {/* Info + paginación */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-          <div className="text-white/80 text-xs sm:text-sm">
-            Total: <b>{total}</b> · Página <b>{currPage}</b> de{' '}
-            <b>{totalPages}</b>
-          </div>
-          <div className="-mx-2 sm:mx-0">
-            <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
-              <div className="inline-flex items-center whitespace-nowrap gap-2">
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage(1)}
-                  disabled={!hasPrev}
-                >
-                  «
-                </button>
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                  disabled={!hasPrev}
-                >
-                  ‹
-                </button>
-
-                <div className="flex flex-wrap gap-2 max-w-[80vw]">
-                  {Array.from({ length: totalPages })
-                    .slice(
-                      Math.max(0, currPage - 3),
-                      Math.max(0, currPage - 3) + 6
-                    )
-                    .map((_, idx) => {
-                      const start = Math.max(1, currPage - 2);
-                      const num = start + idx;
-                      if (num > totalPages) return null;
-                      const active = num === currPage;
-                      return (
-                        <button
-                          key={num}
-                          onClick={() => setPage(num)}
-                          className={`px-3 py-2 rounded-lg border ${
-                            active
-                              ? 'bg-rose-600 border-rose-400'
-                              : 'bg-gray-800 border-gray-700 hover:bg-gray-700'
-                          }`}
-                          aria-current={active ? 'page' : undefined}
-                        >
-                          {num}
-                        </button>
-                      );
-                    })}
-                </div>
-
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                  disabled={!hasNext}
-                >
-                  ›
-                </button>
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage(totalPages)}
-                  disabled={!hasNext}
-                >
-                  »
-                </button>
-
-                {/* selector de límite */}
-                <select
-                  value={limit}
-                  onChange={(e) => {
-                    setLimit(Number(e.target.value));
-                    setPage(1);
-                  }}
-                  className="ml-3 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
-                  aria-label="Items por página"
-                >
-                  <option value={6}>6</option>
-                  <option value={12}>12</option>
-                  <option value={24}>24</option>
-                  <option value={48}>48</option>
-                </select>
-
-                {/* orden servidor opcional */}
-                <select
-                  value={orderBy}
-                  onChange={(e) => {
-                    setOrderBy(e.target.value);
-                    setPage(1);
-                  }}
-                  className="ml-2 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
-                >
-                  <option value="id">ID</option>
-                  <option value="nombre">Nombre</option>
-                  <option value="codigo">Código</option>
-                  {/* <option value="created_at">Creación</option>
-                  <option value="updated_at">Actualización</option> */}
-                </select>
-                <select
-                  value={orderDir}
-                  onChange={(e) => {
-                    setOrderDir(e.target.value);
-                    setPage(1);
-                  }}
-                  className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
-                >
-                  <option value="ASC">Ascendente</option>
-                  <option value="DESC">Descendente</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {rows.map((p) => (
-            <motion.div
-              key={p.id}
-              layout
-              className="bg-white/10 p-4 md:p-5 rounded-2xl shadow-xl backdrop-blur-md border border-white/10 hover:scale-[1.015] hover:border-rose-400/60 transition-all flex flex-col justify-between"
-            >
-              {/* HEADER: ID + Nombre + Estado */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <span className="text-[0.7rem] uppercase tracking-wide text-gray-300/70">
-                    ID #{p.id}
-                  </span>
-                  <h2 className="mt-1 text-lg font-semibold text-rose-300 leading-snug truncate">
-                    {p.nombre}
-                  </h2>
-                </div>
-
-                <span
-                  className={`px-2 py-1 rounded-full text-[0.65rem] font-semibold uppercase tracking-wide ${
-                    p.estado === 'activo'
-                      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/40'
-                      : 'bg-red-500/15 text-red-300 border border-red-400/40'
-                  }`}
-                >
-                  {p.estado}
-                </span>
-              </div>
-
-              {/* META: Marca / Modelo / Medida / Categoría / Proveedor / SKU */}
-              <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-gray-200">
-                {/* Columna izquierda */}
-                <div className="space-y-1">
-                  <div>
-                    <div className="text-[0.65rem] uppercase tracking-wide text-gray-400">
-                      Marca
-                    </div>
-                    <div className="truncate text-gray-100">
-                      {p.marca || 'Sin marca'}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-[0.65rem] uppercase tracking-wide text-gray-400">
-                      Modelo
-                    </div>
-                    <div className="truncate text-gray-100">
-                      {p.modelo || 'Sin modelo'}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-[0.65rem] uppercase tracking-wide text-gray-400">
-                      Medida
-                    </div>
-                    <div className="truncate text-gray-100">
-                      {p.medida || 'Sin medida'}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Columna derecha */}
-                <div className="space-y-1">
-                  <div>
-                    <div className="text-[0.65rem] uppercase tracking-wide text-gray-400">
-                      Categoría
-                    </div>
-                    <div className="truncate text-gray-100">
-                      {p.categoria?.nombre || 'Sin categoría'}
-                    </div>
-                  </div>
-
-                  {/* Proveedor preferido */}
-                  {(() => {
-                    const provName =
-                      p.proveedor_preferido?.razon_social ??
-                      (p.proveedor_preferido_id
-                        ? proveedoresMap[p.proveedor_preferido_id]
-                        : null);
-
-                    return (
-                      <div>
-                        <div className="text-[0.65rem] uppercase tracking-wide text-gray-400">
-                          Proveedor
-                        </div>
-                        <div className="truncate">
-                          {provName ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-emerald-300 border border-emerald-900/40 text-[0.7rem]">
-                              {provName}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  <div>
-                    <div className="text-[0.65rem] uppercase tracking-wide text-gray-400">
-                      SKU
-                    </div>
-                    <div className="truncate text-gray-100">
-                      {p.codigo_sku || 'No asignado'}
-                    </div>
-                    {/* Chips de códigos (solo si existen) */}
-                    {(p.codigo_interno || p.codigo_barra) && (
-                      <div className="mt-1 flex flex-wrap gap-1.5">
-                        {p.codigo_interno ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-slate-100 border border-white/10 text-[0.68rem]">
-                            COD. INTER:{' '}
-                            <span className="font-semibold">
-                              {p.codigo_interno}
-                            </span>
-                          </span>
-                        ) : null}
-
-                        {p.codigo_barra ? (
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-slate-100 border border-white/10 text-[0.68rem] max-w-[220px]"
-                            title={`Código de barras: ${p.codigo_barra}`}
-                          >
-                            COD. BAR:{' '}
-                            <span className="font-semibold truncate">
-                              {p.codigo_barra}
-                            </span>
-                          </span>
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* DESCRIPCIÓN (compacta) */}
-              {p.descripcion && (
-                <p className="mt-3 text-xs text-gray-300/90 line-clamp-3">
-                  {p.descripcion}
-                </p>
-              )}
-
-              {/* PRECIOS */}
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <div className="flex items-baseline gap-2">
-                  {/* Precio original */}
-                  <span
-                    className={
-                      p.descuento_porcentaje > 0
-                        ? 'text-gray-400 line-through text-xs'
-                        : 'text-green-300 font-semibold text-sm'
-                    }
-                  >
-                    {new Intl.NumberFormat('es-AR', {
-                      style: 'currency',
-                      currency: 'ARS',
-                      minimumFractionDigits: 2
-                    }).format(p.precio || 0)}
-                  </span>
-
-                  {/* Precio con descuento */}
-                  {p.descuento_porcentaje > 0 && (
-                    <span className="text-green-400 font-bold text-sm drop-shadow">
-                      {new Intl.NumberFormat('es-AR', {
-                        style: 'currency',
-                        currency: 'ARS',
-                        minimumFractionDigits: 2
-                      }).format(p.precio_con_descuento)}
-                    </span>
-                  )}
-                </div>
-
-                {p.descuento_porcentaje > 0 && (
-                  <span className="bg-rose-100/90 text-rose-600 rounded-full px-2 py-0.5 text-[0.7rem] font-bold">
-                    -{p.descuento_porcentaje}% OFF
-                  </span>
-                )}
-                {(p.permite_descuento === 0 ||
-                  p.permite_descuento === false) && (
-                  <span className="bg-slate-100/90 text-slate-700 rounded-full px-2 py-0.5 text-[0.7rem] font-bold border border-slate-200/60">
-                    Sin desc.
-                  </span>
-                )}
-              </div>
+              {/* Botones */}
               <RoleGate allow={['socio', 'administrativo']}>
-                <div className="mt-2 flex items-center justify-between gap-2 text-[0.72rem]">
-                  <div className="text-gray-300/80">
-                    Costo:{' '}
-                    <span className="font-semibold text-gray-100">
-                      {nfARS.format(getCostoFinal(p))}
-                    </span>
-                    <span className="text-gray-400/70 ml-1">
-                      {p.iva_incluido ? '(c/IVA)' : '(+IVA)'}
-                    </span>
-                  </div>
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                  {userLevel === 'socio' && (
+                    <button
+                      onClick={() => setShowAjustePrecios(true)}
+                      className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2 text-white shadow-sm"
+                    >
+                      <FaPercentage /> Ajustar Precios
+                    </button>
+                  )}
 
-                  {(() => {
-                    const m = getMargenCajaPct(p);
-                    const cls =
-                      m >= 35
-                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/40'
-                        : m >= 15
-                          ? 'bg-amber-500/15 text-amber-300 border-amber-400/40'
-                          : 'bg-rose-500/15 text-rose-300 border-rose-400/40';
+                  <BulkUploadButton
+                    tabla="productos"
+                    onSuccess={() => fetchData()}
+                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
+                  />
 
-                    return (
-                      <span
-                        className={`px-2 py-0.5 rounded-full border text-[0.7rem] font-bold ${cls}`}
-                        title={`Ganancia caja: ${nfARS.format(
-                          getGananciaCaja(p)
-                        )}`}
-                      >
-                        {m.toFixed(1)}% margen
-                      </span>
-                    );
-                  })()}
+                  <button
+                    type="button"
+                    onClick={() => setModalExportOpen(true)}
+                    className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-xl font-semibold flex items-center justify-center gap-2 text-white shadow-sm"
+                  >
+                    <FaDownload /> Exportar Excel
+                  </button>
+
+                  <button
+                    onClick={() => openModal()}
+                    className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 transition px-5 py-2 rounded-xl font-semibold flex items-center gap-2 text-white shadow-sm"
+                  >
+                    <FaPlus /> Nuevo Producto
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setHelpOpen(true)}
+                    // Benjamin Orellana - 2026-02-19 - Botón Ayuda unificado para light/dark (evita blanco fijo en dark).
+                    className="inline-flex items-center gap-2 rounded-xl border border-black/10 dark:border-white/15 bg-white/90 dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/15 px-4 py-2.5 text-sm font-extrabold text-slate-800 dark:text-white/85 shadow-sm ring-1 ring-black/5 dark:ring-white/15 transition"
+                    title="Guía rápida del módulo"
+                  >
+                    <FaQuestionCircle className="text-orange-600 dark:text-orange-400" />
+                    Ayuda
+                  </button>
                 </div>
               </RoleGate>
+            </div>
+          </div>
 
-              {/* FOOTER: fecha + acciones */}
-              <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between gap-2">
-                <p className="text-[0.7rem] text-gray-400">
-                  Creado el{' '}
-                  {new Date(p.created_at).toLocaleDateString('es-AR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                  })}
-                </p>
+          {/* Buscar */}
+          <input
+            type="text"
+            placeholder="Buscar producto..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            // Benjamin Orellana - 2026-02-19 - Input dual legible + glass consistente.
+            className="w-full mb-6 px-4 py-2 rounded-lg border border-black/10 dark:border-white/10 bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-white/40 ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
+          />
 
-                <RoleGate allow={['socio', 'administrativo']}>
-                  <div className="flex items-center gap-2">
-                    {/* Botón duplicar a la izquierda */}
-                    <button
-                      type="button"
-                      onClick={() => handleDuplicarProducto(p)}
-                      className="inline-flex items-center px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-[0.7rem] font-semibold text-white shadow-sm transition"
-                      title="Duplicar producto"
-                    >
-                      <span className="mr-1">⧉</span>
-                      Duplicar
-                    </button>
+          <div className="relative z-50">
+            {/* Filtros */}
+            <div
+              // Benjamin Orellana - 2026-02-19 - Panel filtros en glass (light/dark) para consistencia visual.
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 rounded-2xl p-4 sm:p-5 border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur-xl ring-1 ring-black/5 dark:ring-white/15"
+            >
+              {/* Estado */}
+              <select
+                value={estadoFiltro}
+                onChange={(e) => setEstadoFiltro(e.target.value)}
+                className="px-4 py-2 rounded-lg border border-black/10 dark:border-white/10 bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+              >
+                <option value="todos">Todos los estados</option>
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+              </select>
 
-                    {/* Botones globales (Editar / Eliminar) a la derecha */}
-                    <AdminActions
-                      onEdit={() => openModal(p)}
-                      onDelete={() => handleDelete(p.id)}
-                    />
-                  </div>
-                </RoleGate>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              {/* Categoría */}
+              <DropdownCategoriasConFiltro
+                categorias={categorias}
+                selected={categoriaFiltro}
+                onChange={setCategoriaFiltro}
+              />
 
-        <Modal
-          isOpen={modalOpen}
-          onRequestClose={() => setModalOpen(false)}
-          overlayClassName="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 z-[9999]"
-          className="relative w-[min(1100px,calc(100vw-1.5rem))] max-h-[85vh] outline-none"
-        >
-          <div className="bg-slate-950/90 border border-white/10 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.55)] overflow-hidden">
-            {/* Header */}
-            <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-white/10 via-white/5 to-transparent">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                    <FaBox className="text-white/80" />
-                    {editId ? 'Editar producto' : 'Nuevo producto'}
-                  </h2>
-                </div>
+              {/* Benjamin Orellana - 19-01-2026 - Proveedor (Dropdown) */}
+              {/* Descripción: filtra por proveedor seleccionado. Si no hay proveedor, muestra todos. */}
+              <DropdownProveedoresConFiltro
+                proveedores={proveedores}
+                selected={proveedorFiltro ? Number(proveedorFiltro) : null}
+                onChange={(id) => setProveedorFiltro(id ? String(id) : '')}
+              />
 
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 hover:ring-white/20 text-white/80 hover:text-white transition"
-                  title="Cerrar"
-                >
-                  <FaTimes />
-                </button>
-              </div>
+              {/* Orden */}
+              <select
+                value={ordenCampo}
+                onChange={(e) => setOrdenCampo(e.target.value)}
+                className="px-4 py-2 rounded-lg border border-black/10 dark:border-white/10 bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+              >
+                <option value="nombre">Ordenar por nombre</option>
+                <option value="precio">Ordenar por precio</option>
+              </select>
+
+              {/* Precio mínimo */}
+              <input
+                type="number"
+                placeholder="Precio mínimo"
+                value={precioMin}
+                onChange={(e) => setPrecioMin(e.target.value)}
+                className="px-4 py-2 rounded-lg border border-black/10 dark:border-white/10 bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-white/40 ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+              />
+
+              {/* Precio máximo */}
+              <input
+                type="number"
+                placeholder="Precio máximo"
+                value={precioMax}
+                onChange={(e) => setPrecioMax(e.target.value)}
+                className="px-4 py-2 rounded-lg border border-black/10 dark:border-white/10 bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-white/40 ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+              />
+            </div>
+          </div>
+
+          {/* Info + paginación */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+            <div className="text-slate-700 dark:text-white/80 text-xs sm:text-sm">
+              Total: <b>{total}</b> · Página <b>{currPage}</b> de{' '}
+              <b>{totalPages}</b>
             </div>
 
-            <form onSubmit={handleSubmit} className="text-slate-900">
-              {/* Body */}
-              <div className="p-6 max-h-[calc(85vh-150px)] overflow-y-auto bg-gradient-to-b from-slate-50 to-white">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Columna principal */}
-                  <div className="lg:col-span-2 space-y-6">
-                    {/* Identificación */}
-                    <section className="rounded-2xl bg-white border border-slate-200/70 shadow-sm shadow-black/5">
-                      <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-semibold text-slate-900">
-                            Identificación y clasificación
-                          </h3>
-                          <p className="text-[12px] text-slate-500 mt-1">
-                            Nombre, categoría, proveedor, estado y datos
-                            comerciales.
-                          </p>
+            <div className="-mx-2 sm:mx-0">
+              <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
+                <div className="inline-flex items-center whitespace-nowrap gap-2">
+                  <button
+                    className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                    onClick={() => setPage(1)}
+                    disabled={!hasPrev}
+                  >
+                    «
+                  </button>
+
+                  <button
+                    className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                    onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                    disabled={!hasPrev}
+                  >
+                    ‹
+                  </button>
+
+                  <div className="flex flex-wrap gap-2 max-w-[80vw]">
+                    {Array.from({ length: totalPages })
+                      .slice(
+                        Math.max(0, currPage - 3),
+                        Math.max(0, currPage - 3) + 6
+                      )
+                      .map((_, idx) => {
+                        const start = Math.max(1, currPage - 2);
+                        const num = start + idx;
+                        if (num > totalPages) return null;
+                        const active = num === currPage;
+
+                        return (
+                          <button
+                            key={num}
+                            onClick={() => setPage(num)}
+                            className={`px-3 py-2 rounded-lg border ring-1 transition ${
+                              active
+                                ? 'bg-rose-600 border-rose-400 text-white ring-rose-500/20'
+                                : 'bg-white/90 border-black/10 text-slate-800 ring-black/5 hover:bg-slate-50 dark:bg-white/10 dark:border-white/15 dark:text-white/75 dark:ring-white/15 dark:hover:bg-white/15'
+                            }`}
+                            aria-current={active ? 'page' : undefined}
+                          >
+                            {num}
+                          </button>
+                        );
+                      })}
+                  </div>
+
+                  <button
+                    className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                    onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                    disabled={!hasNext}
+                  >
+                    ›
+                  </button>
+
+                  <button
+                    className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                    onClick={() => setPage(totalPages)}
+                    disabled={!hasNext}
+                  >
+                    »
+                  </button>
+
+                  {/* selector de límite */}
+                  <select
+                    value={limit}
+                    onChange={(e) => {
+                      setLimit(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="ml-3 px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                    aria-label="Items por página"
+                  >
+                    <option value={6}>6</option>
+                    <option value={12}>12</option>
+                    <option value={24}>24</option>
+                    <option value={48}>48</option>
+                  </select>
+
+                  {/* orden servidor opcional */}
+                  <select
+                    value={orderBy}
+                    onChange={(e) => {
+                      setOrderBy(e.target.value);
+                      setPage(1);
+                    }}
+                    className="ml-2 px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                  >
+                    <option value="id">ID</option>
+                    <option value="nombre">Nombre</option>
+                    <option value="codigo">Código</option>
+                    {/* <option value="created_at">Creación</option>
+              <option value="updated_at">Actualización</option> */}
+                  </select>
+
+                  <select
+                    value={orderDir}
+                    onChange={(e) => {
+                      setOrderDir(e.target.value);
+                      setPage(1);
+                    }}
+                    className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                  >
+                    <option value="ASC">Ascendente</option>
+                    <option value="DESC">Descendente</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="relative z-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {rows.map((p) => (
+                <motion.div
+                  key={p.id}
+                  layout
+                  className={[
+                    // Layout
+                    'p-4 md:p-5 rounded-2xl shadow-xl backdrop-blur-md border transition-all flex flex-col justify-between',
+                    'hover:scale-[1.015]',
+                    // Light (más sólido, menos transparente)
+                    'bg-white border-black/10 text-slate-900',
+                    'hover:border-rose-400/60',
+                    // Dark (igual a tu look)
+                    'dark:bg-white/10 dark:border-white/10 dark:text-white',
+                    'dark:hover:border-rose-400/60'
+                  ].join(' ')}
+                >
+                  {/* HEADER: ID + Nombre + Estado */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[0.7rem] uppercase tracking-wide text-slate-500 dark:text-gray-300/70">
+                        ID #{p.id}
+                      </span>
+                      <h2 className="mt-1 text-lg font-semibold leading-snug truncate text-rose-700 dark:text-rose-300">
+                        {p.nombre}
+                      </h2>
+                    </div>
+
+                    <span
+                      className={[
+                        'px-2 py-1 rounded-full text-[0.65rem] font-semibold uppercase tracking-wide border',
+                        p.estado === 'activo'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/40'
+                          : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-400/40'
+                      ].join(' ')}
+                    >
+                      {p.estado}
+                    </span>
+                  </div>
+
+                  {/* META */}
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-700 dark:text-gray-200">
+                    {/* Columna izquierda */}
+                    <div className="space-y-1">
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          Marca
                         </div>
-                        <div className="shrink-0 text-[11px] text-slate-400">
-                          Campos principales
+                        <div className="truncate text-slate-900 dark:text-gray-100">
+                          {p.marca || 'Sin marca'}
                         </div>
                       </div>
 
-                      <div className="p-5">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[12px] font-medium text-slate-700 mb-1">
-                              Nombre <span className="text-orange-600">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={formValues.nombre}
-                              onChange={(e) =>
-                                setFormValues({
-                                  ...formValues,
-                                  nombre: e.target.value
-                                })
-                              }
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                              required
-                            />
-                          </div>
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          Modelo
+                        </div>
+                        <div className="truncate text-slate-900 dark:text-gray-100">
+                          {p.modelo || 'Sin modelo'}
+                        </div>
+                      </div>
 
-                          {/* =========================
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          Medida
+                        </div>
+                        <div className="truncate text-slate-900 dark:text-gray-100">
+                          {p.medida || 'Sin medida'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Columna derecha */}
+                    <div className="space-y-1">
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          Categoría
+                        </div>
+                        <div className="truncate text-slate-900 dark:text-gray-100">
+                          {p.categoria?.nombre || 'Sin categoría'}
+                        </div>
+                      </div>
+
+                      {/* Proveedor preferido */}
+                      {(() => {
+                        const provName =
+                          p.proveedor_preferido?.razon_social ??
+                          (p.proveedor_preferido_id
+                            ? proveedoresMap[p.proveedor_preferido_id]
+                            : null);
+
+                        return (
+                          <div>
+                            <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                              Proveedor
+                            </div>
+                            <div className="truncate">
+                              {provName ? (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[0.7rem]
+                      bg-emerald-50 text-emerald-700 border-emerald-200
+                      dark:bg-white/10 dark:text-emerald-300 dark:border-emerald-900/40"
+                                >
+                                  {provName}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 dark:text-gray-400">
+                                  —
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          SKU
+                        </div>
+                        <div className="truncate text-slate-900 dark:text-gray-100">
+                          {p.codigo_sku || 'No asignado'}
+                        </div>
+
+                        {(p.codigo_interno || p.codigo_barra) && (
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {p.codigo_interno ? (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[0.68rem]
+                    bg-slate-100 text-slate-700 border-slate-200
+                    dark:bg-white/10 dark:text-slate-100 dark:border-white/10"
+                              >
+                                COD. INTER:{' '}
+                                <span className="font-semibold">
+                                  {p.codigo_interno}
+                                </span>
+                              </span>
+                            ) : null}
+
+                            {p.codigo_barra ? (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[0.68rem] max-w-[220px]
+                      bg-slate-100 text-slate-700 border-slate-200
+                      dark:bg-white/10 dark:text-slate-100 dark:border-white/10"
+                                title={`Código de barras: ${p.codigo_barra}`}
+                              >
+                                COD. BAR:{' '}
+                                <span className="font-semibold truncate">
+                                  {p.codigo_barra}
+                                </span>
+                              </span>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* DESCRIPCIÓN */}
+                  {p.descripcion && (
+                    <p className="mt-3 text-xs text-slate-600 dark:text-gray-300/90 line-clamp-3">
+                      {p.descripcion}
+                    </p>
+                  )}
+
+                  {/* PRECIOS */}
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="flex items-baseline gap-2">
+                      <span
+                        className={
+                          p.descuento_porcentaje > 0
+                            ? 'text-slate-500 line-through text-xs dark:text-gray-400'
+                            : 'text-emerald-700 font-semibold text-sm dark:text-green-300'
+                        }
+                      >
+                        {new Intl.NumberFormat('es-AR', {
+                          style: 'currency',
+                          currency: 'ARS',
+                          minimumFractionDigits: 2
+                        }).format(p.precio || 0)}
+                      </span>
+
+                      {p.descuento_porcentaje > 0 && (
+                        <span className="text-emerald-700 font-bold text-sm drop-shadow dark:text-green-400">
+                          {new Intl.NumberFormat('es-AR', {
+                            style: 'currency',
+                            currency: 'ARS',
+                            minimumFractionDigits: 2
+                          }).format(p.precio_con_descuento)}
+                        </span>
+                      )}
+                    </div>
+
+                    {p.descuento_porcentaje > 0 && (
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[0.7rem] font-bold border
+            bg-rose-50 text-rose-700 border-rose-200
+            dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-400/40"
+                      >
+                        -{p.descuento_porcentaje}% OFF
+                      </span>
+                    )}
+
+                    {(p.permite_descuento === 0 ||
+                      p.permite_descuento === false) && (
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[0.7rem] font-bold border
+            bg-slate-100 text-slate-700 border-slate-200
+            dark:bg-white/10 dark:text-slate-200 dark:border-white/10"
+                      >
+                        Sin desc.
+                      </span>
+                    )}
+                  </div>
+
+                  <RoleGate allow={['socio', 'administrativo']}>
+                    <div className="mt-2 flex items-center justify-between gap-2 text-[0.72rem]">
+                      <div className="text-slate-600 dark:text-gray-300/80">
+                        Costo:{' '}
+                        <span className="font-semibold text-slate-900 dark:text-gray-100">
+                          {nfARS.format(getCostoFinal(p))}
+                        </span>
+                        <span className="text-slate-500 ml-1 dark:text-gray-400/70">
+                          {p.iva_incluido ? '(c/IVA)' : '(+IVA)'}
+                        </span>
+                      </div>
+
+                      {(() => {
+                        const m = getMargenCajaPct(p);
+                        const cls =
+                          m >= 35
+                            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/40'
+                            : m >= 15
+                              ? 'bg-amber-500/15 text-amber-300 border-amber-400/40'
+                              : 'bg-rose-500/15 text-rose-300 border-rose-400/40';
+
+                        return (
+                          <span
+                            className={`px-2 py-0.5 rounded-full border text-[0.7rem] font-bold dark:${cls} ${cls}`}
+                            title={`Ganancia caja: ${nfARS.format(getGananciaCaja(p))}`}
+                          >
+                            {m.toFixed(1)}% margen
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </RoleGate>
+
+                  {/* FOOTER */}
+                  <div className="mt-4 pt-3 border-t border-black/10 dark:border-white/10 flex items-center justify-between gap-2">
+                    <p className="text-[0.7rem] text-slate-500 dark:text-gray-400">
+                      Creado el{' '}
+                      {new Date(p.created_at).toLocaleDateString('es-AR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      })}
+                    </p>
+
+                    <RoleGate allow={['socio', 'administrativo']}>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleDuplicarProducto(p)}
+                          className="inline-flex items-center px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-[0.7rem] font-semibold text-white shadow-sm transition"
+                          title="Duplicar producto"
+                        >
+                          <span className="mr-1">⧉</span>
+                          Duplicar
+                        </button>
+
+                        <AdminActions
+                          onEdit={() => openModal(p)}
+                          onDelete={() => handleDelete(p.id)}
+                        />
+                      </div>
+                    </RoleGate>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          <Modal
+            isOpen={modalOpen}
+            onRequestClose={() => setModalOpen(false)}
+            overlayClassName="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 z-[9999]"
+            className="relative w-[min(1100px,calc(100vw-1.5rem))] max-h-[85vh] outline-none"
+          >
+            <div className="bg-slate-950/90 border border-white/10 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.55)] overflow-hidden">
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-white/10 via-white/5 to-transparent">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                      <FaBox className="text-white/80" />
+                      {editId ? 'Editar producto' : 'Nuevo producto'}
+                    </h2>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setModalOpen(false)}
+                    className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 hover:ring-white/20 text-white/80 hover:text-white transition"
+                    title="Cerrar"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmit} className="text-slate-900">
+                {/* Body */}
+                <div className="p-6 max-h-[calc(85vh-150px)] overflow-y-auto bg-gradient-to-b from-slate-50 to-white">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Columna principal */}
+                    <div className="lg:col-span-2 space-y-6">
+                      {/* Identificación */}
+                      <section className="rounded-2xl bg-white border border-slate-200/70 shadow-sm shadow-black/5">
+                        <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-semibold text-slate-900">
+                              Identificación y clasificación
+                            </h3>
+                            <p className="text-[12px] text-slate-500 mt-1">
+                              Nombre, categoría, proveedor, estado y datos
+                              comerciales.
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-[11px] text-slate-400">
+                            Campos principales
+                          </div>
+                        </div>
+
+                        <div className="p-5">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[12px] font-medium text-slate-700 mb-1">
+                                Nombre{' '}
+                                <span className="text-orange-600">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={formValues.nombre}
+                                onChange={(e) =>
+                                  setFormValues({
+                                    ...formValues,
+                                    nombre: e.target.value
+                                  })
+                                }
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
+                                required
+                              />
+                            </div>
+
+                            {/* =========================
     Benjamin Orellana - 19-01-2026
     Descripción: Reemplazo de selects por Dropdowns con buscador + scroll,
     manteniendo compat con el estado del form (strings) y permitiendo limpiar.
    ========================= */}
 
-                          <div>
-                            <label className="block text-[12px] font-medium text-slate-700 mb-1">
-                              Categoría
-                            </label>
+                            <div>
+                              <label className="block text-[12px] font-medium text-slate-700 mb-1">
+                                Categoría
+                              </label>
 
-                            <DropdownCategoriasConFiltro
-                              categorias={categorias}
-                              selected={
-                                formValues.categoria_id
-                                  ? Number(formValues.categoria_id)
-                                  : null
-                              }
-                              onChange={(id) =>
-                                setFormValues({
-                                  ...formValues,
-                                  // si id es null => "Sin categoría"
-                                  categoria_id: id ? String(id) : ''
-                                })
-                              }
-                            />
+                              <DropdownCategoriasConFiltro
+                                categorias={categorias}
+                                selected={
+                                  formValues.categoria_id
+                                    ? Number(formValues.categoria_id)
+                                    : null
+                                }
+                                onChange={(id) =>
+                                  setFormValues({
+                                    ...formValues,
+                                    // si id es null => "Sin categoría"
+                                    categoria_id: id ? String(id) : ''
+                                  })
+                                }
+                              />
 
-                            {/* Hint visual opcional */}
-                            <div className="mt-1 text-[11px] text-slate-500">
-                              Seleccioná una categoría o dejá “Sin categoría”.
+                              {/* Hint visual opcional */}
+                              <div className="mt-1 text-[11px] text-slate-500">
+                                Seleccioná una categoría o dejá “Sin categoría”.
+                              </div>
                             </div>
-                          </div>
 
-                          <div>
-                            <label className="block text-[12px] font-medium text-slate-700 mb-1">
-                              Proveedor
-                            </label>
+                            <div>
+                              <label className="block text-[12px] font-medium text-slate-700 mb-1">
+                                Proveedor
+                              </label>
 
-                            <DropdownProveedoresConFiltro
-                              proveedores={proveedores}
-                              selected={
-                                proveedorIdSel ? Number(proveedorIdSel) : null
-                              }
-                              onChange={(id) => {
-                                // null => opcional / sin proveedor
-                                setProveedorIdSel(id ? String(id) : '');
-                              }}
-                            />
+                              <DropdownProveedoresConFiltro
+                                proveedores={proveedores}
+                                selected={
+                                  proveedorIdSel ? Number(proveedorIdSel) : null
+                                }
+                                onChange={(id) => {
+                                  // null => opcional / sin proveedor
+                                  setProveedorIdSel(id ? String(id) : '');
+                                }}
+                              />
 
-                            {/* Hint visual opcional */}
-                            <div className="mt-1 text-[11px] text-slate-500">
-                              (Opcional) Podés asignar o dejar en blanco.
+                              {/* Hint visual opcional */}
+                              <div className="mt-1 text-[11px] text-slate-500">
+                                (Opcional) Podés asignar o dejar en blanco.
+                              </div>
                             </div>
-                          </div>
 
-                          <div>
-                            <label className="block text-[12px] font-medium text-slate-700 mb-1">
-                              Estado
-                            </label>
-                            <select
-                              value={formValues.estado}
-                              onChange={(e) =>
-                                setFormValues({
-                                  ...formValues,
-                                  estado: e.target.value
-                                })
-                              }
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                            >
-                              <option value="activo">Activo</option>
-                              <option value="inactivo">Inactivo</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-[12px] font-medium text-slate-700 mb-1">
-                              Marca
-                            </label>
-                            <input
-                              type="text"
-                              value={formValues.marca}
-                              onChange={(e) =>
-                                setFormValues({
-                                  ...formValues,
-                                  marca: e.target.value
-                                })
-                              }
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[12px] font-medium text-slate-700 mb-1">
-                              Modelo
-                            </label>
-                            <input
-                              type="text"
-                              value={formValues.modelo}
-                              onChange={(e) =>
-                                setFormValues({
-                                  ...formValues,
-                                  modelo: e.target.value
-                                })
-                              }
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[12px] font-medium text-slate-700 mb-1">
-                              Medida
-                            </label>
-                            <input
-                              type="text"
-                              value={formValues.medida}
-                              onChange={(e) =>
-                                setFormValues({
-                                  ...formValues,
-                                  medida: e.target.value
-                                })
-                              }
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-[12px] font-medium text-slate-700 mb-1 flex items-center gap-2">
-                              <FaHashtag className="text-slate-400" />
-                              SKU
-                            </label>
-                            <input
-                              type="text"
-                              value={formValues.codigo_sku}
-                              onChange={(e) =>
-                                setFormValues({
-                                  ...formValues,
-                                  codigo_sku: e.target.value
-                                })
-                              }
-                              disabled
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                              placeholder="El sistema lo genera."
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </section>
-
-                    {/* Códigos + Costo/IVA */}
-                    <section className="rounded-2xl bg-white border border-slate-200/70 shadow-sm shadow-black/5">
-                      <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-semibold text-slate-900">
-                            Códigos, costo e impuestos
-                          </h3>
-                          <p className="text-[12px] text-slate-500 mt-1">
-                            Campos para escaneo, costo, IVA y estimaciones.
-                          </p>
-                        </div>
-                        <div className="shrink-0 text-[11px] text-slate-400">
-                          Costo & IVA
-                        </div>
-                      </div>
-
-                      <div className="p-5">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[12px] font-medium text-slate-700 mb-1">
-                              Código interno
-                            </label>
-
-                            <div className="relative">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={formValues.codigo_interno}
+                            <div>
+                              <label className="block text-[12px] font-medium text-slate-700 mb-1">
+                                Estado
+                              </label>
+                              <select
+                                value={formValues.estado}
                                 onChange={(e) =>
                                   setFormValues({
                                     ...formValues,
-                                    codigo_interno: e.target.value
+                                    estado: e.target.value
+                                  })
+                                }
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
+                              >
+                                <option value="activo">Activo</option>
+                                <option value="inactivo">Inactivo</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-[12px] font-medium text-slate-700 mb-1">
+                                Marca
+                              </label>
+                              <input
+                                type="text"
+                                value={formValues.marca}
+                                onChange={(e) =>
+                                  setFormValues({
+                                    ...formValues,
+                                    marca: e.target.value
                                   })
                                 }
                                 className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                                placeholder="Ej: 10025"
                               />
-
-                              {/* CTA rápido: usar sugerido si el campo está vacío */}
-                              {!String(
-                                formValues.codigo_interno || ''
-                              ).trim() &&
-                                ciSugerido && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setFormValues((prev) => ({
-                                        ...prev,
-                                        codigo_interno: String(ciSugerido)
-                                      }))
-                                    }
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] px-2.5 py-1.5 rounded-lg border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 transition"
-                                    title="Aplicar sugerido"
-                                  >
-                                    Usar {ciSugerido}
-                                  </button>
-                                )}
                             </div>
 
-                            {/* Hint + botón ocupados */}
-                            <div className="mt-2 flex items-center justify-between gap-2">
-                              <div className="text-[11px] text-slate-500">
-                                {ciLoading ? (
-                                  <span>Calculando sugerido…</span>
-                                ) : ciSugerido ? (
-                                  <span>
-                                    Sugerido disponible:{' '}
+                            <div>
+                              <label className="block text-[12px] font-medium text-slate-700 mb-1">
+                                Modelo
+                              </label>
+                              <input
+                                type="text"
+                                value={formValues.modelo}
+                                onChange={(e) =>
+                                  setFormValues({
+                                    ...formValues,
+                                    modelo: e.target.value
+                                  })
+                                }
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[12px] font-medium text-slate-700 mb-1">
+                                Medida
+                              </label>
+                              <input
+                                type="text"
+                                value={formValues.medida}
+                                onChange={(e) =>
+                                  setFormValues({
+                                    ...formValues,
+                                    medida: e.target.value
+                                  })
+                                }
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[12px] font-medium text-slate-700 mb-1 flex items-center gap-2">
+                                <FaHashtag className="text-slate-400" />
+                                SKU
+                              </label>
+                              <input
+                                type="text"
+                                value={formValues.codigo_sku}
+                                onChange={(e) =>
+                                  setFormValues({
+                                    ...formValues,
+                                    codigo_sku: e.target.value
+                                  })
+                                }
+                                disabled
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
+                                placeholder="El sistema lo genera."
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+
+                      {/* Códigos + Costo/IVA */}
+                      <section className="rounded-2xl bg-white border border-slate-200/70 shadow-sm shadow-black/5">
+                        <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-semibold text-slate-900">
+                              Códigos, costo e impuestos
+                            </h3>
+                            <p className="text-[12px] text-slate-500 mt-1">
+                              Campos para escaneo, costo, IVA y estimaciones.
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-[11px] text-slate-400">
+                            Costo & IVA
+                          </div>
+                        </div>
+
+                        <div className="p-5">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[12px] font-medium text-slate-700 mb-1">
+                                Código interno
+                              </label>
+
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={formValues.codigo_interno}
+                                  onChange={(e) =>
+                                    setFormValues({
+                                      ...formValues,
+                                      codigo_interno: e.target.value
+                                    })
+                                  }
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
+                                  placeholder="Ej: 10025"
+                                />
+
+                                {/* CTA rápido: usar sugerido si el campo está vacío */}
+                                {!String(
+                                  formValues.codigo_interno || ''
+                                ).trim() &&
+                                  ciSugerido && (
                                     <button
                                       type="button"
                                       onClick={() =>
@@ -1888,720 +1911,773 @@ const ProductosGet = () => {
                                           codigo_interno: String(ciSugerido)
                                         }))
                                       }
-                                      className="font-semibold text-orange-700 hover:text-orange-800 underline underline-offset-2"
+                                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] px-2.5 py-1.5 rounded-lg border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 transition"
                                       title="Aplicar sugerido"
                                     >
-                                      {ciSugerido}
+                                      Usar {ciSugerido}
                                     </button>
-                                  </span>
-                                ) : (
-                                  <span>Sugerido no disponible.</span>
-                                )}
+                                  )}
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={verCodigosOcupados}
-                                className="text-[11px] font-semibold text-slate-700 hover:text-orange-700 transition"
-                              >
-                                Ver ocupados
-                              </button>
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className=" text-[12px] font-medium text-slate-700 mb-1 flex items-center gap-2">
-                              <FaBarcode className="text-slate-400" />
-                              Código de barras
-                            </label>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={formValues.codigo_barra}
-                              onChange={(e) => {
-                                // solo dígitos y tope 32
-                                const v = e.target.value
-                                  .replace(/\D/g, '')
-                                  .slice(0, 32);
-                                setFormValues((prev) => ({
-                                  ...prev,
-                                  codigo_barra: v
-                                }));
-                              }}
-                              maxLength={32}
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                              placeholder="8 a 32 dígitos"
-                            />
-                          </div>
-
-                          <div>
-                            <label className=" text-[12px] font-medium text-slate-700 mb-1 flex items-center gap-2">
-                              <FaMoneyBillWave className="text-slate-400" />
-                              Costo
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={formValues.precio_costo}
-                              onChange={(e) =>
-                                setFormValues({
-                                  ...formValues,
-                                  precio_costo: e.target.value
-                                })
-                              }
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                              placeholder="0.00"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[12px] font-medium text-slate-700 mb-1">
-                              IVA alícuota (%)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              max="100"
-                              value={formValues.iva_alicuota}
-                              onChange={(e) =>
-                                setFormValues({
-                                  ...formValues,
-                                  iva_alicuota: e.target.value
-                                })
-                              }
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                              placeholder="21.00"
-                            />
-                          </div>
-
-                          <div className="md:col-span-2 flex flex-col gap-3">
-                            <label className="inline-flex items-start gap-3 select-none">
-                              <input
-                                type="checkbox"
-                                checked={!!formValues.iva_incluido}
-                                onChange={(e) =>
-                                  setFormValues({
-                                    ...formValues,
-                                    iva_incluido: e.target.checked
-                                  })
-                                }
-                                className="mt-0.5 w-5 h-5 rounded-md border-slate-300 bg-white text-orange-600 focus:ring-orange-500/25"
-                              />
-                              <span className="text-[13px] text-slate-700 leading-5">
-                                IVA incluido en el costo (si está apagado, se
-                                considera costo neto).
-                              </span>
-                            </label>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+                              {/* Hint + botón ocupados */}
+                              <div className="mt-2 flex items-center justify-between gap-2">
                                 <div className="text-[11px] text-slate-500">
-                                  Costo final estimado
-                                </div>
-                                <div className="text-lg font-semibold text-slate-900 mt-1">
-                                  {formatARS(costoFinalPreview)}
-                                </div>
-                                <div className="text-[11px] text-slate-500 mt-1">
-                                  {formValues.iva_incluido
-                                    ? '(costo ingresado con IVA)'
-                                    : '(costo ingresado sin IVA: se suma IVA)'}
-                                </div>
-                              </div>
-
-                              <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
-                                <div className="text-[11px] text-slate-500">
-                                  IVA
-                                </div>
-                                <div className="text-lg font-semibold text-slate-900 mt-1">
-                                  {String(formValues.iva_alicuota || '21')}%
-                                </div>
-                                <div className="text-[11px] text-slate-500 mt-1">
-                                  Alícuota aplicada para cálculos
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </section>
-
-                    {/* Precio venta + descuento */}
-                    <section className="rounded-2xl bg-white border border-slate-200/70 shadow-sm shadow-black/5">
-                      <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-semibold text-slate-900">
-                            Precio de venta
-                          </h3>
-                          <p className="text-[12px] text-slate-500 mt-1">
-                            Precio base, descuento opcional y cálculo de precio
-                            final.
-                          </p>
-                        </div>
-
-                        <label className="inline-flex items-center gap-2 select-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                          <input
-                            type="checkbox"
-                            checked={!!formValues.permite_descuento}
-                            onChange={(e) =>
-                              setFormValues({
-                                ...formValues,
-                                permite_descuento: e.target.checked,
-                                descuento_porcentaje: e.target.checked
-                                  ? formValues.descuento_porcentaje
-                                  : ''
-                              })
-                            }
-                            className="w-5 h-5 rounded-md border-slate-300 bg-white text-orange-600 focus:ring-orange-500/25"
-                          />
-                          <span className="text-[13px] text-slate-700">
-                            Permite descuento
-                          </span>
-                        </label>
-                      </div>
-
-                      <div className="p-5">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[12px] font-medium text-slate-700 mb-1">
-                              Precio <span className="text-orange-600">*</span>
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={formValues.precio}
-                              onChange={(e) =>
-                                setFormValues({
-                                  ...formValues,
-                                  precio: e.target.value
-                                })
-                              }
-                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                              placeholder="0.00"
-                              required
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[12px] font-medium text-slate-700 mb-1">
-                              Descuento (%)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              max="100"
-                              value={formValues.descuento_porcentaje}
-                              onChange={(e) =>
-                                setFormValues({
-                                  ...formValues,
-                                  descuento_porcentaje: e.target.value
-                                })
-                              }
-                              disabled={!formValues.permite_descuento}
-                              className={`w-full rounded-xl px-3 py-2.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 transition ${
-                                formValues.permite_descuento
-                                  ? 'bg-white border border-slate-200 text-slate-900 focus:border-orange-300'
-                                  : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'
-                              }`}
-                              placeholder={
-                                formValues.permite_descuento
-                                  ? '0.00'
-                                  : 'No aplica'
-                              }
-                            />
-                          </div>
-
-                          <div className="md:col-span-2">
-                            <div className="rounded-2xl bg-gradient-to-r from-orange-50 via-white to-white border border-orange-200/60 p-4 flex items-center justify-between gap-4">
-                              <div className="min-w-0">
-                                <div className="text-[11px] text-slate-500">
-                                  Precio final estimado
-                                </div>
-                                <div className="text-xl font-semibold text-slate-900 mt-1">
-                                  {formatARS(precioFinalPreview)}
-                                </div>
-                                <div className="text-[11px] text-slate-500 mt-1">
-                                  {formValues.permite_descuento
-                                    ? 'Con descuento aplicado'
-                                    : 'Sin descuentos'}
-                                </div>
-                              </div>
-
-                              <div className="text-right">
-                                <div className="text-[11px] text-slate-500">
-                                  Precio base
-                                </div>
-                                <div className="text-sm font-semibold text-slate-700 mt-1">
-                                  {formatARS(Number(formValues.precio || 0))}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </section>
-
-                    {/* Descripción */}
-                    <section className="rounded-2xl bg-white border border-slate-200/70 shadow-sm shadow-black/5">
-                      <div className="px-5 pt-5 pb-4 border-b border-slate-100">
-                        <h3 className="text-sm font-semibold text-slate-900">
-                          Descripción
-                        </h3>
-                        <p className="text-[12px] text-slate-500 mt-1">
-                          Información adicional (opcional).
-                        </p>
-                      </div>
-
-                      <div className="p-5">
-                        <textarea
-                          value={formValues.descripcion}
-                          onChange={(e) =>
-                            setFormValues({
-                              ...formValues,
-                              descripcion: e.target.value
-                            })
-                          }
-                          rows={4}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition resize-none"
-                          placeholder="Detalle del producto (opcional)"
-                        />
-                      </div>
-                    </section>
-                  </div>
-
-                  {/* Columna lateral */}
-                  <div className="space-y-6">
-                    {/* Imagen */}
-                    <section className="rounded-2xl bg-white border border-slate-200/70 shadow-sm shadow-black/5">
-                      <div className="px-5 pt-5 pb-4 border-b border-slate-100">
-                        <h3 className="text-sm font-semibold text-slate-900">
-                          Imagen
-                        </h3>
-                        <p className="text-[12px] text-slate-500 mt-1">
-                          Pegá una URL https para previsualizar.
-                        </p>
-                      </div>
-
-                      <div className="p-5">
-                        <input
-                          type="text"
-                          value={formValues.imagen_url}
-                          onChange={(e) =>
-                            setFormValues({
-                              ...formValues,
-                              imagen_url: e.target.value
-                            })
-                          }
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
-                          placeholder="URL de imagen (opcional)"
-                        />
-
-                        <div className="mt-4 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden">
-                          {formValues.imagen_url ? (
-                            <img
-                              src={formValues.imagen_url}
-                              alt="Preview"
-                              className="w-full h-52 object-cover"
-                              onError={(e) => {
-                                e.currentTarget.src =
-                                  'https://via.placeholder.com/600x300?text=Imagen';
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-52 flex items-center justify-center text-slate-400 text-sm">
-                              Sin imagen
-                            </div>
-                          )}
-                        </div>
-
-                        <p className="text-[11px] text-slate-500 mt-3">
-                          Recomendación: imagen nítida, proporción horizontal y
-                          buena resolución.
-                        </p>
-                      </div>
-                    </section>
-
-                    {/* Resumen */}
-                    <section className="rounded-2xl bg-white border border-slate-200/70 shadow-sm shadow-black/5">
-                      <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-semibold text-slate-900">
-                            Resumen
-                          </h3>
-                          <p className="text-[12px] text-slate-500 mt-1">
-                            Valores calculados + rentabilidad. Podés alternar
-                            NETO/CAJA.
-                          </p>
-                        </div>
-
-                        {/* Toggle NETO/CAJA */}
-                        <div className="-mr-4 shrink-0 inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
-                          <button
-                            type="button"
-                            onClick={() => setVistaRent('NETO')}
-                            className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition ${
-                              vistaRent === 'NETO'
-                                ? 'bg-white shadow-sm text-slate-900'
-                                : 'text-slate-600 hover:text-slate-800'
-                            }`}
-                          >
-                            NETO (sin IVA)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setVistaRent('CAJA')}
-                            className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition ${
-                              vistaRent === 'CAJA'
-                                ? 'bg-white shadow-sm text-slate-900'
-                                : 'text-slate-600 hover:text-slate-800'
-                            }`}
-                          >
-                            CAJA (con IVA)
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="p-5 space-y-4">
-                        {(() => {
-                          const hasPrecio = !!margenPreview.hasPrecio;
-                          const hasCosto = !!margenPreview.hasCosto;
-                          const hasCore = !!margenPreview.hasCore;
-
-                          const objetivo = Number(
-                            margenPreview.targetMargin || 0
-                          );
-
-                          const margenActual =
-                            vistaRent === 'NETO'
-                              ? Number(margenPreview.margenPct || 0)
-                              : Number(margenPreview.margenCajaPct || 0);
-
-                          const markupActual =
-                            vistaRent === 'NETO'
-                              ? Number(margenPreview.markupPct || 0)
-                              : Number(margenPreview.markupCajaPct || 0);
-
-                          const gananciaActual =
-                            vistaRent === 'NETO'
-                              ? Number(margenPreview.ganancia || 0)
-                              : Number(margenPreview.gananciaCaja || 0);
-
-                          const isPerdida = !!margenPreview.isPerdida;
-
-                          // Status “inteligente”
-                          const status =
-                            !hasPrecio && !hasCosto
-                              ? {
-                                  text: 'Completá precio y costo',
-                                  cls: 'bg-slate-100 text-slate-700 ring-slate-200'
-                                }
-                              : !hasPrecio
-                                ? {
-                                    text: 'Falta precio',
-                                    cls: 'bg-slate-100 text-slate-700 ring-slate-200'
-                                  }
-                                : !hasCosto
-                                  ? {
-                                      text: 'Sin costo cargado',
-                                      cls: 'bg-amber-50 text-amber-700 ring-amber-200'
-                                    }
-                                  : isPerdida
-                                    ? {
-                                        text: 'Pérdida',
-                                        cls: 'bg-rose-50 text-rose-700 ring-rose-200'
-                                      }
-                                    : margenActual >= objetivo
-                                      ? {
-                                          text: 'Cumple objetivo',
-                                          cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                                  {ciLoading ? (
+                                    <span>Calculando sugerido…</span>
+                                  ) : ciSugerido ? (
+                                    <span>
+                                      Sugerido disponible:{' '}
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setFormValues((prev) => ({
+                                            ...prev,
+                                            codigo_interno: String(ciSugerido)
+                                          }))
                                         }
-                                      : margenActual >= objetivo * 0.75
-                                        ? {
-                                            text: 'Cerca del objetivo',
-                                            cls: 'bg-amber-50 text-amber-700 ring-amber-200'
-                                          }
-                                        : {
-                                            text: 'Bajo objetivo',
-                                            cls: 'bg-rose-50 text-rose-700 ring-rose-200'
-                                          };
-
-                          // Barra visual (0–60%)
-                          const barMax = 60;
-                          const barWidth = hasCore
-                            ? `${(clamp(margenActual, 0, barMax) / barMax) * 100}%`
-                            : '0%';
-
-                          const canSuggest =
-                            margenPreview.reqPrecioBaseBruto != null &&
-                            Number.isFinite(margenPreview.reqPrecioBaseBruto) &&
-                            margenPreview.reqPrecioBaseBruto > 0 &&
-                            hasCosto;
-
-                          const canBreakeven =
-                            margenPreview.equilibrioBaseBruto != null &&
-                            Number.isFinite(
-                              margenPreview.equilibrioBaseBruto
-                            ) &&
-                            margenPreview.equilibrioBaseBruto > 0 &&
-                            hasCosto;
-
-                          const applyPrice = (value) => {
-                            if (!Number.isFinite(value) || value <= 0) return;
-                            // Redondeo: por defecto 2 decimales (si querés retail AR, podés pasar a 0)
-                            const rounded = Math.round(value * 100) / 100;
-                            setFormValues((prev) => ({
-                              ...prev,
-                              precio: String(rounded)
-                            }));
-                          };
-
-                          return (
-                            <>
-                              {/* Encabezado: indicador + badges de “cómo se interpreta” */}
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <div className="text-[12px] text-slate-600">
-                                    Indicador (
-                                    {vistaRent === 'NETO' ? 'Neto' : 'Caja'})
-                                  </div>
-
-                                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                                    <span className="text-[11px] px-2.5 py-1 rounded-full ring-1 bg-slate-50 text-slate-700 ring-slate-200">
-                                      Precio: c/IVA
+                                        className="font-semibold text-orange-700 hover:text-orange-800 underline underline-offset-2"
+                                        title="Aplicar sugerido"
+                                      >
+                                        {ciSugerido}
+                                      </button>
                                     </span>
-                                    <span className="text-[11px] px-2.5 py-1 rounded-full ring-1 bg-slate-50 text-slate-700 ring-slate-200">
-                                      Costo:{' '}
-                                      {formValues.iva_incluido
-                                        ? 'c/IVA'
-                                        : 's/IVA'}
-                                    </span>
-                                    <span className="text-[11px] px-2.5 py-1 rounded-full ring-1 bg-slate-50 text-slate-700 ring-slate-200">
-                                      IVA:{' '}
-                                      {Number(margenPreview.iva || 21).toFixed(
-                                        2
-                                      )}
-                                      %
-                                    </span>
-                                    <span className="text-[11px] px-2.5 py-1 rounded-full ring-1 bg-slate-50 text-slate-700 ring-slate-200">
-                                      Desc:{' '}
-                                      {Number(
-                                        margenPreview.descPct || 0
-                                      ).toFixed(2)}
-                                      %
-                                    </span>
-                                  </div>
-
-                                  <div className="text-[11px] text-slate-500 mt-1.5">
-                                    Objetivo:{' '}
-                                    <span className="font-semibold text-slate-700">
-                                      {objetivo.toFixed(0)}%
-                                    </span>
-                                    {vistaRent === 'NETO'
-                                      ? ' (sin IVA)'
-                                      : ' (con IVA)'}
-                                  </div>
-                                </div>
-
-                                <span
-                                  className={`text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ${status.cls}`}
-                                >
-                                  {status.text}
-                                </span>
-                              </div>
-
-                              {/* Barra visual margen */}
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                                <div className="flex items-center justify-between text-[11px] text-slate-600">
-                                  <span>Margen (sobre venta)</span>
-                                  <span className="font-semibold text-slate-900">
-                                    {hasCore
-                                      ? `${margenActual.toFixed(2)}%`
-                                      : '—'}
-                                  </span>
-                                </div>
-
-                                <div className="mt-2 h-2.5 w-full rounded-full bg-white border border-slate-200 overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full bg-orange-500/80 transition-[width] duration-300"
-                                    style={{ width: barWidth }}
-                                  />
-                                </div>
-
-                                <div className="mt-2 text-[11px] text-slate-500 leading-5">
-                                  {vistaRent === 'NETO'
-                                    ? 'Neto: se compara precio neto vs costo neto (sin IVA).'
-                                    : 'Caja: se compara precio final vs costo final (con IVA).'}
-                                </div>
-                              </div>
-
-                              {/* KPIs (ahora incluye Markup + guardrails) */}
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="rounded-2xl bg-white border border-slate-200 p-4">
-                                  <div className="text-[11px] text-slate-500">
-                                    Precio base
-                                  </div>
-                                  <div className="text-sm font-semibold text-slate-900 mt-1">
-                                    {formatARS(Number(formValues.precio || 0))}
-                                  </div>
-                                </div>
-
-                                <div className="rounded-2xl bg-white border border-slate-200 p-4">
-                                  <div className="text-[11px] text-slate-500">
-                                    Precio final
-                                  </div>
-                                  <div className="text-sm font-semibold text-slate-900 mt-1">
-                                    {formatARS(precioFinalPreview)}
-                                  </div>
-                                </div>
-
-                                <div className="rounded-2xl bg-white border border-slate-200 p-4">
-                                  <div className="text-[11px] text-slate-500">
-                                    Costo final
-                                  </div>
-                                  <div className="text-sm font-semibold text-slate-900 mt-1">
-                                    {formatARS(costoFinalPreview)}
-                                  </div>
-                                  {!hasCosto && (
-                                    <div className="text-[11px] text-amber-700 mt-1">
-                                      Sin costo: no se calcula rentabilidad.
-                                    </div>
+                                  ) : (
+                                    <span>Sugerido no disponible.</span>
                                   )}
                                 </div>
 
-                                <div className="rounded-2xl bg-white border border-slate-200 p-4">
+                                <button
+                                  type="button"
+                                  onClick={verCodigosOcupados}
+                                  className="text-[11px] font-semibold text-slate-700 hover:text-orange-700 transition"
+                                >
+                                  Ver ocupados
+                                </button>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className=" text-[12px] font-medium text-slate-700 mb-1 flex items-center gap-2">
+                                <FaBarcode className="text-slate-400" />
+                                Código de barras
+                              </label>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={formValues.codigo_barra}
+                                onChange={(e) => {
+                                  // solo dígitos y tope 32
+                                  const v = e.target.value
+                                    .replace(/\D/g, '')
+                                    .slice(0, 32);
+                                  setFormValues((prev) => ({
+                                    ...prev,
+                                    codigo_barra: v
+                                  }));
+                                }}
+                                maxLength={32}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
+                                placeholder="8 a 32 dígitos"
+                              />
+                            </div>
+
+                            <div>
+                              <label className=" text-[12px] font-medium text-slate-700 mb-1 flex items-center gap-2">
+                                <FaMoneyBillWave className="text-slate-400" />
+                                Costo
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={formValues.precio_costo}
+                                onChange={(e) =>
+                                  setFormValues({
+                                    ...formValues,
+                                    precio_costo: e.target.value
+                                  })
+                                }
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
+                                placeholder="0.00"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[12px] font-medium text-slate-700 mb-1">
+                                IVA alícuota (%)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                value={formValues.iva_alicuota}
+                                onChange={(e) =>
+                                  setFormValues({
+                                    ...formValues,
+                                    iva_alicuota: e.target.value
+                                  })
+                                }
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
+                                placeholder="21.00"
+                              />
+                            </div>
+
+                            <div className="md:col-span-2 flex flex-col gap-3">
+                              <label className="inline-flex items-start gap-3 select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={!!formValues.iva_incluido}
+                                  onChange={(e) =>
+                                    setFormValues({
+                                      ...formValues,
+                                      iva_incluido: e.target.checked
+                                    })
+                                  }
+                                  className="mt-0.5 w-5 h-5 rounded-md border-slate-300 bg-white text-orange-600 focus:ring-orange-500/25"
+                                />
+                                <span className="text-[13px] text-slate-700 leading-5">
+                                  IVA incluido en el costo (si está apagado, se
+                                  considera costo neto).
+                                </span>
+                              </label>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
                                   <div className="text-[11px] text-slate-500">
-                                    {vistaRent === 'NETO'
-                                      ? 'Ganancia / unidad (neta)'
-                                      : 'Ganancia / unidad (caja)'}
+                                    Costo final estimado
                                   </div>
-                                  <div
-                                    className={`text-sm font-semibold mt-1 ${gananciaActual >= 0 ? 'text-slate-900' : 'text-rose-700'}`}
-                                  >
-                                    {hasCore ? formatARS(gananciaActual) : '—'}
+                                  <div className="text-lg font-semibold text-slate-900 mt-1">
+                                    {formatARS(costoFinalPreview)}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 mt-1">
+                                    {formValues.iva_incluido
+                                      ? '(costo ingresado con IVA)'
+                                      : '(costo ingresado sin IVA: se suma IVA)'}
                                   </div>
                                 </div>
 
-                                <div className="rounded-2xl bg-white border border-slate-200 p-4">
+                                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
                                   <div className="text-[11px] text-slate-500">
-                                    Margen
+                                    IVA
                                   </div>
-                                  <div className="text-sm font-semibold text-slate-900 mt-1">
-                                    {hasCore
-                                      ? `${margenActual.toFixed(2)}%`
-                                      : '—'}
+                                  <div className="text-lg font-semibold text-slate-900 mt-1">
+                                    {String(formValues.iva_alicuota || '21')}%
                                   </div>
-                                </div>
-
-                                <div className="rounded-2xl bg-white border border-slate-200 p-4">
-                                  <div className="text-[11px] text-slate-500">
-                                    Markup (sobre costo)
-                                  </div>
-                                  <div className="text-sm font-semibold text-slate-900 mt-1">
-                                    {hasCore
-                                      ? `${markupActual.toFixed(2)}%`
-                                      : '—'}
+                                  <div className="text-[11px] text-slate-500 mt-1">
+                                    Alícuota aplicada para cálculos
                                   </div>
                                 </div>
                               </div>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
 
-                              {/* Detalle compacto: neto vs caja */}
-                              <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+                      {/* Precio venta + descuento */}
+                      <section className="rounded-2xl bg-white border border-slate-200/70 shadow-sm shadow-black/5">
+                        <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-semibold text-slate-900">
+                              Precio de venta
+                            </h3>
+                            <p className="text-[12px] text-slate-500 mt-1">
+                              Precio base, descuento opcional y cálculo de
+                              precio final.
+                            </p>
+                          </div>
+
+                          <label className="inline-flex items-center gap-2 select-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                            <input
+                              type="checkbox"
+                              checked={!!formValues.permite_descuento}
+                              onChange={(e) =>
+                                setFormValues({
+                                  ...formValues,
+                                  permite_descuento: e.target.checked,
+                                  descuento_porcentaje: e.target.checked
+                                    ? formValues.descuento_porcentaje
+                                    : ''
+                                })
+                              }
+                              className="w-5 h-5 rounded-md border-slate-300 bg-white text-orange-600 focus:ring-orange-500/25"
+                            />
+                            <span className="text-[13px] text-slate-700">
+                              Permite descuento
+                            </span>
+                          </label>
+                        </div>
+
+                        <div className="p-5">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[12px] font-medium text-slate-700 mb-1">
+                                Precio{' '}
+                                <span className="text-orange-600">*</span>
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={formValues.precio}
+                                onChange={(e) =>
+                                  setFormValues({
+                                    ...formValues,
+                                    precio: e.target.value
+                                  })
+                                }
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
+                                placeholder="0.00"
+                                required
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[12px] font-medium text-slate-700 mb-1">
+                                Descuento (%)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                value={formValues.descuento_porcentaje}
+                                onChange={(e) =>
+                                  setFormValues({
+                                    ...formValues,
+                                    descuento_porcentaje: e.target.value
+                                  })
+                                }
+                                disabled={!formValues.permite_descuento}
+                                className={`w-full rounded-xl px-3 py-2.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 transition ${
+                                  formValues.permite_descuento
+                                    ? 'bg-white border border-slate-200 text-slate-900 focus:border-orange-300'
+                                    : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'
+                                }`}
+                                placeholder={
+                                  formValues.permite_descuento
+                                    ? '0.00'
+                                    : 'No aplica'
+                                }
+                              />
+                            </div>
+
+                            <div className="md:col-span-2">
+                              <div className="rounded-2xl bg-gradient-to-r from-orange-50 via-white to-white border border-orange-200/60 p-4 flex items-center justify-between gap-4">
+                                <div className="min-w-0">
+                                  <div className="text-[11px] text-slate-500">
+                                    Precio final estimado
+                                  </div>
+                                  <div className="text-xl font-semibold text-slate-900 mt-1">
+                                    {formatARS(precioFinalPreview)}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 mt-1">
+                                    {formValues.permite_descuento
+                                      ? 'Con descuento aplicado'
+                                      : 'Sin descuentos'}
+                                  </div>
+                                </div>
+
+                                <div className="text-right">
+                                  <div className="text-[11px] text-slate-500">
+                                    Precio base
+                                  </div>
+                                  <div className="text-sm font-semibold text-slate-700 mt-1">
+                                    {formatARS(Number(formValues.precio || 0))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+
+                      {/* Descripción */}
+                      <section className="rounded-2xl bg-white border border-slate-200/70 shadow-sm shadow-black/5">
+                        <div className="px-5 pt-5 pb-4 border-b border-slate-100">
+                          <h3 className="text-sm font-semibold text-slate-900">
+                            Descripción
+                          </h3>
+                          <p className="text-[12px] text-slate-500 mt-1">
+                            Información adicional (opcional).
+                          </p>
+                        </div>
+
+                        <div className="p-5">
+                          <textarea
+                            value={formValues.descripcion}
+                            onChange={(e) =>
+                              setFormValues({
+                                ...formValues,
+                                descripcion: e.target.value
+                              })
+                            }
+                            rows={4}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition resize-none"
+                            placeholder="Detalle del producto (opcional)"
+                          />
+                        </div>
+                      </section>
+                    </div>
+
+                    {/* Columna lateral */}
+                    <div className="space-y-6">
+                      {/* Imagen */}
+                      <section className="rounded-2xl bg-white border border-slate-200/70 shadow-sm shadow-black/5">
+                        <div className="px-5 pt-5 pb-4 border-b border-slate-100">
+                          <h3 className="text-sm font-semibold text-slate-900">
+                            Imagen
+                          </h3>
+                          <p className="text-[12px] text-slate-500 mt-1">
+                            Pegá una URL https para previsualizar.
+                          </p>
+                        </div>
+
+                        <div className="p-5">
+                          <input
+                            type="text"
+                            value={formValues.imagen_url}
+                            onChange={(e) =>
+                              setFormValues({
+                                ...formValues,
+                                imagen_url: e.target.value
+                              })
+                            }
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
+                            placeholder="URL de imagen (opcional)"
+                          />
+
+                          <div className="mt-4 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden">
+                            {formValues.imagen_url ? (
+                              <img
+                                src={formValues.imagen_url}
+                                alt="Preview"
+                                className="w-full h-52 object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src =
+                                    'https://via.placeholder.com/600x300?text=Imagen';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-52 flex items-center justify-center text-slate-400 text-sm">
+                                Sin imagen
+                              </div>
+                            )}
+                          </div>
+
+                          <p className="text-[11px] text-slate-500 mt-3">
+                            Recomendación: imagen nítida, proporción horizontal
+                            y buena resolución.
+                          </p>
+                        </div>
+                      </section>
+
+                      {/* Resumen */}
+                      <section className="rounded-2xl bg-white border border-slate-200/70 shadow-sm shadow-black/5">
+                        <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-semibold text-slate-900">
+                              Resumen
+                            </h3>
+                            <p className="text-[12px] text-slate-500 mt-1">
+                              Valores calculados + rentabilidad. Podés alternar
+                              NETO/CAJA.
+                            </p>
+                          </div>
+
+                          {/* Toggle NETO/CAJA */}
+                          <div className="-mr-4 shrink-0 inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                            <button
+                              type="button"
+                              onClick={() => setVistaRent('NETO')}
+                              className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition ${
+                                vistaRent === 'NETO'
+                                  ? 'bg-white shadow-sm text-slate-900'
+                                  : 'text-slate-600 hover:text-slate-800'
+                              }`}
+                            >
+                              NETO (sin IVA)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setVistaRent('CAJA')}
+                              className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition ${
+                                vistaRent === 'CAJA'
+                                  ? 'bg-white shadow-sm text-slate-900'
+                                  : 'text-slate-600 hover:text-slate-800'
+                              }`}
+                            >
+                              CAJA (con IVA)
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="p-5 space-y-4">
+                          {(() => {
+                            const hasPrecio = !!margenPreview.hasPrecio;
+                            const hasCosto = !!margenPreview.hasCosto;
+                            const hasCore = !!margenPreview.hasCore;
+
+                            const objetivo = Number(
+                              margenPreview.targetMargin || 0
+                            );
+
+                            const margenActual =
+                              vistaRent === 'NETO'
+                                ? Number(margenPreview.margenPct || 0)
+                                : Number(margenPreview.margenCajaPct || 0);
+
+                            const markupActual =
+                              vistaRent === 'NETO'
+                                ? Number(margenPreview.markupPct || 0)
+                                : Number(margenPreview.markupCajaPct || 0);
+
+                            const gananciaActual =
+                              vistaRent === 'NETO'
+                                ? Number(margenPreview.ganancia || 0)
+                                : Number(margenPreview.gananciaCaja || 0);
+
+                            const isPerdida = !!margenPreview.isPerdida;
+
+                            // Status “inteligente”
+                            const status =
+                              !hasPrecio && !hasCosto
+                                ? {
+                                    text: 'Completá precio y costo',
+                                    cls: 'bg-slate-100 text-slate-700 ring-slate-200'
+                                  }
+                                : !hasPrecio
+                                  ? {
+                                      text: 'Falta precio',
+                                      cls: 'bg-slate-100 text-slate-700 ring-slate-200'
+                                    }
+                                  : !hasCosto
+                                    ? {
+                                        text: 'Sin costo cargado',
+                                        cls: 'bg-amber-50 text-amber-700 ring-amber-200'
+                                      }
+                                    : isPerdida
+                                      ? {
+                                          text: 'Pérdida',
+                                          cls: 'bg-rose-50 text-rose-700 ring-rose-200'
+                                        }
+                                      : margenActual >= objetivo
+                                        ? {
+                                            text: 'Cumple objetivo',
+                                            cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                                          }
+                                        : margenActual >= objetivo * 0.75
+                                          ? {
+                                              text: 'Cerca del objetivo',
+                                              cls: 'bg-amber-50 text-amber-700 ring-amber-200'
+                                            }
+                                          : {
+                                              text: 'Bajo objetivo',
+                                              cls: 'bg-rose-50 text-rose-700 ring-rose-200'
+                                            };
+
+                            // Barra visual (0–60%)
+                            const barMax = 60;
+                            const barWidth = hasCore
+                              ? `${(clamp(margenActual, 0, barMax) / barMax) * 100}%`
+                              : '0%';
+
+                            const canSuggest =
+                              margenPreview.reqPrecioBaseBruto != null &&
+                              Number.isFinite(
+                                margenPreview.reqPrecioBaseBruto
+                              ) &&
+                              margenPreview.reqPrecioBaseBruto > 0 &&
+                              hasCosto;
+
+                            const canBreakeven =
+                              margenPreview.equilibrioBaseBruto != null &&
+                              Number.isFinite(
+                                margenPreview.equilibrioBaseBruto
+                              ) &&
+                              margenPreview.equilibrioBaseBruto > 0 &&
+                              hasCosto;
+
+                            const applyPrice = (value) => {
+                              if (!Number.isFinite(value) || value <= 0) return;
+                              // Redondeo: por defecto 2 decimales (si querés retail AR, podés pasar a 0)
+                              const rounded = Math.round(value * 100) / 100;
+                              setFormValues((prev) => ({
+                                ...prev,
+                                precio: String(rounded)
+                              }));
+                            };
+
+                            return (
+                              <>
+                                {/* Encabezado: indicador + badges de “cómo se interpreta” */}
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
-                                    <div className="text-[11px] text-slate-500">
-                                      {vistaRent === 'NETO'
-                                        ? 'Detalle neto (sin IVA)'
-                                        : 'Detalle caja (con IVA)'}
+                                    <div className="text-[12px] text-slate-600">
+                                      Indicador (
+                                      {vistaRent === 'NETO' ? 'Neto' : 'Caja'})
                                     </div>
-                                    <div className="text-[12px] text-slate-600 mt-1 leading-5">
-                                      {vistaRent === 'NETO' ? (
-                                        <>
-                                          Precio neto:{' '}
-                                          <span className="font-semibold text-slate-700">
-                                            {formatARS(
-                                              margenPreview.precioNeto
-                                            )}
-                                          </span>{' '}
-                                          · Costo neto:{' '}
-                                          <span className="font-semibold text-slate-700">
-                                            {formatARS(margenPreview.costoNeto)}
-                                          </span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          Precio (caja):{' '}
-                                          <span className="font-semibold text-slate-700">
-                                            {formatARS(
-                                              margenPreview.precioFinal
-                                            )}
-                                          </span>{' '}
-                                          · Costo (caja):{' '}
-                                          <span className="font-semibold text-slate-700">
-                                            {formatARS(
-                                              margenPreview.costoFinal
-                                            )}
-                                          </span>
-                                        </>
+
+                                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                                      <span className="text-[11px] px-2.5 py-1 rounded-full ring-1 bg-slate-50 text-slate-700 ring-slate-200">
+                                        Precio: c/IVA
+                                      </span>
+                                      <span className="text-[11px] px-2.5 py-1 rounded-full ring-1 bg-slate-50 text-slate-700 ring-slate-200">
+                                        Costo:{' '}
+                                        {formValues.iva_incluido
+                                          ? 'c/IVA'
+                                          : 's/IVA'}
+                                      </span>
+                                      <span className="text-[11px] px-2.5 py-1 rounded-full ring-1 bg-slate-50 text-slate-700 ring-slate-200">
+                                        IVA:{' '}
+                                        {Number(
+                                          margenPreview.iva || 21
+                                        ).toFixed(2)}
+                                        %
+                                      </span>
+                                      <span className="text-[11px] px-2.5 py-1 rounded-full ring-1 bg-slate-50 text-slate-700 ring-slate-200">
+                                        Desc:{' '}
+                                        {Number(
+                                          margenPreview.descPct || 0
+                                        ).toFixed(2)}
+                                        %
+                                      </span>
+                                    </div>
+
+                                    <div className="text-[11px] text-slate-500 mt-1.5">
+                                      Objetivo:{' '}
+                                      <span className="font-semibold text-slate-700">
+                                        {objetivo.toFixed(0)}%
+                                      </span>
+                                      {vistaRent === 'NETO'
+                                        ? ' (sin IVA)'
+                                        : ' (con IVA)'}
+                                    </div>
+                                  </div>
+
+                                  <span
+                                    className={`text-[11px] font-semibold px-3 py-1 rounded-full ring-1 ${status.cls}`}
+                                  >
+                                    {status.text}
+                                  </span>
+                                </div>
+
+                                {/* Barra visual margen */}
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                  <div className="flex items-center justify-between text-[11px] text-slate-600">
+                                    <span>Margen (sobre venta)</span>
+                                    <span className="font-semibold text-slate-900">
+                                      {hasCore
+                                        ? `${margenActual.toFixed(2)}%`
+                                        : '—'}
+                                    </span>
+                                  </div>
+
+                                  <div className="mt-2 h-2.5 w-full rounded-full bg-white border border-slate-200 overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full bg-orange-500/80 transition-[width] duration-300"
+                                      style={{ width: barWidth }}
+                                    />
+                                  </div>
+
+                                  <div className="mt-2 text-[11px] text-slate-500 leading-5">
+                                    {vistaRent === 'NETO'
+                                      ? 'Neto: se compara precio neto vs costo neto (sin IVA).'
+                                      : 'Caja: se compara precio final vs costo final (con IVA).'}
+                                  </div>
+                                </div>
+
+                                {/* KPIs (ahora incluye Markup + guardrails) */}
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="rounded-2xl bg-white border border-slate-200 p-4">
+                                    <div className="text-[11px] text-slate-500">
+                                      Precio base
+                                    </div>
+                                    <div className="text-sm font-semibold text-slate-900 mt-1">
+                                      {formatARS(
+                                        Number(formValues.precio || 0)
                                       )}
                                     </div>
                                   </div>
 
-                                  <div className="text-right">
+                                  <div className="rounded-2xl bg-white border border-slate-200 p-4">
+                                    <div className="text-[11px] text-slate-500">
+                                      Precio final
+                                    </div>
+                                    <div className="text-sm font-semibold text-slate-900 mt-1">
+                                      {formatARS(precioFinalPreview)}
+                                    </div>
+                                  </div>
+
+                                  <div className="rounded-2xl bg-white border border-slate-200 p-4">
+                                    <div className="text-[11px] text-slate-500">
+                                      Costo final
+                                    </div>
+                                    <div className="text-sm font-semibold text-slate-900 mt-1">
+                                      {formatARS(costoFinalPreview)}
+                                    </div>
+                                    {!hasCosto && (
+                                      <div className="text-[11px] text-amber-700 mt-1">
+                                        Sin costo: no se calcula rentabilidad.
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="rounded-2xl bg-white border border-slate-200 p-4">
                                     <div className="text-[11px] text-slate-500">
                                       {vistaRent === 'NETO'
-                                        ? 'Markup neto'
-                                        : 'Markup caja'}
+                                        ? 'Ganancia / unidad (neta)'
+                                        : 'Ganancia / unidad (caja)'}
                                     </div>
-                                    <div className="text-sm font-semibold text-slate-900 mt-0.5">
+                                    <div
+                                      className={`text-sm font-semibold mt-1 ${gananciaActual >= 0 ? 'text-slate-900' : 'text-rose-700'}`}
+                                    >
+                                      {hasCore
+                                        ? formatARS(gananciaActual)
+                                        : '—'}
+                                    </div>
+                                  </div>
+
+                                  <div className="rounded-2xl bg-white border border-slate-200 p-4">
+                                    <div className="text-[11px] text-slate-500">
+                                      Margen
+                                    </div>
+                                    <div className="text-sm font-semibold text-slate-900 mt-1">
+                                      {hasCore
+                                        ? `${margenActual.toFixed(2)}%`
+                                        : '—'}
+                                    </div>
+                                  </div>
+
+                                  <div className="rounded-2xl bg-white border border-slate-200 p-4">
+                                    <div className="text-[11px] text-slate-500">
+                                      Markup (sobre costo)
+                                    </div>
+                                    <div className="text-sm font-semibold text-slate-900 mt-1">
                                       {hasCore
                                         ? `${markupActual.toFixed(2)}%`
                                         : '—'}
                                     </div>
                                   </div>
                                 </div>
-                              </div>
 
-                              {/* Asistente de precio (se mantiene, pero más “a prueba de costo 0”) */}
-                              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <div className="text-[12px] font-semibold text-slate-900">
-                                      Asistente de precio
+                                {/* Detalle compacto: neto vs caja */}
+                                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <div className="text-[11px] text-slate-500">
+                                        {vistaRent === 'NETO'
+                                          ? 'Detalle neto (sin IVA)'
+                                          : 'Detalle caja (con IVA)'}
+                                      </div>
+                                      <div className="text-[12px] text-slate-600 mt-1 leading-5">
+                                        {vistaRent === 'NETO' ? (
+                                          <>
+                                            Precio neto:{' '}
+                                            <span className="font-semibold text-slate-700">
+                                              {formatARS(
+                                                margenPreview.precioNeto
+                                              )}
+                                            </span>{' '}
+                                            · Costo neto:{' '}
+                                            <span className="font-semibold text-slate-700">
+                                              {formatARS(
+                                                margenPreview.costoNeto
+                                              )}
+                                            </span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            Precio (caja):{' '}
+                                            <span className="font-semibold text-slate-700">
+                                              {formatARS(
+                                                margenPreview.precioFinal
+                                              )}
+                                            </span>{' '}
+                                            · Costo (caja):{' '}
+                                            <span className="font-semibold text-slate-700">
+                                              {formatARS(
+                                                margenPreview.costoFinal
+                                              )}
+                                            </span>
+                                          </>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="text-[11px] text-slate-500 mt-1 leading-5">
-                                      Sugiere precio base para cumplir margen
-                                      objetivo (neto) considerando el descuento
-                                      actual.
-                                      {Number(margenPreview.iva || 21) > 0 && (
-                                        <>
-                                          {' '}
-                                          Si precio y costo usan la misma
-                                          alícuota, el % de margen suele
-                                          coincidir en NETO y CAJA.
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="text-[11px] text-slate-500">
-                                      Objetivo
-                                    </div>
-                                    <div className="text-sm font-semibold text-slate-900 mt-0.5">
-                                      {objetivo.toFixed(0)}%
+
+                                    <div className="text-right">
+                                      <div className="text-[11px] text-slate-500">
+                                        {vistaRent === 'NETO'
+                                          ? 'Markup neto'
+                                          : 'Markup caja'}
+                                      </div>
+                                      <div className="text-sm font-semibold text-slate-900 mt-0.5">
+                                        {hasCore
+                                          ? `${markupActual.toFixed(2)}%`
+                                          : '—'}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
 
-                                <div className="mt-4">
-                                  <div className="flex items-center justify-between gap-3">
-                                    <label className="text-[11px] text-slate-600">
-                                      Margen objetivo (sobre venta neta)
-                                    </label>
+                                {/* Asistente de precio (se mantiene, pero más “a prueba de costo 0”) */}
+                                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <div className="text-[12px] font-semibold text-slate-900">
+                                        Asistente de precio
+                                      </div>
+                                      <div className="text-[11px] text-slate-500 mt-1 leading-5">
+                                        Sugiere precio base para cumplir margen
+                                        objetivo (neto) considerando el
+                                        descuento actual.
+                                        {Number(margenPreview.iva || 21) >
+                                          0 && (
+                                          <>
+                                            {' '}
+                                            Si precio y costo usan la misma
+                                            alícuota, el % de margen suele
+                                            coincidir en NETO y CAJA.
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="text-[11px] text-slate-500">
+                                        Objetivo
+                                      </div>
+                                      <div className="text-sm font-semibold text-slate-900 mt-0.5">
+                                        {objetivo.toFixed(0)}%
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-4">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <label className="text-[11px] text-slate-600">
+                                        Margen objetivo (sobre venta neta)
+                                      </label>
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={90}
+                                        step={1}
+                                        value={margenObjetivo}
+                                        onChange={(e) =>
+                                          setMargenObjetivo(
+                                            clamp(
+                                              Number(e.target.value || 0),
+                                              0,
+                                              90
+                                            )
+                                          )
+                                        }
+                                        className="w-24 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300"
+                                      />
+                                    </div>
+
                                     <input
-                                      type="number"
+                                      type="range"
                                       min={0}
                                       max={90}
                                       step={1}
@@ -2615,304 +2691,287 @@ const ProductosGet = () => {
                                           )
                                         )
                                       }
-                                      className="w-24 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300"
+                                      className="mt-3 w-full accent-orange-600"
                                     />
                                   </div>
 
-                                  <input
-                                    type="range"
-                                    min={0}
-                                    max={90}
-                                    step={1}
-                                    value={margenObjetivo}
-                                    onChange={(e) =>
-                                      setMargenObjetivo(
-                                        clamp(
-                                          Number(e.target.value || 0),
-                                          0,
-                                          90
-                                        )
-                                      )
-                                    }
-                                    className="mt-3 w-full accent-orange-600"
-                                  />
-                                </div>
-
-                                <div className="mt-4 grid grid-cols-1 gap-3">
-                                  <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 flex items-center justify-between gap-4">
-                                    <div className="min-w-0">
-                                      <div className="text-[11px] text-slate-500">
-                                        Precio base sugerido (cumple objetivo)
-                                      </div>
-                                      <div className="text-base font-semibold text-slate-900 mt-1">
-                                        {canSuggest
-                                          ? formatARS(
-                                              margenPreview.reqPrecioBaseBruto
-                                            )
-                                          : '—'}
-                                      </div>
-                                      <div className="text-[11px] text-slate-500 mt-1">
-                                        (precio final estimado:{' '}
-                                        {canSuggest
-                                          ? formatARS(
-                                              margenPreview.reqPrecioBrutoFinal
-                                            )
-                                          : '—'}
-                                        )
-                                      </div>
-                                      {!hasCosto && (
-                                        <div className="text-[11px] text-amber-700 mt-1">
-                                          Cargá un costo para habilitar
-                                          sugerencias.
+                                  <div className="mt-4 grid grid-cols-1 gap-3">
+                                    <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 flex items-center justify-between gap-4">
+                                      <div className="min-w-0">
+                                        <div className="text-[11px] text-slate-500">
+                                          Precio base sugerido (cumple objetivo)
                                         </div>
-                                      )}
+                                        <div className="text-base font-semibold text-slate-900 mt-1">
+                                          {canSuggest
+                                            ? formatARS(
+                                                margenPreview.reqPrecioBaseBruto
+                                              )
+                                            : '—'}
+                                        </div>
+                                        <div className="text-[11px] text-slate-500 mt-1">
+                                          (precio final estimado:{' '}
+                                          {canSuggest
+                                            ? formatARS(
+                                                margenPreview.reqPrecioBrutoFinal
+                                              )
+                                            : '—'}
+                                          )
+                                        </div>
+                                        {!hasCosto && (
+                                          <div className="text-[11px] text-amber-700 mt-1">
+                                            Cargá un costo para habilitar
+                                            sugerencias.
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        disabled={!canSuggest}
+                                        onClick={() =>
+                                          applyPrice(
+                                            margenPreview.reqPrecioBaseBruto
+                                          )
+                                        }
+                                        className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition shadow-sm ${
+                                          canSuggest
+                                            ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                                            : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                                        }`}
+                                      >
+                                        Aplicar
+                                      </button>
                                     </div>
 
-                                    <button
-                                      type="button"
-                                      disabled={!canSuggest}
-                                      onClick={() =>
-                                        applyPrice(
-                                          margenPreview.reqPrecioBaseBruto
-                                        )
-                                      }
-                                      className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition shadow-sm ${
-                                        canSuggest
-                                          ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                                          : 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                                      }`}
-                                    >
-                                      Aplicar
-                                    </button>
-                                  </div>
+                                    <div className="rounded-2xl bg-white border border-slate-200 p-4 flex items-center justify-between gap-4">
+                                      <div className="min-w-0">
+                                        <div className="text-[11px] text-slate-500">
+                                          Precio base equilibrio
+                                        </div>
+                                        <div className="text-base font-semibold text-slate-900 mt-1">
+                                          {canBreakeven
+                                            ? formatARS(
+                                                margenPreview.equilibrioBaseBruto
+                                              )
+                                            : '—'}
+                                        </div>
+                                        <div className="text-[11px] text-slate-500 mt-1">
+                                          (precio final equilibrio:{' '}
+                                          {canBreakeven
+                                            ? formatARS(
+                                                margenPreview.equilibrioFinalBruto
+                                              )
+                                            : '—'}
+                                          )
+                                        </div>
+                                      </div>
 
-                                  <div className="rounded-2xl bg-white border border-slate-200 p-4 flex items-center justify-between gap-4">
-                                    <div className="min-w-0">
-                                      <div className="text-[11px] text-slate-500">
-                                        Precio base equilibrio
-                                      </div>
-                                      <div className="text-base font-semibold text-slate-900 mt-1">
-                                        {canBreakeven
-                                          ? formatARS(
-                                              margenPreview.equilibrioBaseBruto
-                                            )
-                                          : '—'}
-                                      </div>
-                                      <div className="text-[11px] text-slate-500 mt-1">
-                                        (precio final equilibrio:{' '}
-                                        {canBreakeven
-                                          ? formatARS(
-                                              margenPreview.equilibrioFinalBruto
-                                            )
-                                          : '—'}
-                                        )
-                                      </div>
+                                      <button
+                                        type="button"
+                                        disabled={!canBreakeven}
+                                        onClick={() =>
+                                          applyPrice(
+                                            margenPreview.equilibrioBaseBruto
+                                          )
+                                        }
+                                        className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition shadow-sm ${
+                                          canBreakeven
+                                            ? 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-200'
+                                            : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                                        }`}
+                                      >
+                                        Aplicar
+                                      </button>
                                     </div>
-
-                                    <button
-                                      type="button"
-                                      disabled={!canBreakeven}
-                                      onClick={() =>
-                                        applyPrice(
-                                          margenPreview.equilibrioBaseBruto
-                                        )
-                                      }
-                                      className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition shadow-sm ${
-                                        canBreakeven
-                                          ? 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-200'
-                                          : 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                                      }`}
-                                    >
-                                      Aplicar
-                                    </button>
                                   </div>
                                 </div>
-                              </div>
 
-                              <div className="text-[11px] text-slate-500 leading-5">
-                                Los cálculos son estimaciones UI. El backend
-                                puede recalcular valores finales.
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </section>
+                                <div className="text-[11px] text-slate-500 leading-5">
+                                  Los cálculos son estimaciones UI. El backend
+                                  puede recalcular valores finales.
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </section>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Footer */}
-              <div className="px-6 py-4 border-t border-slate-200 bg-white/80 backdrop-blur flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-sm transition"
-                >
-                  Cancelar
-                </button>
+                {/* Footer */}
+                <div className="px-6 py-4 border-t border-slate-200 bg-white/80 backdrop-blur flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setModalOpen(false)}
+                    className="px-5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-sm transition"
+                  >
+                    Cancelar
+                  </button>
 
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold shadow-lg shadow-orange-600/20 transition"
-                >
-                  {editId ? 'Guardar cambios' : 'Crear producto'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </Modal>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold shadow-lg shadow-orange-600/20 transition"
+                  >
+                    {editId ? 'Guardar cambios' : 'Crear producto'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </Modal>
 
-        <Modal
-          isOpen={!!confirmDelete}
-          onRequestClose={() => {
-            setConfirmDelete(null);
-            setDeleteMeta(null);
-          }}
-          overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
-          className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border-l-4 border-yellow-500"
-        >
-          <h2 className="text-xl font-bold text-yellow-600 mb-4">
-            Advertencia
-          </h2>
-          <p className="mb-6 text-gray-800">{warningMessage}</p>
+          <Modal
+            isOpen={!!confirmDelete}
+            onRequestClose={() => {
+              setConfirmDelete(null);
+              setDeleteMeta(null);
+            }}
+            overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
+            className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border-l-4 border-yellow-500"
+          >
+            <h2 className="text-xl font-bold text-yellow-600 mb-4">
+              Advertencia
+            </h2>
+            <p className="mb-6 text-gray-800">{warningMessage}</p>
 
-          <div className="flex justify-end gap-4">
-            <button
-              onClick={() => {
-                setConfirmDelete(null);
-                setDeleteMeta(null);
-              }}
-              className="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400"
-            >
-              Cerrar
-            </button>
-
-            {/* Caso: tiene stock -> ofrecer acción destructiva doble */}
-            {deleteMeta?.reason === 'HAS_STOCK' && (
+            <div className="flex justify-end gap-4">
               <button
-                onClick={async () => {
-                  try {
-                    const userId = getUserId();
-                    // 1) Eliminar stock
-                    await axios.delete(
-                      `${BASE_URL}/stock/producto/${confirmDelete}`,
-                      { data: { usuario_log_id: userId } }
-                    );
-                    // 2) Eliminar producto (forzado)
-                    await axios.delete(
-                      `${BASE_URL}/productos/${confirmDelete}`,
-                      { data: { usuario_log_id: userId, forzado: true } }
-                    );
+                onClick={() => {
+                  setConfirmDelete(null);
+                  setDeleteMeta(null);
+                }}
+                className="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400"
+              >
+                Cerrar
+              </button>
+
+              {/* Caso: tiene stock -> ofrecer acción destructiva doble */}
+              {deleteMeta?.reason === 'HAS_STOCK' && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const userId = getUserId();
+                      // 1) Eliminar stock
+                      await axios.delete(
+                        `${BASE_URL}/stock/producto/${confirmDelete}`,
+                        { data: { usuario_log_id: userId } }
+                      );
+                      // 2) Eliminar producto (forzado)
+                      await axios.delete(
+                        `${BASE_URL}/productos/${confirmDelete}`,
+                        { data: { usuario_log_id: userId, forzado: true } }
+                      );
+                      setConfirmDelete(null);
+                      setDeleteMeta(null);
+                      fetchData();
+                    } catch (error) {
+                      console.error(
+                        'Error al eliminar con forzado:',
+                        error.response?.data || error
+                      );
+
+                      //  Si el segundo DELETE devuelve 409, solo mostramos el mensaje
+                      if (error.response?.status === 409) {
+                        const data = error.response.data || {};
+                        setWarningMessage(
+                          data.mensajeError ||
+                            'No se pudo eliminar el producto.'
+                        );
+                        setDeleteMeta(data); // ej: reason = 'FK_REF' o 'LOCK_TIMEOUT'
+                        // NO cerramos el modal ni tocamos confirmDelete
+                      }
+                    }
+                  }}
+                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Eliminar stock y producto
+                </button>
+              )}
+
+              {/* Caso: asociado a proveedor -> permitir continuar igualmente */}
+              {deleteMeta?.reason === 'HAS_PROVEEDOR' && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const userId = getUserId();
+                      await axios.delete(
+                        `${BASE_URL}/productos/${confirmDelete}`,
+                        { data: { usuario_log_id: userId, forzado: true } } // <- clave
+                      );
+                      setConfirmDelete(null);
+                      setDeleteMeta(null);
+                      fetchData();
+                    } catch (error) {
+                      console.error(
+                        'Error al eliminar producto (forzado por proveedor):',
+                        error.response?.data || error
+                      );
+
+                      //  Si el segundo DELETE devuelve 409, mostramos mensaje y NO borramos
+                      if (error.response?.status === 409) {
+                        const data = error.response.data || {};
+                        setWarningMessage(
+                          data.mensajeError ||
+                            'No se pudo eliminar el producto.'
+                        );
+                        setDeleteMeta(data); // ej: reason = 'FK_REF', 'FK_COMPRAS', etc.
+                        // NO cerramos el modal, para que lea el mensaje
+                      }
+                    }
+                  }}
+                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Eliminar de todas formas
+                </button>
+              )}
+
+              {/* Caso: combos -> solo informar */}
+              {deleteMeta?.reason === 'FK_COMBO' && (
+                <button
+                  onClick={() => {
                     setConfirmDelete(null);
                     setDeleteMeta(null);
-                    fetchData();
-                  } catch (error) {
-                    console.error(
-                      'Error al eliminar con forzado:',
-                      error.response?.data || error
-                    );
+                  }}
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white"
+                >
+                  Entendido
+                </button>
+              )}
 
-                    //  Si el segundo DELETE devuelve 409, solo mostramos el mensaje
-                    if (error.response?.status === 409) {
-                      const data = error.response.data || {};
-                      setWarningMessage(
-                        data.mensajeError || 'No se pudo eliminar el producto.'
-                      );
-                      setDeleteMeta(data); // ej: reason = 'FK_REF' o 'LOCK_TIMEOUT'
-                      // NO cerramos el modal ni tocamos confirmDelete
-                    }
-                  }
-                }}
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white"
-              >
-                Eliminar stock y producto
-              </button>
-            )}
-
-            {/* Caso: asociado a proveedor -> permitir continuar igualmente */}
-            {deleteMeta?.reason === 'HAS_PROVEEDOR' && (
-              <button
-                onClick={async () => {
-                  try {
-                    const userId = getUserId();
-                    await axios.delete(
-                      `${BASE_URL}/productos/${confirmDelete}`,
-                      { data: { usuario_log_id: userId, forzado: true } } // <- clave
-                    );
+              {/* Caso: pedidos de stock -> solo informar */}
+              {deleteMeta?.reason === 'FK_PEDIDOS' && (
+                <button
+                  onClick={() => {
                     setConfirmDelete(null);
                     setDeleteMeta(null);
-                    fetchData();
-                  } catch (error) {
-                    console.error(
-                      'Error al eliminar producto (forzado por proveedor):',
-                      error.response?.data || error
-                    );
+                  }}
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white"
+                >
+                  Entendido
+                </button>
+              )}
 
-                    //  Si el segundo DELETE devuelve 409, mostramos mensaje y NO borramos
-                    if (error.response?.status === 409) {
-                      const data = error.response.data || {};
-                      setWarningMessage(
-                        data.mensajeError || 'No se pudo eliminar el producto.'
-                      );
-                      setDeleteMeta(data); // ej: reason = 'FK_REF', 'FK_COMPRAS', etc.
-                      // NO cerramos el modal, para que lea el mensaje
-                    }
-                  }
-                }}
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white"
-              >
-                Eliminar de todas formas
-              </button>
-            )}
-
-            {/* Caso: combos -> solo informar */}
-            {deleteMeta?.reason === 'FK_COMBO' && (
-              <button
-                onClick={() => {
-                  setConfirmDelete(null);
-                  setDeleteMeta(null);
-                }}
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white"
-              >
-                Entendido
-              </button>
-            )}
-
-            {/* Caso: pedidos de stock -> solo informar */}
-            {deleteMeta?.reason === 'FK_PEDIDOS' && (
-              <button
-                onClick={() => {
-                  setConfirmDelete(null);
-                  setDeleteMeta(null);
-                }}
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white"
-              >
-                Entendido
-              </button>
-            )}
-
-            {/* Casos genéricos de FK/lock (no queremos seguir borrando) */}
-            {['FK_REF', 'LOCK_TIMEOUT'].includes(deleteMeta?.reason) && (
-              <button
-                onClick={() => {
-                  setConfirmDelete(null);
-                  setDeleteMeta(null);
-                }}
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white"
-              >
-                Entendido
-              </button>
-            )}
-          </div>
-        </Modal>
-      </div>
-      <AjustePreciosModal
-        open={showAjustePrecios}
-        onClose={() => setShowAjustePrecios(false)}
-        onSuccess={() => fetchData()} // refrescar productos
-      />
-      {/* <ProductoSetupWizard
+              {/* Casos genéricos de FK/lock (no queremos seguir borrando) */}
+              {['FK_REF', 'LOCK_TIMEOUT'].includes(deleteMeta?.reason) && (
+                <button
+                  onClick={() => {
+                    setConfirmDelete(null);
+                    setDeleteMeta(null);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white"
+                >
+                  Entendido
+                </button>
+              )}
+            </div>
+          </Modal>
+        </div>
+        <AjustePreciosModal
+          open={showAjustePrecios}
+          onClose={() => setShowAjustePrecios(false)}
+          onSuccess={() => fetchData()} // refrescar productos
+        />
+        {/* <ProductoSetupWizard
         open={setupOpen}
         onClose={() => setSetupOpen(false)}
         producto={setupData.producto}
@@ -2922,114 +2981,115 @@ const ProductosGet = () => {
         BASE_URL={BASE_URL}
         onRefresh={fetchData}
       /> */}
-      <ModalAyudaProductos
-        isOpen={helpOpen}
-        onClose={() => setHelpOpen(false)}
-      />
-      {/* ---------- Modal ---------- */}
-      {modalExportOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => !exportando && setModalExportOpen(false)}
-          />
+        <ModalAyudaProductos
+          isOpen={helpOpen}
+          onClose={() => setHelpOpen(false)}
+        />
+        {/* ---------- Modal ---------- */}
+        {modalExportOpen && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => !exportando && setModalExportOpen(false)}
+            />
 
-          {/* Panel */}
-          <div className="relative w-full max-w-lg rounded-2xl bg-slate-900/90 ring-1 ring-white/10 shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-white/10">
-              <div>
-                <div className="text-xs uppercase tracking-widest text-white/50">
-                  Exportación
-                </div>
-                <div className="text-lg titulo uppercase font-semibold text-white">
-                  Elegí qué querés exportar
-                </div>
-              </div>
-
-              <button
-                type="button"
-                disabled={exportando}
-                onClick={() => setModalExportOpen(false)}
-                className="h-9 w-9 rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 flex items-center justify-center text-white/80 disabled:opacity-50"
-                aria-label="Cerrar"
-              >
-                <FaTimes />
-              </button>
-            </div>
-
-            <div className="p-4 space-y-3">
-              {/* Opción 1: Visualizando */}
-              <button
-                type="button"
-                disabled={exportando}
-                onClick={handleExportVisualizando}
-                className="w-full rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 p-4 text-left transition disabled:opacity-50"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-cyan-500/15 ring-1 ring-cyan-400/20 flex items-center justify-center text-cyan-200">
-                    <FaEye />
+            {/* Panel */}
+            <div className="relative w-full max-w-lg rounded-2xl bg-slate-900/90 ring-1 ring-white/10 shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-white/10">
+                <div>
+                  <div className="text-xs uppercase tracking-widest text-white/50">
+                    Exportación
                   </div>
-                  <div className="flex-1">
-                    <div className="text-white font-semibold">
-                      Lo que estás visualizando
-                    </div>
-                    <div className="text-sm text-white/60">
-                      Exporta únicamente los registros filtrados/visibles
-                      actualmente.
-                    </div>
-                  </div>
-                  <div className="text-xs text-white/50 mt-1">
-                    {rows?.length ?? 0} items
+                  <div className="text-lg titulo uppercase font-semibold text-white">
+                    Elegí qué querés exportar
                   </div>
                 </div>
-              </button>
 
-              {/* Opción 2: Todo */}
-              <button
-                type="button"
-                disabled={exportando}
-                onClick={handleExportTodo}
-                className="w-full rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 p-4 text-left transition disabled:opacity-50"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/20 flex items-center justify-center text-emerald-200">
-                    <FaLayerGroup />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-white font-semibold">
-                      Exportar todo
-                    </div>
-                    <div className="text-sm text-white/60">
-                      Exporta el dataset completo, ignorando filtros y
-                      paginación.
-                    </div>
-                  </div>
-                </div>
-              </button>
-
-              {/* Footer */}
-              <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   disabled={exportando}
                   onClick={() => setModalExportOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 text-white/80 disabled:opacity-50"
+                  className="h-9 w-9 rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 flex items-center justify-center text-white/80 disabled:opacity-50"
+                  aria-label="Cerrar"
                 >
-                  Cancelar
+                  <FaTimes />
                 </button>
               </div>
 
-              {exportando && (
-                <div className="text-xs text-white/55 pt-1">
-                  Generando Excel…
+              <div className="p-4 space-y-3">
+                {/* Opción 1: Visualizando */}
+                <button
+                  type="button"
+                  disabled={exportando}
+                  onClick={handleExportVisualizando}
+                  className="w-full rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 p-4 text-left transition disabled:opacity-50"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-cyan-500/15 ring-1 ring-cyan-400/20 flex items-center justify-center text-cyan-200">
+                      <FaEye />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-white font-semibold">
+                        Lo que estás visualizando
+                      </div>
+                      <div className="text-sm text-white/60">
+                        Exporta únicamente los registros filtrados/visibles
+                        actualmente.
+                      </div>
+                    </div>
+                    <div className="text-xs text-white/50 mt-1">
+                      {rows?.length ?? 0} items
+                    </div>
+                  </div>
+                </button>
+
+                {/* Opción 2: Todo */}
+                <button
+                  type="button"
+                  disabled={exportando}
+                  onClick={handleExportTodo}
+                  className="w-full rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 p-4 text-left transition disabled:opacity-50"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/20 flex items-center justify-center text-emerald-200">
+                      <FaLayerGroup />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-white font-semibold">
+                        Exportar todo
+                      </div>
+                      <div className="text-sm text-white/60">
+                        Exporta el dataset completo, ignorando filtros y
+                        paginación.
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Footer */}
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={exportando}
+                    onClick={() => setModalExportOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 text-white/80 disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
                 </div>
-              )}
+
+                {exportando && (
+                  <div className="text-xs text-white/55 pt-1">
+                    Generando Excel…
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 };
 

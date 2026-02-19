@@ -17,6 +17,7 @@ import { formatearPeso } from '../../../utils/formatearPeso';
 import { Link } from 'react-router-dom';
 import { getUserId } from '../../../utils/authUtils';
 import RoleGate from '../../../Components/auth/RoleGate';
+import NavbarStaff from '../../Dash/NavbarStaff';
 
 Modal.setAppElement('#root');
 
@@ -195,364 +196,412 @@ const CombosGet = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-10 px-6 text-white">
-      <ButtonBack />
-      <ParticlesBackground />
-      <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-purple-400 flex items-center gap-2 uppercase">
-            <FaGift /> Combos
-          </h1>
-          <RoleGate allow={['socio', 'administrativo']}>
-            <button
-              onClick={() => openModal()}
-              className="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
-            >
-              <FaPlus /> Nuevo Combo
-            </button>
-          </RoleGate>
-        </div>
+    <>
+      <NavbarStaff></NavbarStaff>
 
-        <input
-          type="text"
-          placeholder="Buscar combo..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full mb-6 px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-        />
-
-        {/* Filtros de lista (opcional) */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
-          <select
-            value={estadoListFilter}
-            onChange={(e) => {
-              setEstadoListFilter(e.target.value);
-              setPage(1);
-            }}
-            className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
-          >
-            <option value="">Todos los estados</option>
-            <option value="activo">Activo</option>
-            <option value="inactivo">Inactivo</option>
-          </select>
-        </div>
-
-        {/* Info + paginación/orden */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-          <div className="text-white/80 text-xs sm:text-sm">
-            Total: <b>{total}</b> · Página <b>{currPage}</b> de{' '}
-            <b>{totalPages}</b>
+      {/* Benjamin Orellana - 2026-02-19 - Se agregan estilos compatibles con dark/light sin alterar la lógica (contenedor, filtros, paginación y cards). */}
+      <div className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-white py-10 px-6 text-slate-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:text-white">
+        <ButtonBack />
+        <ParticlesBackground />
+        <div className="max-w-5xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold text-purple-700 dark:text-purple-400 flex items-center gap-2 uppercase">
+              <FaGift /> Combos
+            </h1>
+            <RoleGate allow={['socio', 'administrativo']}>
+              <button
+                onClick={() => openModal()}
+                className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 text-white"
+              >
+                <FaPlus /> Nuevo Combo
+              </button>
+            </RoleGate>
           </div>
-          <div className="-mx-2 sm:mx-0">
-            <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
-              <div className="inline-flex items-center whitespace-nowrap gap-2">
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage(1)}
-                  disabled={!hasPrev}
-                >
-                  «
-                </button>
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                  disabled={!hasPrev}
-                >
-                  ‹
-                </button>
 
-                <div className="flex flex-wrap gap-2 max-w-[80vw]">
-                  {Array.from({ length: totalPages })
-                    .slice(
-                      Math.max(0, currPage - 3),
-                      Math.max(0, currPage - 3) + 6
-                    )
-                    .map((_, idx) => {
-                      const start = Math.max(1, currPage - 2);
-                      const num = start + idx;
-                      if (num > totalPages) return null;
-                      const active = num === currPage;
-                      return (
-                        <button
-                          key={num}
-                          onClick={() => setPage(num)}
-                          className={`px-3 py-2 rounded-lg border ${
-                            active
-                              ? 'bg-purple-600 border-purple-400'
-                              : 'bg-gray-800 border-gray-700 hover:bg-gray-700'
-                          }`}
-                          aria-current={active ? 'page' : undefined}
-                        >
-                          {num}
-                        </button>
-                      );
-                    })}
-                </div>
+          <input
+            type="text"
+            placeholder="Buscar combo..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className={[
+              'w-full mb-6 px-4 py-2 rounded-lg border',
+              'bg-white text-slate-900 placeholder:text-slate-400 border-black/10',
+              'focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/40',
+              'dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-400 dark:border-gray-600 dark:focus:ring-purple-500'
+            ].join(' ')}
+          />
 
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                  disabled={!hasNext}
-                >
-                  ›
-                </button>
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage(totalPages)}
-                  disabled={!hasNext}
-                >
-                  »
-                </button>
-
-                {/* Límite por página */}
-                <select
-                  value={limit}
-                  onChange={(e) => {
-                    setLimit(Number(e.target.value));
-                    setPage(1);
-                  }}
-                  className="ml-3 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
-                >
-                  <option value={6}>6</option>
-                  <option value={12}>12</option>
-                  <option value={24}>24</option>
-                  <option value={48}>48</option>
-                </select>
-
-                {/* Orden server-side */}
-                <select
-                  value={orderBy}
-                  onChange={(e) => {
-                    setOrderBy(e.target.value);
-                    setPage(1);
-                  }}
-                  className="ml-2 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
-                >
-                  <option value="id">ID</option>
-                  <option value="nombre">Nombre</option>
-                  <option value="precio_fijo">Precio</option>
-                  <option value="cantidad_items">Items</option>
-                  {/* <option value="created_at">Creación</option>
-                  <option value="updated_at">Actualización</option> */}
-                  <option value="estado">Estado</option>
-                </select>
-                <select
-                  value={orderDir}
-                  onChange={(e) => {
-                    setOrderDir(e.target.value);
-                    setPage(1);
-                  }}
-                  className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
-                >
-                  <option value="ASC">Ascendente</option>
-                  <option value="DESC">Descendente</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <motion.div
-          layout
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-        >
-          {rows.map((combo) => (
-            <motion.div
-              key={combo.id}
-              layout
-              className="bg-white/10 p-6 rounded-2xl shadow-md backdrop-blur-md border border-white/10 hover:scale-[1.02]"
-            >
-              <h2 className="text-xl font-bold text-white">{combo.nombre}</h2>
-              <p className="text-sm text-gray-300 mb-2">
-                {combo.descripcion || 'Sin descripción'}
-              </p>
-              <p className="text-sm flex items-center gap-1">
-                <FaCubes /> Items: <strong>{combo.cantidad_items}</strong>
-              </p>
-              <p className="text-sm flex items-center gap-1 text-emerald-300">
-                <FaCoins /> Precio:{' '}
-                <strong>{formatearPeso(combo.precio_fijo)}</strong>
-              </p>
-              <p className="text-sm mt-3 flex items-center gap-2">
-                Estado:{' '}
-                <span
-                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
-                    combo.estado === 'activo'
-                      ? 'bg-green-600 text-white'
-                      : 'bg-red-600 text-white'
-                  }`}
-                >
-                  ● {combo.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                </span>
-              </p>
-
-              <AdminActions
-                onEdit={() => openModal(combo)}
-                onDelete={() => handleDelete(combo.id)}
-              />
-              <RoleGate allow={['socio', 'administrativo']}>
-                <Link
-                  to={`/dashboard/stock/combos/${combo.id}/permitidos`}
-                  className="text-sm  inline-block text-purple-300 hover:text-purple-500 font-semibold"
-                >
-                  Editar productos permitidos
-                </Link>
-              </RoleGate>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        {/* Modal de creación/edición */}
-        <Modal
-          isOpen={modalOpen}
-          onRequestClose={() => setModalOpen(false)}
-          overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
-          className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border-l-4 border-purple-500"
-        >
-          <h2 className="text-2xl font-bold mb-4 text-purple-600">
-            {editId ? 'Editar Combo' : 'Nuevo Combo'}
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <input
-              type="text"
-              placeholder="Nombre del combo"
-              value={formNombre}
-              onChange={(e) => setFormNombre(e.target.value)}
-              className={[
-                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
-                'w-full px-4 py-2 rounded-lg border border-gray-300',
-                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
-                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
-                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
-              ].join(' ')}
-              required
-            />
-            <input
-              type="number"
-              placeholder="Precio fijo"
-              value={formPrecioFijo}
-              onChange={(e) => setFormPrecioFijo(e.target.value)}
-              className={[
-                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
-                'w-full px-4 py-2 rounded-lg border border-gray-300',
-                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
-                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
-                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
-              ].join(' ')}
-              required
-            />
-            <input
-              type="number"
-              placeholder="Cantidad de productos requeridos"
-              value={formCantidadItems}
-              onChange={(e) => setFormCantidadItems(e.target.value)}
-              className={[
-                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
-                'w-full px-4 py-2 rounded-lg border border-gray-300',
-                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
-                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
-                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
-              ].join(' ')}
-              required
-            />
-            <textarea
-              placeholder="Descripción del combo"
-              value={formDescripcion}
-              onChange={(e) => setFormDescripcion(e.target.value)}
-              className={[
-                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
-                'w-full px-4 py-2 rounded-lg border border-gray-300',
-                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
-                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
-                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
-              ].join(' ')}
-              rows="3"
-            />
+          {/* Filtros de lista (opcional) */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <select
-              value={formEstado}
-              onChange={(e) => setFormEstado(e.target.value)}
+              value={estadoListFilter}
+              onChange={(e) => {
+                setEstadoListFilter(e.target.value);
+                setPage(1);
+              }}
               className={[
-                // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
-                'w-full px-4 py-2 rounded-lg border border-gray-300',
-                'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
-                'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
-                'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+                'px-3 py-2 rounded-lg border',
+                'bg-white text-slate-900 border-black/10',
+                'focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/40',
+                'dark:bg-gray-800 dark:text-white dark:border-gray-700'
               ].join(' ')}
             >
+              <option value="">Todos los estados</option>
               <option value="activo">Activo</option>
               <option value="inactivo">Inactivo</option>
             </select>
-            <div className="text-right">
-              <button
-                type="submit"
-                className="bg-purple-500 hover:bg-purple-600 transition px-6 py-2 text-white font-medium rounded-lg"
-              >
-                {editId ? 'Actualizar' : 'Guardar'}
-              </button>
-            </div>
-          </form>
-        </Modal>
-
-        {/* Modal de advertencia al eliminar */}
-        <Modal
-          isOpen={!!confirmDeleteCombo}
-          onRequestClose={() => {
-            setConfirmDeleteCombo(null);
-            setDeleteMetaCombo(null);
-          }}
-          overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
-          className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border-l-4 border-yellow-500"
-        >
-          <h2 className="text-xl font-bold text-yellow-600 mb-4">
-            Advertencia
-          </h2>
-          <p className="mb-6 text-gray-800">{warningMessageCombo}</p>
-
-          <div className="flex justify-end gap-4">
-            <button
-              onClick={() => {
-                setConfirmDeleteCombo(null);
-                setDeleteMetaCombo(null);
-              }}
-              className="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400"
-            >
-              Cerrar
-            </button>
-
-            {/* Si el backend dijo que tiene ítems, ofrecemos borrado forzado */}
-            {deleteMetaCombo?.reason === 'HAS_ITEMS' && (
-              <button
-                disabled={deletingCombo}
-                onClick={async () => {
-                  try {
-                    setDeletingCombo(true);
-                    await axios.delete(
-                      `https://api.rioromano.com.ar/combos/${confirmDeleteCombo}`,
-                      {
-                        data: { usuario_log_id: getUserId(), forzado: true } // ← forzado
-                      }
-                    );
-                    setConfirmDeleteCombo(null);
-                    setDeleteMetaCombo(null);
-                    fetchCombos();
-                  } catch (error) {
-                    console.error(
-                      'Error al eliminar combo con sus ítems:',
-                      error
-                    );
-                  } finally {
-                    setDeletingCombo(false);
-                  }
-                }}
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-60"
-              >
-                {deletingCombo ? 'Eliminando…' : 'Eliminar combo con sus ítems'}
-              </button>
-            )}
           </div>
-        </Modal>
+
+          {/* Info + paginación/orden */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+            <div className="text-slate-600 dark:text-white/80 text-xs sm:text-sm">
+              Total: <b className="text-slate-900 dark:text-white">{total}</b> ·
+              Página{' '}
+              <b className="text-slate-900 dark:text-white">{currPage}</b> de{' '}
+              <b className="text-slate-900 dark:text-white">{totalPages}</b>
+            </div>
+
+            <div className="-mx-2 sm:mx-0">
+              <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
+                <div className="inline-flex items-center whitespace-nowrap gap-2">
+                  <button
+                    className="px-3 py-2 rounded-lg bg-white/80 text-slate-900 border border-black/10 hover:bg-white disabled:opacity-40 dark:bg-gray-700 dark:text-white dark:border-gray-700 dark:hover:bg-gray-600"
+                    onClick={() => setPage(1)}
+                    disabled={!hasPrev}
+                    type="button"
+                  >
+                    «
+                  </button>
+                  <button
+                    className="px-3 py-2 rounded-lg bg-white/80 text-slate-900 border border-black/10 hover:bg-white disabled:opacity-40 dark:bg-gray-700 dark:text-white dark:border-gray-700 dark:hover:bg-gray-600"
+                    onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                    disabled={!hasPrev}
+                    type="button"
+                  >
+                    ‹
+                  </button>
+
+                  <div className="flex flex-wrap gap-2 max-w-[80vw]">
+                    {Array.from({ length: totalPages })
+                      .slice(
+                        Math.max(0, currPage - 3),
+                        Math.max(0, currPage - 3) + 6
+                      )
+                      .map((_, idx) => {
+                        const start = Math.max(1, currPage - 2);
+                        const num = start + idx;
+                        if (num > totalPages) return null;
+                        const active = num === currPage;
+                        return (
+                          <button
+                            key={num}
+                            onClick={() => setPage(num)}
+                            className={`px-3 py-2 rounded-lg border transition ${
+                              active
+                                ? 'bg-purple-600 border-purple-400 text-white'
+                                : 'bg-white/80 border-black/10 text-slate-900 hover:bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700'
+                            }`}
+                            aria-current={active ? 'page' : undefined}
+                            type="button"
+                          >
+                            {num}
+                          </button>
+                        );
+                      })}
+                  </div>
+
+                  <button
+                    className="px-3 py-2 rounded-lg bg-white/80 text-slate-900 border border-black/10 hover:bg-white disabled:opacity-40 dark:bg-gray-700 dark:text-white dark:border-gray-700 dark:hover:bg-gray-600"
+                    onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                    disabled={!hasNext}
+                    type="button"
+                  >
+                    ›
+                  </button>
+                  <button
+                    className="px-3 py-2 rounded-lg bg-white/80 text-slate-900 border border-black/10 hover:bg-white disabled:opacity-40 dark:bg-gray-700 dark:text-white dark:border-gray-700 dark:hover:bg-gray-600"
+                    onClick={() => setPage(totalPages)}
+                    disabled={!hasNext}
+                    type="button"
+                  >
+                    »
+                  </button>
+
+                  {/* Límite por página */}
+                  <select
+                    value={limit}
+                    onChange={(e) => {
+                      setLimit(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className={[
+                      'ml-3 px-3 py-2 rounded-lg border',
+                      'bg-white text-slate-900 border-black/10',
+                      'focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/40',
+                      'dark:bg-gray-800 dark:text-white dark:border-gray-700'
+                    ].join(' ')}
+                  >
+                    <option value={6}>6</option>
+                    <option value={12}>12</option>
+                    <option value={24}>24</option>
+                    <option value={48}>48</option>
+                  </select>
+
+                  {/* Orden server-side */}
+                  <select
+                    value={orderBy}
+                    onChange={(e) => {
+                      setOrderBy(e.target.value);
+                      setPage(1);
+                    }}
+                    className={[
+                      'ml-2 px-3 py-2 rounded-lg border',
+                      'bg-white text-slate-900 border-black/10',
+                      'focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/40',
+                      'dark:bg-gray-800 dark:text-white dark:border-gray-700'
+                    ].join(' ')}
+                  >
+                    <option value="id">ID</option>
+                    <option value="nombre">Nombre</option>
+                    <option value="precio_fijo">Precio</option>
+                    <option value="cantidad_items">Items</option>
+                    {/* <option value="created_at">Creación</option>
+                  <option value="updated_at">Actualización</option> */}
+                    <option value="estado">Estado</option>
+                  </select>
+
+                  <select
+                    value={orderDir}
+                    onChange={(e) => {
+                      setOrderDir(e.target.value);
+                      setPage(1);
+                    }}
+                    className={[
+                      'px-3 py-2 rounded-lg border',
+                      'bg-white text-slate-900 border-black/10',
+                      'focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/40',
+                      'dark:bg-gray-800 dark:text-white dark:border-gray-700'
+                    ].join(' ')}
+                  >
+                    <option value="ASC">Ascendente</option>
+                    <option value="DESC">Descendente</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <motion.div
+            layout
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
+            {rows.map((combo) => (
+              <motion.div
+                key={combo.id}
+                layout
+                className="bg-white/70 dark:bg-white/10 p-6 rounded-2xl shadow-md backdrop-blur-md border border-black/10 dark:border-white/10 hover:scale-[1.02] transition"
+              >
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                  {combo.nombre}
+                </h2>
+
+                <p className="text-sm text-slate-600 dark:text-gray-300 mb-2">
+                  {combo.descripcion || 'Sin descripción'}
+                </p>
+
+                <p className="text-sm flex items-center gap-1 text-slate-800 dark:text-white">
+                  <FaCubes /> Items: <strong>{combo.cantidad_items}</strong>
+                </p>
+
+                <p className="text-sm flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
+                  <FaCoins /> Precio:{' '}
+                  <strong>{formatearPeso(combo.precio_fijo)}</strong>
+                </p>
+
+                <p className="text-sm mt-3 flex items-center gap-2 text-slate-800 dark:text-white">
+                  Estado:{' '}
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
+                      combo.estado === 'activo'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-red-600 text-white'
+                    }`}
+                  >
+                    ● {combo.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                  </span>
+                </p>
+
+                <AdminActions
+                  onEdit={() => openModal(combo)}
+                  onDelete={() => handleDelete(combo.id)}
+                />
+
+                <RoleGate allow={['socio', 'administrativo']}>
+                  <Link
+                    to={`/dashboard/stock/combos/${combo.id}/permitidos`}
+                    className="text-sm inline-block text-purple-700 hover:text-purple-900 dark:text-purple-300 dark:hover:text-purple-500 font-semibold"
+                  >
+                    Editar productos permitidos
+                  </Link>
+                </RoleGate>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* Modal de creación/edición */}
+          <Modal
+            isOpen={modalOpen}
+            onRequestClose={() => setModalOpen(false)}
+            overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
+            className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border-l-4 border-purple-500"
+          >
+            <h2 className="text-2xl font-bold mb-4 text-purple-600">
+              {editId ? 'Editar Combo' : 'Nuevo Combo'}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <input
+                type="text"
+                placeholder="Nombre del combo"
+                value={formNombre}
+                onChange={(e) => setFormNombre(e.target.value)}
+                className={[
+                  // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
+                  'w-full px-4 py-2 rounded-lg border border-gray-300',
+                  'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
+                  'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
+                  'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+                ].join(' ')}
+                required
+              />
+              <input
+                type="number"
+                placeholder="Precio fijo"
+                value={formPrecioFijo}
+                onChange={(e) => setFormPrecioFijo(e.target.value)}
+                className={[
+                  // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
+                  'w-full px-4 py-2 rounded-lg border border-gray-300',
+                  'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
+                  'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
+                  'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+                ].join(' ')}
+                required
+              />
+              <input
+                type="number"
+                placeholder="Cantidad de productos requeridos"
+                value={formCantidadItems}
+                onChange={(e) => setFormCantidadItems(e.target.value)}
+                className={[
+                  // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
+                  'w-full px-4 py-2 rounded-lg border border-gray-300',
+                  'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
+                  'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
+                  'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+                ].join(' ')}
+                required
+              />
+              <textarea
+                placeholder="Descripción del combo"
+                value={formDescripcion}
+                onChange={(e) => setFormDescripcion(e.target.value)}
+                className={[
+                  // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
+                  'w-full px-4 py-2 rounded-lg border border-gray-300',
+                  'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
+                  'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
+                  'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+                ].join(' ')}
+                rows="3"
+              />
+              <select
+                value={formEstado}
+                onChange={(e) => setFormEstado(e.target.value)}
+                className={[
+                  // Benjamin Orellana - 2026-02-17 - Fuerza estilo legible del input dentro de un modal blanco aunque la app esté en dark.
+                  'w-full px-4 py-2 rounded-lg border border-gray-300',
+                  'bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900',
+                  'focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400',
+                  'dark:bg-white dark:text-slate-900 dark:placeholder:text-slate-400 dark:caret-slate-900'
+                ].join(' ')}
+              >
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+              </select>
+              <div className="text-right">
+                <button
+                  type="submit"
+                  className="bg-purple-500 hover:bg-purple-600 transition px-6 py-2 text-white font-medium rounded-lg"
+                >
+                  {editId ? 'Actualizar' : 'Guardar'}
+                </button>
+              </div>
+            </form>
+          </Modal>
+
+          {/* Modal de advertencia al eliminar */}
+          <Modal
+            isOpen={!!confirmDeleteCombo}
+            onRequestClose={() => {
+              setConfirmDeleteCombo(null);
+              setDeleteMetaCombo(null);
+            }}
+            overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
+            className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border-l-4 border-yellow-500"
+          >
+            <h2 className="text-xl font-bold text-yellow-600 mb-4">
+              Advertencia
+            </h2>
+            <p className="mb-6 text-gray-800">{warningMessageCombo}</p>
+
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => {
+                  setConfirmDeleteCombo(null);
+                  setDeleteMetaCombo(null);
+                }}
+                className="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400"
+              >
+                Cerrar
+              </button>
+
+              {/* Si el backend dijo que tiene ítems, ofrecemos borrado forzado */}
+              {deleteMetaCombo?.reason === 'HAS_ITEMS' && (
+                <button
+                  disabled={deletingCombo}
+                  onClick={async () => {
+                    try {
+                      setDeletingCombo(true);
+                      await axios.delete(
+                        `https://api.rioromano.com.ar/combos/${confirmDeleteCombo}`,
+                        {
+                          data: { usuario_log_id: getUserId(), forzado: true } // ← forzado
+                        }
+                      );
+                      setConfirmDeleteCombo(null);
+                      setDeleteMetaCombo(null);
+                      fetchCombos();
+                    } catch (error) {
+                      console.error(
+                        'Error al eliminar combo con sus ítems:',
+                        error
+                      );
+                    } finally {
+                      setDeletingCombo(false);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-60"
+                >
+                  {deletingCombo
+                    ? 'Eliminando…'
+                    : 'Eliminar combo con sus ítems'}
+                </button>
+              )}
+            </div>
+          </Modal>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

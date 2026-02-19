@@ -10,6 +10,7 @@ import {
 import ButtonBack from '../../../Components/ButtonBack';
 import ParticlesBackground from '../../../Components/ParticlesBackground';
 import Swal from 'sweetalert2';
+import NavbarStaff from '../../Dash/NavbarStaff';
 
 const API_URL = 'https://api.rioromano.com.ar';
 
@@ -27,21 +28,26 @@ const PageSelector = ({ page, totalPages, onPage }) => {
   const canPrev = page > 1;
   const canNext = page < totalPages;
   return (
-    <div className="flex items-center justify-between text-sm text-gray-300 mt-4">
+    // Benjamin Orellana - 2026-02-19 - Se ajustan clases para soportar dark/light sin cambiar la lógica de paginado.
+    <div className="flex items-center justify-between text-sm text-slate-600 dark:text-gray-300 mt-4">
       <button
         onClick={() => canPrev && onPage(page - 1)}
         disabled={!canPrev}
-        className="px-3 py-1 rounded-lg bg-gray-800 border border-gray-700 disabled:opacity-50"
+        className="px-3 py-1 rounded-lg bg-white/80 text-slate-900 border border-black/10 hover:bg-white disabled:opacity-50 dark:bg-gray-800 dark:text-white dark:border-gray-700 dark:hover:bg-gray-700"
+        type="button"
       >
         ← Anterior
       </button>
-      <span>
-        Página <strong>{page}</strong> de <strong>{totalPages}</strong>
+      <span className="text-slate-700 dark:text-gray-300">
+        Página{' '}
+        <strong className="text-slate-900 dark:text-white">{page}</strong> de{' '}
+        <strong className="text-slate-900 dark:text-white">{totalPages}</strong>
       </span>
       <button
         onClick={() => canNext && onPage(page + 1)}
         disabled={!canNext}
-        className="px-3 py-1 rounded-lg bg-gray-800 border border-gray-700 disabled:opacity-50"
+        className="px-3 py-1 rounded-lg bg-white/80 text-slate-900 border border-black/10 hover:bg-white disabled:opacity-50 dark:bg-gray-800 dark:text-white dark:border-gray-700 dark:hover:bg-gray-700"
+        type="button"
       >
         Siguiente →
       </button>
@@ -353,252 +359,294 @@ const ComboEditarPermitidos = () => {
   );
 
   // ================== UI =====================
+  // Benjamin Orellana - 2026-02-19 - Se agregan estilos dark/light
+  //    consistentes (contenedor, tabs, cards e inputs) sin alterar la lógica.
   return (
-    <div className="min-h-screen bg-gray-900 text-white py-8 px-6">
-      <ParticlesBackground />
-      <ButtonBack />
+    <>
+      <NavbarStaff></NavbarStaff>
 
-      <div className="max-w-6xl mx-auto">
-        {/* Header combo */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-          <h1 className="text-3xl font-bold text-white titulo uppercase">
-            Editar productos permitidos
-          </h1>
+      <div className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:text-white py-8 px-6">
+        <ParticlesBackground />
+        <ButtonBack />
 
-          {combo && (
-            <div className="bg-white/10 rounded-xl px-4 py-3">
-              <p className="text-purple-300 font-bold text-lg">
-                {combo.nombre}
-              </p>
-              <div className="text-sm text-gray-300 flex gap-4 mt-1">
-                <span>
-                  Requiere <strong>{combo.cantidad_items}</strong> ítems
-                </span>
-                <span>
-                  Estado:{' '}
-                  <strong
-                    className={
-                      combo.estado === 'activo'
-                        ? 'text-emerald-400'
-                        : 'text-red-400'
-                    }
-                  >
-                    {combo.estado}
-                  </strong>
-                </span>
+        <div className="max-w-6xl mx-auto">
+          {/* Header combo */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white titulo uppercase">
+              Editar productos permitidos
+            </h1>
+
+            {combo && (
+              <div className="bg-white/70 dark:bg-white/10 border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 backdrop-blur-md">
+                <p className="text-purple-700 dark:text-purple-300 font-bold text-lg">
+                  {combo.nombre}
+                </p>
+                <div className="text-sm text-slate-600 dark:text-gray-300 flex gap-4 mt-1">
+                  <span>
+                    Requiere{' '}
+                    <strong className="text-slate-900 dark:text-white">
+                      {combo.cantidad_items}
+                    </strong>{' '}
+                    ítems
+                  </span>
+                  <span>
+                    Estado:{' '}
+                    <strong
+                      className={
+                        combo.estado === 'activo'
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-red-600 dark:text-red-400'
+                      }
+                    >
+                      {combo.estado}
+                    </strong>
+                  </span>
+                </div>
               </div>
+            )}
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-2 mb-5">
+            <button
+              onClick={() => setTab('asignados')}
+              className={`px-4 py-2 rounded-lg border transition ${
+                tab === 'asignados'
+                  ? 'bg-purple-600 border-purple-500 text-white'
+                  : 'bg-white/80 border-black/10 text-slate-900 hover:bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700'
+              }`}
+              type="button"
+            >
+              Asignados{' '}
+              <span className="ml-1 text-xs bg-black/5 dark:bg-white/20 px-2 py-0.5 rounded-full text-slate-800 dark:text-white">
+                {asignados.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setTab('productos')}
+              className={`px-4 py-2 rounded-lg border transition ${
+                tab === 'productos'
+                  ? 'bg-purple-600 border-purple-500 text-white'
+                  : 'bg-white/80 border-black/10 text-slate-900 hover:bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700'
+              }`}
+              type="button"
+            >
+              Productos
+            </button>
+
+            <button
+              onClick={() => setTab('categorias')}
+              className={`px-4 py-2 rounded-lg border transition ${
+                tab === 'categorias'
+                  ? 'bg-purple-600 border-purple-500 text-white'
+                  : 'bg-white/80 border-black/10 text-slate-900 hover:bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700'
+              }`}
+              type="button"
+            >
+              Categorías
+            </button>
+          </div>
+
+          {loading && (
+            <div className="text-slate-600 dark:text-gray-300">Cargando…</div>
+          )}
+
+          {!loading && tab === 'asignados' && (
+            <>
+              {asignados.length === 0 ? (
+                <div className="bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl p-6 text-slate-600 dark:text-gray-300 backdrop-blur-md">
+                  Aún no asignaste productos o categorías a este combo.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                  {asignados.map((item) => (
+                    <div
+                      key={item.id}
+                      className="bg-white/70 dark:bg-white/10 p-4 rounded-xl border border-black/10 dark:border-white/10 backdrop-blur-md"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="text-sm text-slate-900 dark:text-white">
+                          {item.producto ? (
+                            <>
+                              <FaBoxOpen className="inline-block mr-2 text-emerald-600 dark:text-green-400" />
+                              <span className="font-semibold">
+                                {item.producto.nombre}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <FaFolderOpen className="inline-block mr-2 text-blue-600 dark:text-blue-400" />
+                              <span className="font-semibold">
+                                {item.categoria?.nombre}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                            onClick={() => eliminarAsignado(item.id)}
+                            title="Eliminar"
+                            type="button"
+                          >
+                            <FaTrashAlt />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {!loading && tab === 'productos' && (
+            <div className="bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl p-4 backdrop-blur-md">
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-4">
+                {/* Buscador */}
+                <input
+                  type="text"
+                  placeholder="Buscar producto…"
+                  value={busquedaProd}
+                  onChange={(e) => {
+                    setBusquedaProd(e.target.value);
+                    setPageProd(1);
+                  }}
+                  className="w-full sm:w-80 px-4 py-2 rounded-lg border bg-white text-slate-900 placeholder:text-slate-400 border-black/10 focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/40 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-400 dark:focus:ring-purple-500"
+                />
+
+                {/* Filtro de categorías */}
+                <select
+                  value={categoriaFiltro}
+                  onChange={(e) => {
+                    setCategoriaFiltro(e.target.value);
+                    setPageProd(1);
+                  }}
+                  className="w-full sm:w-60 px-4 py-2 rounded-lg border bg-white text-slate-900 border-black/10 focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/40 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:ring-purple-500"
+                >
+                  <option value="">Todas las categorías</option>
+                  {categorias.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.nombre}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Resumen */}
+                <div className="text-sm text-slate-600 dark:text-gray-300">
+                  Mostrando{' '}
+                  <strong className="text-slate-900 dark:text-white">
+                    {pageItemsProd.length}
+                  </strong>{' '}
+                  de{' '}
+                  <strong className="text-slate-900 dark:text-white">
+                    {productosFiltrados.length}
+                  </strong>
+                </div>
+              </div>
+
+              {productosFiltrados.length === 0 ? (
+                <div className="text-slate-500 dark:text-gray-400 text-sm p-4">
+                  Sin resultados
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {pageItemsProd.map((p) => (
+                      <div
+                        key={p.id}
+                        className="bg-white/80 dark:bg-white/10 p-3 rounded-xl flex justify-between items-center border border-black/10 dark:border-white/10"
+                      >
+                        <span className="text-sm text-slate-900 dark:text-white">
+                          {p.nombre}
+                        </span>
+                        <button
+                          onClick={() => agregarProducto(p.id)}
+                          className="text-emerald-600 hover:text-emerald-700 dark:text-green-400 dark:hover:text-green-300"
+                          title="Agregar producto al combo"
+                          type="button"
+                        >
+                          <FaPlusCircle />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <PageSelector
+                    page={pageProd}
+                    totalPages={totalPagesProd}
+                    onPage={setPageProd}
+                  />
+                </>
+              )}
+            </div>
+          )}
+
+          {!loading && tab === 'categorias' && (
+            <div className="bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl p-4 backdrop-blur-md">
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-4">
+                <input
+                  type="text"
+                  placeholder="Buscar categoría…"
+                  value={busquedaCat}
+                  onChange={(e) => {
+                    setBusquedaCat(e.target.value);
+                    setPageCat(1);
+                  }}
+                  className="w-full sm:w-80 px-4 py-2 rounded-lg border bg-white text-slate-900 placeholder:text-slate-400 border-black/10 focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/40 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-400 dark:focus:ring-purple-500"
+                />
+                <div className="text-sm text-slate-600 dark:text-gray-300">
+                  Mostrando{' '}
+                  <strong className="text-slate-900 dark:text-white">
+                    {pageItemsCat.length}
+                  </strong>{' '}
+                  de{' '}
+                  <strong className="text-slate-900 dark:text-white">
+                    {categoriasFiltradas.length}
+                  </strong>
+                </div>
+              </div>
+
+              {categoriasFiltradas.length === 0 ? (
+                <div className="text-slate-500 dark:text-gray-400 text-sm p-4">
+                  Sin resultados
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {pageItemsCat.map((c) => (
+                      <div
+                        key={c.id}
+                        className="bg-white/80 dark:bg-white/10 p-3 rounded-xl flex justify-between items-center border border-black/10 dark:border-white/10"
+                      >
+                        <span className="text-sm text-slate-900 dark:text-white">
+                          {c.nombre}
+                        </span>
+                        <button
+                          onClick={() => agregarCategoria(c.id)}
+                          className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                          title="Agregar categoría al combo"
+                          type="button"
+                        >
+                          <FaPlusCircle />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <PageSelector
+                    page={pageCat}
+                    totalPages={totalPagesCat}
+                    onPage={setPageCat}
+                  />
+                </>
+              )}
             </div>
           )}
         </div>
-
-        {/* Tabs */}
-        <div className="flex gap-2 mb-5">
-          <button
-            onClick={() => setTab('asignados')}
-            className={`px-4 py-2 rounded-lg border ${
-              tab === 'asignados'
-                ? 'bg-purple-600 border-purple-500'
-                : 'bg-gray-800 border-gray-700 hover:bg-gray-700'
-            }`}
-          >
-            Asignados{' '}
-            <span className="ml-1 text-xs bg-white/20 px-2 py-0.5 rounded-full">
-              {asignados.length}
-            </span>
-          </button>
-          <button
-            onClick={() => setTab('productos')}
-            className={`px-4 py-2 rounded-lg border ${
-              tab === 'productos'
-                ? 'bg-purple-600 border-purple-500'
-                : 'bg-gray-800 border-gray-700 hover:bg-gray-700'
-            }`}
-          >
-            Productos
-          </button>
-          <button
-            onClick={() => setTab('categorias')}
-            className={`px-4 py-2 rounded-lg border ${
-              tab === 'categorias'
-                ? 'bg-purple-600 border-purple-500'
-                : 'bg-gray-800 border-gray-700 hover:bg-gray-700'
-            }`}
-          >
-            Categorías
-          </button>
-        </div>
-
-        {loading && <div className="text-gray-300">Cargando…</div>}
-
-        {!loading && tab === 'asignados' && (
-          <>
-            {asignados.length === 0 ? (
-              <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-gray-300">
-                Aún no asignaste productos o categorías a este combo.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                {asignados.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-white/10 p-4 rounded-xl border border-white/10"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="text-sm">
-                        {item.producto ? (
-                          <>
-                            <FaBoxOpen className="inline-block mr-2 text-green-400" />
-                            <span className="font-semibold">
-                              {item.producto.nombre}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <FaFolderOpen className="inline-block mr-2 text-blue-400" />
-                            <span className="font-semibold">
-                              {item.categoria?.nombre}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          className="text-red-400 hover:text-red-600"
-                          onClick={() => eliminarAsignado(item.id)}
-                          title="Eliminar"
-                        >
-                          <FaTrashAlt />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {!loading && tab === 'productos' && (
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-4">
-              {/* Buscador */}
-              <input
-                type="text"
-                placeholder="Buscar producto…"
-                value={busquedaProd}
-                onChange={(e) => {
-                  setBusquedaProd(e.target.value);
-                  setPageProd(1);
-                }}
-                className="w-full sm:w-80 px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-
-              {/* Filtro de categorías */}
-              <select
-                value={categoriaFiltro}
-                onChange={(e) => {
-                  setCategoriaFiltro(e.target.value);
-                  setPageProd(1);
-                }}
-                className="w-full sm:w-60 px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">Todas las categorías</option>
-                {categorias.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.nombre}
-                  </option>
-                ))}
-              </select>
-
-              {/* Resumen */}
-              <div className="text-sm text-gray-300">
-                Mostrando <strong>{pageItemsProd.length}</strong> de{' '}
-                <strong>{productosFiltrados.length}</strong>
-              </div>
-            </div>
-
-            {productosFiltrados.length === 0 ? (
-              <div className="text-gray-400 text-sm p-4">Sin resultados</div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {pageItemsProd.map((p) => (
-                    <div
-                      key={p.id}
-                      className="bg-white/10 p-3 rounded-xl flex justify-between items-center border border-white/10"
-                    >
-                      <span className="text-sm">{p.nombre}</span>
-                      <button
-                        onClick={() => agregarProducto(p.id)}
-                        className="text-green-400 hover:text-green-600"
-                        title="Agregar producto al combo"
-                      >
-                        <FaPlusCircle />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <PageSelector
-                  page={pageProd}
-                  totalPages={totalPagesProd}
-                  onPage={setPageProd}
-                />
-              </>
-            )}
-          </div>
-        )}
-
-        {!loading && tab === 'categorias' && (
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-4">
-              <input
-                type="text"
-                placeholder="Buscar categoría…"
-                value={busquedaCat}
-                onChange={(e) => {
-                  setBusquedaCat(e.target.value);
-                  setPageCat(1);
-                }}
-                className="w-full sm:w-80 px-4 py-2 rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-              <div className="text-sm text-gray-300">
-                Mostrando <strong>{pageItemsCat.length}</strong> de{' '}
-                <strong>{categoriasFiltradas.length}</strong>
-              </div>
-            </div>
-
-            {categoriasFiltradas.length === 0 ? (
-              <div className="text-gray-400 text-sm p-4">Sin resultados</div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {pageItemsCat.map((c) => (
-                    <div
-                      key={c.id}
-                      className="bg-white/10 p-3 rounded-xl flex justify-between items-center border border-white/10"
-                    >
-                      <span className="text-sm">{c.nombre}</span>
-                      <button
-                        onClick={() => agregarCategoria(c.id)}
-                        className="text-blue-400 hover:text-blue-600"
-                        title="Agregar categoría al combo"
-                      >
-                        <FaPlusCircle />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <PageSelector
-                  page={pageCat}
-                  totalPages={totalPagesCat}
-                  onPage={setPageCat}
-                />
-              </>
-            )}
-          </div>
-        )}
       </div>
-    </div>
+    </>
   );
 };
 

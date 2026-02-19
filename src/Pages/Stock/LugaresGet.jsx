@@ -134,86 +134,85 @@ return (
           <h1 className="text-3xl font-bold text-orange-600 dark:text-orange-400 flex items-center gap-2 uppercase">
             <FaMapMarkerAlt /> Lugares
           </h1>
-
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <div className="flex items-center gap-2">
-              <select
-                value={orderBy}
-                onChange={(e) => setOrderBy(e.target.value)}
-                // Benjamin Orellana - 2026-02-17 - Selects legibles en light/dark siguiendo patrón glass.
-                className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-orange-500/60"
-                aria-label="Ordenar por"
-              >
-                <option value="id">ID</option>
-                <option value="nombre">Nombre</option>
-                {/* <option value="created_at">Creación</option>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2">
+            <select
+              value={orderBy}
+              onChange={(e) => setOrderBy(e.target.value)}
+              // Benjamin Orellana - 2026-02-17 - Selects legibles en light/dark siguiendo patrón glass.
+              className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-orange-500/60"
+              aria-label="Ordenar por"
+            >
+              <option value="id">ID</option>
+              <option value="nombre">Nombre</option>
+              {/* <option value="created_at">Creación</option>
               <option value="updated_at">Actualización</option> */}
-              </select>
+            </select>
 
-              <select
-                value={orderDir}
-                onChange={(e) => setOrderDir(e.target.value)}
-                className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-orange-500/60"
-                aria-label="Dirección de orden"
-              >
-                <option value="ASC">Ascendente</option>
-                <option value="DESC">Descendente</option>
-              </select>
+            <select
+              value={orderDir}
+              onChange={(e) => setOrderDir(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-orange-500/60"
+              aria-label="Dirección de orden"
+            >
+              <option value="ASC">Ascendente</option>
+              <option value="DESC">Descendente</option>
+            </select>
 
-              <select
-                value={limit}
-                onChange={(e) => {
-                  setLimit(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-orange-500/60"
-                aria-label="Items por página"
-              >
-                <option value={6}>6</option>
-                <option value={12}>12</option>
-                <option value={24}>24</option>
-                <option value={48}>48</option>
-              </select>
-            </div>
-
-            <div className="flex-1">
-              <input
-                type="text"
-                placeholder="Buscar lugar..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                // Benjamin Orellana - 2026-02-17 - Input con contraste correcto en ambos modos (placeholder/border/bg).
-                className="w-full px-4 py-2 rounded-lg border border-black/10 dark:border-white/10 bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-white/40 ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-orange-500/60"
-              />
-            </div>
-
-            <RoleGate allow={['socio', 'administrativo']}>
-              <button
-                onClick={() => openModal()}
-                className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 text-white shadow-sm"
-              >
-                <FaPlus /> Nuevo Lugar
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setHelpOpen(true)}
-                // Benjamin Orellana - 2026-02-17 - Botón Ayuda unificado a estilo glass para que no rompa en dark.
-                className="inline-flex items-center gap-2 rounded-xl border border-black/10 dark:border-white/15 bg-white/90 dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/15 px-4 py-2.5 text-sm font-extrabold text-slate-800 dark:text-white/85 shadow-sm ring-1 ring-black/5 dark:ring-white/15 transition"
-                title="Guía rápida del módulo"
-              >
-                <FaQuestionCircle className="text-orange-600 dark:text-orange-400" />
-                Ayuda
-              </button>
-            </RoleGate>
+            <select
+              value={limit}
+              onChange={(e) => {
+                setLimit(Number(e.target.value));
+                setPage(1);
+              }}
+              className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/10 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-orange-500/60"
+              aria-label="Items por página"
+            >
+              <option value={6}>6</option>
+              <option value={12}>12</option>
+              <option value={24}>24</option>
+              <option value={48}>48</option>
+            </select>
           </div>
+
+          <div className="flex-1">
+            <input
+              type="text"
+              placeholder="Buscar lugar..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              // Benjamin Orellana - 2026-02-17 - Input con contraste correcto en ambos modos (placeholder/border/bg).
+              className="w-full px-4 py-2 rounded-lg border border-black/10 dark:border-white/10 bg-white/90 dark:bg-white/10 text-slate-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-white/40 ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-orange-500/60"
+            />
+          </div>
+
+          <RoleGate allow={['socio', 'administrativo']}>
+            <button
+              onClick={() => openModal()}
+              className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 text-white shadow-sm"
+            >
+              <FaPlus /> Nuevo Lugar
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              // Benjamin Orellana - 2026-02-17 - Botón Ayuda unificado a estilo glass para que no rompa en dark.
+              className="inline-flex items-center gap-2 rounded-xl border border-black/10 dark:border-white/15 bg-white/90 dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/15 px-4 py-2.5 text-sm font-extrabold text-slate-800 dark:text-white/85 shadow-sm ring-1 ring-black/5 dark:ring-white/15 transition"
+              title="Guía rápida del módulo"
+            >
+              <FaQuestionCircle className="text-orange-600 dark:text-orange-400" />
+              Ayuda
+            </button>
+          </RoleGate>
         </div>
 
         {/* Info y paginador superior */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3 mt-10">
           <div className="text-slate-700 dark:text-white/80 text-xs sm:text-sm">
             Total: <b>{total}</b> · Página <b>{meta?.page ?? 1}</b> de{' '}
             <b>{totalPages}</b>
@@ -418,9 +417,9 @@ return (
           // Benjamin Orellana - 2026-02-17 - Overlay consistente light/dark.
           overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
           // Benjamin Orellana - 2026-02-17 - Modal dual: blanco en light; glass oscuro en dark (evita inputs ilegibles).
-          className="bg-white text-slate-900 dark:bg-slate-950/85 dark:text-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-black/10 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/15 backdrop-blur-xl border-l-4 border-orange-500 max-h-[90vh] overflow-y-auto"
+          className="bg-white text-slate-900 dark:bg-cyan-950/75 dark:text-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-black/10 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/15 backdrop-blur-xl border-l-4 border-orange-500 max-h-[90vh] overflow-y-auto"
         >
-          <h2 className="uppercase text-2xl font-bold mb-4 text-orange-600 dark:text-orange-300">
+          <h2 className="uppercase text-2xl font-bold mb-4 text-orange-600 dark:text-orange-400">
             {editId ? 'Editar Lugar' : 'Nuevo Lugar'}
           </h2>
 
@@ -458,7 +457,7 @@ return (
           onRequestClose={() => setConfirmDelete(null)}
           overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
           // Benjamin Orellana - 2026-02-17 - Confirm modal dual para evitar texto negro sobre fondos oscuros.
-          className="bg-white text-slate-900 dark:bg-slate-950/85 dark:text-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-black/10 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/15 backdrop-blur-xl border-l-4 border-yellow-500 max-h-[90vh] overflow-y-auto"
+          className="bg-white text-slate-900 dark:bg-cyan-950/75 dark:text-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-black/10 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/15 backdrop-blur-xl border-l-4 border-yellow-500 max-h-[90vh] overflow-y-auto"
         >
           <h2 className="text-xl font-bold text-yellow-600 dark:text-yellow-300 mb-4">
             Advertencia

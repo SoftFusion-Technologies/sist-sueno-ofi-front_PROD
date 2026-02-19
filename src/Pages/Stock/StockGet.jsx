@@ -35,6 +35,7 @@ import RoleGate from '../../Components/auth/RoleGate';
 import StockGuiaModal from '../../Components/Productos/StockGuiaModal.jsx';
 import { exportarStockAExcel } from '../../utils/exportStockExcel.js';
 import StockDetalleModal from './Components/StockDetalleModal.jsx';
+import NavbarStaff from '../Dash/NavbarStaff.jsx';
 Modal.setAppElement('#root');
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.rioromano.com.ar';
@@ -859,604 +860,657 @@ const StockGet = () => {
   const fmtQty = (v) => qtyFormatterAR.format(toQtyNum(v));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-10 px-6 text-white">
-      <ParticlesBackground />
-      <ButtonBack />
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <h1 className="text-3xl font-bold text-cyan-300 flex items-center gap-2 uppercase">
-            <FaWarehouse /> Stock
-          </h1>
+    <>
+      <NavbarStaff></NavbarStaff>
+      <div className="min-h-screen bg-slate-50 dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-10 px-6 text-slate-900 dark:text-white">
+        <ParticlesBackground />
+        <ButtonBack />
 
-          <RoleGate allow={['socio', 'administrativo']}>
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <BulkUploadButton
-                tabla="stock"
-                onSuccess={() => fetchAll()} // función para recargar stock después de importar
-                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h1 className="text-3xl font-bold text-cyan-700 dark:text-cyan-300 flex items-center gap-2 uppercase">
+              <FaWarehouse /> Stock
+            </h1>
+
+            <RoleGate allow={['socio', 'administrativo']}>
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <BulkUploadButton
+                  tabla="stock"
+                  onSuccess={() => fetchAll()}
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setModalExportOpen(true)}
+                  className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2 text-white shadow-sm"
+                >
+                  <FaDownload /> Exportar Excel
+                </button>
+
+                <button
+                  onClick={() => openModal()}
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2 text-white shadow-sm"
+                >
+                  <FaPlus /> Nuevo
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAlertasStock(true)}
+                  className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-xl font-semibold flex items-center gap-2 text-white shadow-sm"
+                  title="Ver alertas de stock bajo"
+                >
+                  <FaExclamationTriangle /> Ver stock bajo
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setHelpOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-sm font-extrabold text-slate-800 shadow-sm transition"
+                  title="Guía rápida del módulo"
+                >
+                  <FaQuestionCircle className="text-orange-600" />
+                  Ayuda
+                </button>
+              </div>
+            </RoleGate>
+          </div>
+
+          {/* Toggle stock bajo */}
+          <button
+            onClick={() => setVerSoloStockBajo((prev) => !prev)}
+            className={[
+              'px-4 mb-3 py-2 rounded-xl font-semibold flex items-center gap-2 transition shadow-sm ring-1',
+              verSoloStockBajo
+                ? 'bg-red-600 hover:bg-red-700 text-white ring-red-600/20'
+                : 'bg-white hover:bg-slate-50 text-slate-800 ring-slate-200 dark:bg-gray-700 dark:hover:bg-gray-800 dark:text-white dark:ring-white/10'
+            ].join(' ')}
+          >
+            {verSoloStockBajo ? 'Ver Todos' : 'Mostrar Stock Bajo'}
+          </button>
+
+          {/* Búsqueda + filtros */}
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 mb-4 dark:border-white/10 dark:bg-white/5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <input
+                type="text"
+                placeholder="Buscar por producto..."
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setPage(1);
+                }}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400
+                     focus:outline-none focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-300 transition
+                     dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:placeholder:text-gray-400 dark:focus:ring-cyan-500"
               />
-              <button
-                type="button"
-                onClick={() => setModalExportOpen(true)}
-                className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 text-white"
+
+              <select
+                value={productoId}
+                onChange={(e) => {
+                  setProductoId(e.target.value);
+                  setPage(1);
+                }}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900
+                     focus:outline-none focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-300 transition
+                     dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus:ring-cyan-500"
               >
-                <FaDownload /> Exportar Excel
-              </button>
+                <option value="">Todos los productos</option>
+                {productos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
 
-              <button
-                onClick={() => openModal()}
-                className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+              <select
+                value={localId}
+                onChange={(e) => {
+                  setLocalId(e.target.value);
+                  setPage(1);
+                }}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900
+                     focus:outline-none focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-300 transition
+                     dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus:ring-cyan-500"
               >
-                <FaPlus /> Nuevo
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAlertasStock(true)}
-                className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 text-white"
-                title="Ver alertas de stock bajo"
+                <option value="">Todos los locales</option>
+                {locales.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.nombre}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={lugarId}
+                onChange={(e) => {
+                  setLugarId(e.target.value);
+                  setPage(1);
+                }}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900
+                     focus:outline-none focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-300 transition
+                     dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus:ring-cyan-500"
               >
-                <FaExclamationTriangle /> Ver stock bajo
-              </button>
-              <button
-                type="button"
-                onClick={() => setHelpOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-sm font-extrabold text-slate-800 shadow-sm transition"
-                title="Guía rápida del módulo"
+                <option value="">Todos los lugares</option>
+                {lugares.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.nombre}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={estadoId}
+                onChange={(e) => {
+                  setEstadoId(e.target.value);
+                  setPage(1);
+                }}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900
+                     focus:outline-none focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-300 transition
+                     dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus:ring-cyan-500"
               >
-                <FaQuestionCircle className="text-orange-600" />
-                Ayuda
-              </button>
-            </div>
-          </RoleGate>
-        </div>
+                <option value="">Todos los estados</option>
+                {estados.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.nombre}
+                  </option>
+                ))}
+              </select>
 
-        <button
-          onClick={() => setVerSoloStockBajo((prev) => !prev)}
-          className={`px-4 mb-2 py-2 rounded-lg font-semibold flex items-center gap-2 transition ${
-            verSoloStockBajo
-              ? 'bg-red-600 hover:bg-red-700 text-white'
-              : 'bg-gray-700 hover:bg-gray-800 text-white'
-          }`}
-        >
-          {verSoloStockBajo ? 'Ver Todos' : 'Mostrar Stock Bajo'}
-        </button>
-
-        {/* Búsqueda + filtros */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
-          <input
-            type="text"
-            placeholder="Buscar por producto..."
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 rounded-lg border bg-gray-800 border-gray-600 text-white"
-          />
-
-          <select
-            value={productoId}
-            onChange={(e) => {
-              setProductoId(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 rounded-lg border bg-gray-800 border-gray-600 text-white"
-          >
-            <option value="">Todos los productos</option>
-            {productos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={localId}
-            onChange={(e) => {
-              setLocalId(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 rounded-lg border bg-gray-800 border-gray-600 text-white"
-          >
-            <option value="">Todos los locales</option>
-            {locales.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.nombre}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={lugarId}
-            onChange={(e) => {
-              setLugarId(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 rounded-lg border bg-gray-800 border-gray-600 text-white"
-          >
-            <option value="">Todos los lugares</option>
-            {lugares.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.nombre}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={estadoId}
-            onChange={(e) => {
-              setEstadoId(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 rounded-lg border bg-gray-800 border-gray-600 text-white"
-          >
-            <option value="">Todos los estados</option>
-            {estados.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.nombre}
-              </option>
-            ))}
-          </select>
-
-          <div className="flex gap-2 items-center">
-            <select
-              value={orderBy}
-              onChange={(e) => {
-                setOrderBy(e.target.value);
-                setPage(1);
-              }}
-              className="px-2 py-2 rounded-lg bg-gray-800 border border-gray-700"
-            >
-              <option value="id">Orde. por ID</option>
-              <option value="producto_nombre">Ordenar por Producto</option>
-              {/* <option value="created_at">Creación</option>
-              <option value="updated_at">Actualización</option> */}
-            </select>
-            <select
-              value={orderDir}
-              onChange={(e) => {
-                setOrderDir(e.target.value);
-                setPage(1);
-              }}
-              className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
-            >
-              <option value="ASC">Asc</option>
-              <option value="DESC">Desc</option>
-            </select>
-            <select
-              value={limit}
-              onChange={(e) => {
-                setLimit(Number(e.target.value));
-                setPage(1);
-              }}
-              className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700"
-            >
-              <option value={6}>6</option>
-              <option value={12}>12</option>
-              <option value={24}>24</option>
-              <option value={48}>48</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Info + paginación */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <div className="text-white/80 text-xs sm:text-sm">
-            Total: <b>{meta?.total ?? totalGroups}</b> · Página{' '}
-            <b>{currPage}</b> de <b>{totalPages}</b>
-          </div>
-          <div className="-mx-2 sm:mx-0">
-            <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
-              <div className="inline-flex items-center whitespace-nowrap gap-2">
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage(1)}
-                  disabled={!hasPrev}
+              <div className="flex gap-2 items-center">
+                <select
+                  value={orderBy}
+                  onChange={(e) => {
+                    setOrderBy(e.target.value);
+                    setPage(1);
+                  }}
+                  className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900
+                       focus:outline-none focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-300 transition
+                       dark:bg-gray-800 dark:border-gray-700 dark:text-white"
                 >
-                  «
-                </button>
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                  disabled={!hasPrev}
-                >
-                  ‹
-                </button>
+                  <option value="id">Orde. por ID</option>
+                  <option value="producto_nombre">Ordenar por Producto</option>
+                  {/* <option value="created_at">Creación</option>
+            <option value="updated_at">Actualización</option> */}
+                </select>
 
-                <div className="flex flex-wrap gap-2 max-w-[80vw]">
-                  {Array.from({ length: totalPages })
-                    .slice(
-                      Math.max(0, currPage - 3),
-                      Math.max(0, currPage - 3) + 6
-                    )
-                    .map((_, idx) => {
-                      const start = Math.max(1, currPage - 2);
-                      const num = start + idx;
-                      if (num > totalPages) return null;
-                      const active = num === currPage;
-                      return (
-                        <button
-                          key={num}
-                          onClick={() => setPage(num)}
-                          className={`px-3 py-2 rounded-lg border ${
-                            active
-                              ? 'bg-cyan-600 border-cyan-400'
-                              : 'bg-gray-800 border-gray-700 hover:bg-gray-700'
-                          }`}
-                          aria-current={active ? 'page' : undefined}
-                        >
-                          {num}
-                        </button>
-                      );
-                    })}
-                </div>
+                <select
+                  value={orderDir}
+                  onChange={(e) => {
+                    setOrderDir(e.target.value);
+                    setPage(1);
+                  }}
+                  className="px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900
+                       focus:outline-none focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-300 transition
+                       dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                >
+                  <option value="ASC">Asc</option>
+                  <option value="DESC">Desc</option>
+                </select>
 
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                  disabled={!hasNext}
+                <select
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900
+                       focus:outline-none focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-300 transition
+                       dark:bg-gray-800 dark:border-gray-700 dark:text-white"
                 >
-                  ›
-                </button>
-                <button
-                  className="px-3 py-2 rounded-lg bg-gray-700 text-white disabled:opacity-40"
-                  onClick={() => setPage(totalPages)}
-                  disabled={!hasNext}
-                >
-                  »
-                </button>
+                  <option value={6}>6</option>
+                  <option value={12}>12</option>
+                  <option value={24}>24</option>
+                  <option value={48}>48</option>
+                </select>
               </div>
             </div>
           </div>
-        </div>
 
-        <motion.div
-          layout
-          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
-        >
-          {gruposVisibles.map((group, idx) => {
-            const producto = productos.find((p) => p.id === group.producto_id);
-            const local = locales.find((l) => l.id === group.local_id);
-            const lugar = lugares.find((l) => l.id === group.lugar_id);
-            const estado = estados.find((e) => e.id === group.estado_id);
-          const cantidadTotal = group.items.reduce(
-            (sum, i) => sum + toQtyNum(i.cantidad),
-            0
-          );
+          {/* Info + paginación */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div className="text-slate-600 dark:text-white/80 text-xs sm:text-sm">
+              Total:{' '}
+              <b className="text-slate-900 dark:text-white">
+                {meta?.total ?? totalGroups}
+              </b>{' '}
+              · Página{' '}
+              <b className="text-slate-900 dark:text-white">{currPage}</b> de{' '}
+              <b className="text-slate-900 dark:text-white">{totalPages}</b>
+            </div>
 
+            <div className="-mx-2 sm:mx-0">
+              <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
+                <div className="inline-flex items-center whitespace-nowrap gap-2">
+                  <button
+                    className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white shadow-sm
+                         dark:bg-gray-700 dark:text-white dark:border-white/10 dark:hover:bg-gray-600"
+                    onClick={() => setPage(1)}
+                    disabled={!hasPrev}
+                  >
+                    «
+                  </button>
 
-            // locales (además del actual) donde este producto tiene stock > 0
-            const otrosLocalesConStock = (() => {
-              const tot = new Map(); // local_id -> total
-              for (const s of stock) {
-                if (s.producto_id === group.producto_id) {
-                  tot.set(
-                    s.local_id,
-                    (tot.get(s.local_id) || 0) + (Number(s.cantidad) || 0)
-                  );
-                }
-              }
-              const idsConStock = [...tot.entries()]
-                .filter(([, q]) => q > 0)
-                .map(([id]) => id);
+                  <button
+                    className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white shadow-sm
+                         dark:bg-gray-700 dark:text-white dark:border-white/10 dark:hover:bg-gray-600"
+                    onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                    disabled={!hasPrev}
+                  >
+                    ‹
+                  </button>
 
-              // mapeamos a objetos de "locales", excluyendo el local actual del grupo
-              return locales.filter(
-                (l) => idsConStock.includes(l.id) && l.id !== group.local_id
-              );
-            })();
+                  <div className="flex flex-wrap gap-2 max-w-[80vw]">
+                    {Array.from({ length: totalPages })
+                      .slice(
+                        Math.max(0, currPage - 3),
+                        Math.max(0, currPage - 3) + 6
+                      )
+                      .map((_, idx) => {
+                        const start = Math.max(1, currPage - 2);
+                        const num = start + idx;
+                        if (num > totalPages) return null;
+                        const active = num === currPage;
 
-            return (
-              <motion.div
-                key={group.key}
-                layout
-                className="bg-white/10 p-4 md:p-5 rounded-2xl shadow-xl backdrop-blur-md border border-white/10 hover:scale-[1.015] hover:border-cyan-400/60 transition-all flex flex-col justify-between"
-              >
-                {/* HEADER: Nombre producto + local + estado stock */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <h2 className="text-sm font-semibold text-cyan-300 uppercase tracking-wide truncate">
-                      {producto?.nombre || 'Producto sin nombre'}
-                    </h2>
-                    <p className="mt-1 text-[0.7rem] text-gray-300/80">
-                      ID #{producto?.id ?? '—'}
-                    </p>
+                        return (
+                          <button
+                            key={num}
+                            onClick={() => setPage(num)}
+                            className={[
+                              'px-3 py-2 rounded-xl border shadow-sm transition',
+                              active
+                                ? 'bg-cyan-600 border-cyan-600 text-white'
+                                : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700'
+                            ].join(' ')}
+                            aria-current={active ? 'page' : undefined}
+                          >
+                            {num}
+                          </button>
+                        );
+                      })}
                   </div>
 
-                  <div className="flex flex-col items-end gap-1">
-                    {local && (
-                      <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-400/40 text-[0.65rem] text-cyan-200 font-semibold uppercase tracking-wide">
-                        {local.nombre}
-                      </span>
-                    )}
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[0.65rem] font-semibold uppercase tracking-wide ${
-                        cantidadTotal <= THRESHOLD
-                          ? 'bg-red-500/15 text-red-300 border border-red-400/40'
-                          : 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/40'
-                      }`}
-                    >
-                      {cantidadTotal <= THRESHOLD ? 'Stock bajo' : 'Stock OK'}
-                    </span>
-                  </div>
+                  <button
+                    className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white shadow-sm
+                         dark:bg-gray-700 dark:text-white dark:border-white/10 dark:hover:bg-gray-600"
+                    onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                    disabled={!hasNext}
+                  >
+                    ›
+                  </button>
+
+                  <button
+                    className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white shadow-sm
+                         dark:bg-gray-700 dark:text-white dark:border-white/10 dark:hover:bg-gray-600"
+                    onClick={() => setPage(totalPages)}
+                    disabled={!hasNext}
+                  >
+                    »
+                  </button>
                 </div>
+              </div>
+            </div>
+          </div>
+          {/* Benjamin Orellana - 2026-02-19 - Ajuste de cards: light sólido (sin transparencia) manteniendo dark original */}
+          <motion.div
+            layout
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+          >
+            {gruposVisibles.map((group, idx) => {
+              const producto = productos.find(
+                (p) => p.id === group.producto_id
+              );
+              const local = locales.find((l) => l.id === group.local_id);
+              const lugar = lugares.find((l) => l.id === group.lugar_id);
+              const estado = estados.find((e) => e.id === group.estado_id);
+              const cantidadTotal = group.items.reduce(
+                (sum, i) => sum + toQtyNum(i.cantidad),
+                0
+              );
 
-                {/* META: Lugar / Estado / En exhibición / Otros locales */}
-                <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-gray-100">
-                  {/* Columna izquierda */}
-                  <div className="space-y-1">
-                    <div>
-                      <div className="text-[0.65rem] uppercase tracking-wide text-gray-400">
-                        Lugar
-                      </div>
-                      <div className="truncate">
-                        {lugar?.nombre || 'Sin lugar asignado'}
-                      </div>
+              // locales (además del actual) donde este producto tiene stock > 0
+              const otrosLocalesConStock = (() => {
+                const tot = new Map(); // local_id -> total
+                for (const s of stock) {
+                  if (s.producto_id === group.producto_id) {
+                    tot.set(
+                      s.local_id,
+                      (tot.get(s.local_id) || 0) + (Number(s.cantidad) || 0)
+                    );
+                  }
+                }
+                const idsConStock = [...tot.entries()]
+                  .filter(([, q]) => q > 0)
+                  .map(([id]) => id);
+
+                // mapeamos a objetos de "locales", excluyendo el local actual del grupo
+                return locales.filter(
+                  (l) => idsConStock.includes(l.id) && l.id !== group.local_id
+                );
+              })();
+
+              return (
+                <motion.div
+                  key={group.key}
+                  layout
+                  className={[
+                    // Light (sólido)
+                    'bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm',
+                    'hover:shadow-md hover:-translate-y-[1px] transition-all flex flex-col justify-between',
+                    // Dark (tu look original)
+                    'dark:bg-white/10 dark:shadow-xl dark:backdrop-blur-md dark:border-white/10',
+                    'dark:hover:scale-[1.015] dark:hover:border-cyan-400/60'
+                  ].join(' ')}
+                >
+                  {/* HEADER: Nombre producto + local + estado stock */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-sm font-semibold text-cyan-700 dark:text-cyan-300 uppercase tracking-wide truncate">
+                        {producto?.nombre || 'Producto sin nombre'}
+                      </h2>
+                      <p className="mt-1 text-[0.7rem] text-slate-500 dark:text-gray-300/80">
+                        ID #{producto?.id ?? '—'}
+                      </p>
                     </div>
 
-                    <div>
-                      <div className="text-[0.65rem] uppercase tracking-wide text-gray-400">
-                        Estado
-                      </div>
-                      <div className="truncate">
-                        {estado?.nombre || 'Sin estado'}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-[0.65rem] uppercase tracking-wide text-gray-400">
-                        En exhibición
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {group.en_exhibicion ? (
-                          <span className="text-emerald-300 inline-flex items-center gap-1">
-                            <FaCheckCircle className="text-emerald-400" />
-                            Sí
-                          </span>
-                        ) : (
-                          <span className="text-red-300 inline-flex items-center gap-1">
-                            <FaTimesCircle className="text-red-400" />
-                            No
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Columna derecha */}
-                  <div className="space-y-1">
-                    <div>
-                      <div className="text-[0.65rem] uppercase tracking-wide text-gray-400">
-                        Cantidad total
-                      </div>
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-end gap-1">
+                      {local && (
                         <span
-                          className={
-                            cantidadTotal <= THRESHOLD
-                              ? 'text-red-300 font-semibold'
-                              : 'text-emerald-300 font-semibold'
-                          }
+                          className="px-2 py-0.5 rounded-full bg-cyan-50 border border-cyan-200 text-[0.65rem] text-cyan-700 font-semibold uppercase tracking-wide
+                               dark:bg-cyan-500/15 dark:border-cyan-400/40 dark:text-cyan-200"
                         >
-                          {fmtQty(cantidadTotal)}
-                        </span>
-                        {cantidadTotal <= THRESHOLD && (
-                          <span className="flex items-center text-red-400 font-bold text-[0.65rem] animate-pulse">
-                            <FaExclamationTriangle className="mr-1" />
-                            ¡Stock bajo!
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-[0.65rem] uppercase tracking-wide text-gray-400">
-                        SKU
-                      </div>
-                      <div className="truncate font-mono text-[0.7rem] text-gray-100">
-                        {group.items[0]?.codigo_sku || '—'}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-[0.65rem] uppercase tracking-wide text-gray-400">
-                        Otros locales
-                      </div>
-                      {otrosLocalesConStock.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {otrosLocalesConStock.map((l) => (
-                            <span
-                              key={l.id}
-                              className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[0.65rem] text-gray-100"
-                            >
-                              {l.nombre}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-gray-500 text-[0.7rem]">
-                          Solo en este local
+                          {local.nombre}
                         </span>
                       )}
+
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[0.65rem] font-semibold uppercase tracking-wide border
+                ${
+                  cantidadTotal <= THRESHOLD
+                    ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-400/40'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/40'
+                }`}
+                      >
+                        {cantidadTotal <= THRESHOLD ? 'Stock bajo' : 'Stock OK'}
+                      </span>
                     </div>
                   </div>
-                </div>
 
-                {/* FOOTER: Acciones */}
-                <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between gap-2">
-                  {/* <p className="text-[0.7rem] text-gray-400">
-                    Registros en grupo:{' '}
-                    <span className="font-semibold text-gray-200">
-                      {group.items.length}
-                    </span>
-                  </p> */}
-
-                  {/* Benjamin Orellana - 2026-02-02 - Acción "Ver" (FaEye) visible para todos: abre modal full con detalle completo. */}
-                  <div className="relative group">
-                    <button
-                      type="button"
-                      onClick={() => abrirDetalle(group)}
-                      className="
-      h-8 px-3 rounded-lg
-      border border-white/10 bg-white/5 text-white/85
-      hover:bg-white/10 active:scale-[0.98]
-      flex items-center gap-2 transition
-    "
-                      aria-label="Ver detalle"
-                    >
-                      <FaEye className="text-white/80 text-sm" />
-                      <span className="text-[12px] font-semibold">Ver</span>
-                    </button>
-
-                    <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full bg-gray-900 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap opacity-0 group-hover:opacity-100 transition-none z-[2000]">
-                      Ver detalle completo
-                    </span>
-                  </div>
-
-                  {(userLevel === 'socio' ||
-                    userLevel === 'administrativo') && (
-                    <div className="flex items-center gap-2">
-                      {/* Imprimir */}
-                      <div className="relative group">
-                        <button
-                          type="button"
-                          onClick={() => imprimirTicketGrupo(group)}
-                          disabled={
-                            descargandoTicket || !hayImprimiblesEnGrupo(group)
-                          }
-                          className={`w-8 h-8 rounded-lg text-white flex items-center justify-center disabled:opacity-50
-          ${
-            hayImprimiblesEnGrupo(group)
-              ? 'bg-orange-500 hover:bg-orange-400'
-              : 'bg-orange-500/50 cursor-not-allowed'
-          }`}
-                          aria-label="Imprimir código de barras"
-                        >
-                          <FaTicketAlt className="text-white/90 text-sm" />
-                        </button>
-                        <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full bg-gray-900 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap opacity-0 group-hover:opacity-100 transition-none z-[2000]">
-                          Imprimir código de barras
-                        </span>
+                  {/* META: Lugar / Estado / En exhibición / Otros locales */}
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-800 dark:text-gray-100">
+                    {/* Columna izquierda */}
+                    <div className="space-y-1">
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          Lugar
+                        </div>
+                        <div className="truncate text-slate-900 dark:text-gray-100">
+                          {lugar?.nombre || 'Sin lugar asignado'}
+                        </div>
                       </div>
 
-                      {/* Duplicar */}
-                      <div className="relative group">
-                        <button
-                          type="button"
-                          onClick={() => abrirDuplicar(group)}
-                          className="w-8 h-8 bg-blue-600 hover:bg-blue-500 rounded-lg text-white flex items-center justify-center"
-                          aria-label="Duplicar"
-                        >
-                          <FaCopy className="text-white/90 text-sm" />
-                        </button>
-                        <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full bg-gray-900 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap opacity-0 group-hover:opacity-100 transition-none z-[2000]">
-                          Duplicar
-                        </span>
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          Estado
+                        </div>
+                        <div className="truncate text-slate-900 dark:text-gray-100">
+                          {estado?.nombre || 'Sin estado'}
+                        </div>
                       </div>
 
-                      {/* Editar */}
-                      <div className="relative group">
-                        <button
-                          type="button"
-                          onClick={() => openModal(group.items?.[0], null)}
-                          className="w-8 h-8 bg-yellow-500 hover:bg-yellow-400 rounded-lg text-white flex items-center justify-center"
-                          aria-label="Editar"
-                        >
-                          <FaEdit className="text-white/90 text-sm" />
-                        </button>
-                        <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full bg-gray-900 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap opacity-0 group-hover:opacity-100 transition-none z-[2000]">
-                          Editar
-                        </span>
-                      </div>
-
-                      {/* Ajustar grupo */}
-                      <div className="relative group">
-                        <button
-                          type="button"
-                          onClick={() => openModal(null, group)}
-                          className="w-8 h-8 bg-amber-600 hover:bg-amber-500 rounded-lg text-white flex items-center justify-center"
-                          aria-label="Ajustar grupo"
-                        >
-                          <FaCog className="text-white/90 text-sm" />
-                        </button>
-                        <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full bg-gray-900 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap opacity-0 group-hover:opacity-100 transition-none z-[2000]">
-                          Ajustar grupo
-                        </span>
-                      </div>
-
-                      {/* Eliminar */}
-                      <div className="relative group">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setGrupoAEliminar(group);
-                            setOpenConfirm(true);
-                          }}
-                          className="w-8 h-8 bg-red-600 hover:bg-red-500 rounded-lg text-white flex items-center justify-center"
-                          aria-label="Eliminar"
-                        >
-                          <FaTrash className="text-white/90 text-sm" />
-                        </button>
-                        <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full bg-gray-900 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap opacity-0 group-hover:opacity-100 transition-none z-[2000]">
-                          Eliminar
-                        </span>
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          En exhibición
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {group.en_exhibicion ? (
+                            <span className="text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1">
+                              <FaCheckCircle className="text-emerald-600 dark:text-emerald-400" />
+                              Sí
+                            </span>
+                          ) : (
+                            <span className="text-red-700 dark:text-red-300 inline-flex items-center gap-1">
+                              <FaTimesCircle className="text-red-600 dark:text-red-400" />
+                              No
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
-        </motion.div>
 
-        <Modal
-          isOpen={modalOpen}
-          onRequestClose={() => setModalOpen(false)}
-          overlayClassName="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4"
-          className="relative w-full max-w-6xl bg-white rounded-2xl shadow-2xl border border-cyan-100 overflow-hidden"
-        >
-          {/* Header sticky */}
-          <header className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-gray-200 px-5 py-4">
-            <h2 className="text-xl md:text-2xl font-bold text-cyan-600">
-              {editId ? 'EDITAR STOCK' : 'NUEVO STOCK'}
-            </h2>
-          </header>
+                    {/* Columna derecha */}
+                    <div className="space-y-1">
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          Cantidad total
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={
+                              cantidadTotal <= THRESHOLD
+                                ? 'text-red-700 dark:text-red-300 font-semibold'
+                                : 'text-emerald-700 dark:text-emerald-300 font-semibold'
+                            }
+                          >
+                            {fmtQty(cantidadTotal)}
+                          </span>
 
-          {/* Contenido scrolleable */}
-          <div className="max-h-[80vh] overflow-y-auto px-5 py-4">
-            <form onSubmit={handleSubmit} className="space-y-4 text-gray-800">
-              {/* Producto */}
-              <SearchableSelect
-                label="Producto"
-                items={productos}
-                value={formData.producto_id}
-                onChange={(id) =>
-                  setFormData((fd) => ({
-                    ...fd,
-                    producto_id: Number(id) || ''
-                  }))
-                }
-                required
-                placeholder="Buscar o seleccionar producto…"
-              />
+                          {cantidadTotal <= THRESHOLD && (
+                            <span className="flex items-center text-red-700 dark:text-red-400 font-bold text-[0.65rem] animate-pulse">
+                              <FaExclamationTriangle className="mr-1" />
+                              ¡Stock bajo!
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-              {/* Locales + cantidades (limitar alto interno) */}
-              <LocalesCantidadPicker
-                locales={locales || []}
-                lugares={lugares || []}
-                estados={estados || []}
-                value={formData.localesCant || []}
-                onChange={(rows) =>
-                  setFormData((fd) => ({ ...fd, localesCant: rows }))
-                }
-                defaults={{
-                  lugar_id: formData.lugar_id,
-                  estado_id: formData.estado_id
-                }}
-                listClassName="max-h-64 overflow-auto pr-1"
-              />
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          SKU
+                        </div>
+                        <div className="truncate font-mono text-[0.7rem] text-slate-900 dark:text-gray-100">
+                          {group.items[0]?.codigo_sku || '—'}
+                        </div>
+                      </div>
 
-              {/* Modo */}
-              {/* <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          Otros locales
+                        </div>
+
+                        {otrosLocalesConStock.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {otrosLocalesConStock.map((l) => (
+                              <span
+                                key={l.id}
+                                className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[0.65rem] text-slate-700
+                                 dark:bg-white/5 dark:border-white/10 dark:text-gray-100"
+                              >
+                                {l.nombre}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 dark:text-gray-500 text-[0.7rem]">
+                            Solo en este local
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* FOOTER: Acciones */}
+                  <div className="mt-4 pt-3 border-t border-slate-200/70 dark:border-white/10 flex items-center justify-between gap-2">
+                    {/* Benjamin Orellana - 2026-02-02 - Acción "Ver" (FaEye) visible para todos: abre modal full con detalle completo. */}
+                    <div className="relative group">
+                      <button
+                        type="button"
+                        onClick={() => abrirDetalle(group)}
+                        className="
+                h-8 px-3 rounded-lg
+                border border-slate-200 bg-white text-slate-800
+                hover:bg-slate-50 active:scale-[0.98]
+                flex items-center gap-2 transition shadow-sm
+                dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:hover:bg-white/10
+              "
+                        aria-label="Ver detalle"
+                      >
+                        <FaEye className="text-slate-700 text-sm dark:text-white/80" />
+                        <span className="text-[12px] font-semibold">Ver</span>
+                      </button>
+
+                      <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full bg-gray-900 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap opacity-0 group-hover:opacity-100 transition-none z-[2000]">
+                        Ver detalle completo
+                      </span>
+                    </div>
+
+                    {(userLevel === 'socio' ||
+                      userLevel === 'administrativo') && (
+                      <div className="flex items-center gap-2">
+                        {/* Imprimir */}
+                        <div className="relative group">
+                          <button
+                            type="button"
+                            onClick={() => imprimirTicketGrupo(group)}
+                            disabled={
+                              descargandoTicket || !hayImprimiblesEnGrupo(group)
+                            }
+                            className={`w-8 h-8 rounded-lg text-white flex items-center justify-center disabled:opacity-50
+                    ${
+                      hayImprimiblesEnGrupo(group)
+                        ? 'bg-orange-500 hover:bg-orange-400'
+                        : 'bg-orange-500/50 cursor-not-allowed'
+                    }`}
+                            aria-label="Imprimir código de barras"
+                          >
+                            <FaTicketAlt className="text-white/90 text-sm" />
+                          </button>
+                          <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full bg-gray-900 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap opacity-0 group-hover:opacity-100 transition-none z-[2000]">
+                            Imprimir código de barras
+                          </span>
+                        </div>
+
+                        {/* Duplicar */}
+                        <div className="relative group">
+                          <button
+                            type="button"
+                            onClick={() => abrirDuplicar(group)}
+                            className="w-8 h-8 bg-blue-600 hover:bg-blue-500 rounded-lg text-white flex items-center justify-center"
+                            aria-label="Duplicar"
+                          >
+                            <FaCopy className="text-white/90 text-sm" />
+                          </button>
+                          <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full bg-gray-900 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap opacity-0 group-hover:opacity-100 transition-none z-[2000]">
+                            Duplicar
+                          </span>
+                        </div>
+
+                        {/* Editar */}
+                        <div className="relative group">
+                          <button
+                            type="button"
+                            onClick={() => openModal(group.items?.[0], null)}
+                            className="w-8 h-8 bg-yellow-500 hover:bg-yellow-400 rounded-lg text-white flex items-center justify-center"
+                            aria-label="Editar"
+                          >
+                            <FaEdit className="text-white/90 text-sm" />
+                          </button>
+                          <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full bg-gray-900 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap opacity-0 group-hover:opacity-100 transition-none z-[2000]">
+                            Editar
+                          </span>
+                        </div>
+
+                        {/* Ajustar grupo */}
+                        <div className="relative group">
+                          <button
+                            type="button"
+                            onClick={() => openModal(null, group)}
+                            className="w-8 h-8 bg-amber-600 hover:bg-amber-500 rounded-lg text-white flex items-center justify-center"
+                            aria-label="Ajustar grupo"
+                          >
+                            <FaCog className="text-white/90 text-sm" />
+                          </button>
+                          <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full bg-gray-900 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap opacity-0 group-hover:opacity-100 transition-none z-[2000]">
+                            Ajustar grupo
+                          </span>
+                        </div>
+
+                        {/* Eliminar */}
+                        <div className="relative group">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setGrupoAEliminar(group);
+                              setOpenConfirm(true);
+                            }}
+                            className="w-8 h-8 bg-red-600 hover:bg-red-500 rounded-lg text-white flex items-center justify-center"
+                            aria-label="Eliminar"
+                          >
+                            <FaTrash className="text-white/90 text-sm" />
+                          </button>
+                          <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full bg-gray-900 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap opacity-0 group-hover:opacity-100 transition-none z-[2000]">
+                            Eliminar
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+
+          <Modal
+            isOpen={modalOpen}
+            onRequestClose={() => setModalOpen(false)}
+            overlayClassName="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4"
+            className="relative w-full max-w-6xl bg-white rounded-2xl shadow-2xl border border-cyan-100 overflow-hidden"
+          >
+            {/* Header sticky */}
+            <header className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-gray-200 px-5 py-4">
+              <h2 className="text-xl md:text-2xl font-bold text-cyan-600">
+                {editId ? 'EDITAR STOCK' : 'NUEVO STOCK'}
+              </h2>
+            </header>
+
+            {/* Contenido scrolleable */}
+            <div className="max-h-[80vh] overflow-y-auto px-5 py-4">
+              <form onSubmit={handleSubmit} className="space-y-4 text-gray-800">
+                {/* Producto */}
+                <SearchableSelect
+                  label="Producto"
+                  items={productos}
+                  value={formData.producto_id}
+                  onChange={(id) =>
+                    setFormData((fd) => ({
+                      ...fd,
+                      producto_id: Number(id) || ''
+                    }))
+                  }
+                  required
+                  placeholder="Buscar o seleccionar producto…"
+                />
+
+                {/* Locales + cantidades (limitar alto interno) */}
+                <LocalesCantidadPicker
+                  locales={locales || []}
+                  lugares={lugares || []}
+                  estados={estados || []}
+                  value={formData.localesCant || []}
+                  onChange={(rows) =>
+                    setFormData((fd) => ({ ...fd, localesCant: rows }))
+                  }
+                  defaults={{
+                    lugar_id: formData.lugar_id,
+                    estado_id: formData.estado_id
+                  }}
+                  listClassName="max-h-64 overflow-auto pr-1"
+                />
+
+                {/* Modo */}
+                {/* <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <label className="text-sm text-gray-700">
                   Modo de actualización:
                 </label>
@@ -1474,8 +1528,8 @@ const StockGet = () => {
                 </select>
               </div> */}
 
-              {/* Lugar */}
-              {/* <SearchableSelect
+                {/* Lugar */}
+                {/* <SearchableSelect
                 label="Lugar"
                 items={lugares}
                 value={formData.lugar_id}
@@ -1486,8 +1540,8 @@ const StockGet = () => {
                 placeholder="Buscar lugar…"
               /> */}
 
-              {/* Estado */}
-              {/* <SearchableSelect
+                {/* Estado */}
+                {/* <SearchableSelect
                 label="Estado"
                 items={estados}
                 value={formData.estado_id}
@@ -1498,21 +1552,21 @@ const StockGet = () => {
                 placeholder="Buscar estado…"
               /> */}
 
-              {editId && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-600">
-                    Código SKU (Generado automáticamente)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.codigo_sku || ''}
-                    readOnly
-                    className="w-full px-4 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-600 cursor-not-allowed"
-                  />
-                </div>
-              )}
+                {editId && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-600">
+                      Código SKU (Generado automáticamente)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.codigo_sku || ''}
+                      readOnly
+                      className="w-full px-4 py-2 rounded-lg bg-gray-100 border border-gray-300 text-gray-600 cursor-not-allowed"
+                    />
+                  </div>
+                )}
 
-              {/* {(formData.localesCant?.length ?? 0) === 0 && (
+                {/* {(formData.localesCant?.length ?? 0) === 0 && (
                 <div>
                   <label className="block font-semibold mb-1">Cantidad</label>
                   <input
@@ -1531,268 +1585,268 @@ const StockGet = () => {
                 </div>
               )} */}
 
-              {/* exhibición */}
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.en_exhibicion}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      en_exhibicion: e.target.checked
-                    })
-                  }
-                />
-                <span>En exhibición</span>
-              </label>
-            </form>
-          </div>
-
-          {/* Footer sticky */}
-          <footer className="sticky bottom-0 z-10 bg-white/90 backdrop-blur border-t border-gray-200 px-5 py-3">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setModalOpen(false)}
-                className="px-5 py-2 rounded-lg border border-gray-300 hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              <button
-                form="__auto" // opcional si usas id de form; si no, deja así y mueve el botón dentro del form
-                onClick={handleSubmit}
-                className="px-6 py-2 rounded-lg bg-cyan-600 text-white hover:bg-cyan-500"
-              >
-                {editId ? 'Actualizar' : 'Guardar'}
-              </button>
+                {/* exhibición */}
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.en_exhibicion}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        en_exhibicion: e.target.checked
+                      })
+                    }
+                  />
+                  <span>En exhibición</span>
+                </label>
+              </form>
             </div>
-          </footer>
-        </Modal>
-      </div>
-      {/* <ModalError
+
+            {/* Footer sticky */}
+            <footer className="sticky bottom-0 z-10 bg-white/90 backdrop-blur border-t border-gray-200 px-5 py-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  className="px-5 py-2 rounded-lg border text-black border-gray-300 hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  form="__auto" // opcional si usas id de form; si no, deja así y mueve el botón dentro del form
+                  onClick={handleSubmit}
+                  className="px-6 py-2 rounded-lg bg-cyan-600 text-white hover:bg-cyan-500"
+                >
+                  {editId ? 'Actualizar' : 'Guardar'}
+                </button>
+              </div>
+            </footer>
+          </Modal>
+        </div>
+        {/* <ModalError
         open={modalErrorOpen}
         onClose={() => setModalFeedbackOpen(false)}
         msg={modalFeedbackMsg}
       /> */}
-      {/* Modal simple */}
-      {openConfirm && grupoAEliminar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#232b32] rounded-2xl shadow-2xl p-8 w-[90vw] max-w-sm flex flex-col gap-4 border border-gray-800 animate-fade-in">
-            <div className="flex items-center gap-2 text-xl font-bold text-[#32d8fd]">
-              <FaExclamationTriangle className="text-yellow-400 text-2xl" />
-              Eliminar de stock
-            </div>
-            <div className="text-base text-gray-200">
-              ¿Seguro que deseas eliminar TODO el stock del producto{' '}
-              <span className="font-bold text-pink-400">
-                "
-                {productos.find((p) => p.id === grupoAEliminar.producto_id)
-                  ?.nombre || ''}
-                "
-              </span>
-              ?
-            </div>
-            <div className="text-xs text-gray-400 mb-3">
-              Esta acción no puede deshacerse.
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={handleDeleteGroup}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow"
-              >
-                Eliminar
-              </button>
+        {/* Modal simple */}
+        {openConfirm && grupoAEliminar && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="bg-[#232b32] rounded-2xl shadow-2xl p-8 w-[90vw] max-w-sm flex flex-col gap-4 border border-gray-800 animate-fade-in">
+              <div className="flex items-center gap-2 text-xl font-bold text-[#32d8fd]">
+                <FaExclamationTriangle className="text-yellow-400 text-2xl" />
+                Eliminar de stock
+              </div>
+              <div className="text-base text-gray-200">
+                ¿Seguro que deseas eliminar TODO el stock del producto{' '}
+                <span className="font-bold text-pink-400">
+                  "
+                  {productos.find((p) => p.id === grupoAEliminar.producto_id)
+                    ?.nombre || ''}
+                  "
+                </span>
+                ?
+              </div>
+              <div className="text-xs text-gray-400 mb-3">
+                Esta acción no puede deshacerse.
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={handleDeleteGroup}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow"
+                >
+                  Eliminar
+                </button>
 
-              <button
-                onClick={() => {
-                  setOpenConfirm(false);
-                  setGrupoAEliminar(null);
-                }}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl font-bold shadow"
-              >
-                Cancelar
-              </button>
+                <button
+                  onClick={() => {
+                    setOpenConfirm(false);
+                    setGrupoAEliminar(null);
+                  }}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl font-bold shadow"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      {dupOpen && (
-        <div
-          className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') setDupOpen(false);
-            if (
-              e.key === 'Enter' &&
-              dupNombre.trim() &&
-              dupNombre.trim().length <= MAX_NOMBRE &&
-              !dupLoading
-            )
-              duplicarProducto();
-          }}
-        >
-          <div className="w-full max-w-2xl bg-zinc-900/95 text-white rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
-            {/* Header */}
-            <div className="px-6 py-4 flex items-start justify-between border-b border-white/10">
-              <div className="space-y-1">
-                <h3 className="text-lg font-bold flex items-center gap-2">
-                  <FaCopy className="text-blue-300" /> Duplicar producto
-                </h3>
-                <p className="text-xs text-white/70">
-                  Producto ID {dupGroup?.producto_id}
-                </p>
-                {!!productos?.length && (
-                  <p className="text-sm text-white/80">
-                    {productos.find((p) => p.id === dupGroup?.producto_id)
-                      ?.nombre ?? '—'}
+        )}
+        {dupOpen && (
+          <div
+            className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setDupOpen(false);
+              if (
+                e.key === 'Enter' &&
+                dupNombre.trim() &&
+                dupNombre.trim().length <= MAX_NOMBRE &&
+                !dupLoading
+              )
+                duplicarProducto();
+            }}
+          >
+            <div className="w-full max-w-2xl bg-zinc-900/95 text-white rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+              {/* Header */}
+              <div className="px-6 py-4 flex items-start justify-between border-b border-white/10">
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <FaCopy className="text-blue-300" /> Duplicar producto
+                  </h3>
+                  <p className="text-xs text-white/70">
+                    Producto ID {dupGroup?.producto_id}
                   </p>
-                )}
+                  {!!productos?.length && (
+                    <p className="text-sm text-white/80">
+                      {productos.find((p) => p.id === dupGroup?.producto_id)
+                        ?.nombre ?? '—'}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDupOpen(false)}
+                  className="p-2 rounded-xl hover:bg-white/10 text-white/80"
+                  aria-label="Cerrar"
+                >
+                  <FaTimes />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setDupOpen(false)}
-                className="p-2 rounded-xl hover:bg-white/10 text-white/80"
-                aria-label="Cerrar"
-              >
-                <FaTimes />
-              </button>
-            </div>
 
-            {/* Body */}
-            <div className="px-6 py-5 space-y-5">
-              {/* Resumen pills (sin talles) */}
-              {(() => {
-                const items = dupGroup?.items || [];
-                const totalItems = items.length;
-                const totalQty = items.reduce(
-                  (a, i) => a + (i.cantidad ?? 0),
-                  0
-                );
+              {/* Body */}
+              <div className="px-6 py-5 space-y-5">
+                {/* Resumen pills (sin talles) */}
+                {(() => {
+                  const items = dupGroup?.items || [];
+                  const totalItems = items.length;
+                  const totalQty = items.reduce(
+                    (a, i) => a + (i.cantidad ?? 0),
+                    0
+                  );
 
-                const localName =
-                  locales.find((l) => l.id === dupGroup?.local_id)?.nombre ??
-                  `Local ${dupGroup?.local_id}`;
-                const lugarName =
-                  lugares.find((l) => l.id === dupGroup?.lugar_id)?.nombre ??
-                  `Lugar ${dupGroup?.lugar_id}`;
-                const estadoName =
-                  estados.find((e) => e.id === dupGroup?.estado_id)?.nombre ??
-                  `Estado ${dupGroup?.estado_id}`;
+                  const localName =
+                    locales.find((l) => l.id === dupGroup?.local_id)?.nombre ??
+                    `Local ${dupGroup?.local_id}`;
+                  const lugarName =
+                    lugares.find((l) => l.id === dupGroup?.lugar_id)?.nombre ??
+                    `Lugar ${dupGroup?.lugar_id}`;
+                  const estadoName =
+                    estados.find((e) => e.id === dupGroup?.estado_id)?.nombre ??
+                    `Estado ${dupGroup?.estado_id}`;
 
-                return (
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10">
-                      Ítems: <b>{totalItems}</b>
-                    </span>
-                    <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10">
-                      Stock total: <b>{totalQty}</b>
-                    </span>
-                    <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10">
-                      Local: <b>{localName}</b>
-                    </span>
-                    <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10">
-                      Lugar: <b>{lugarName}</b>
-                    </span>
-                    <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10">
-                      Estado: <b>{estadoName}</b>
-                    </span>
-                    <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10">
-                      {dupCopiarCant ? 'Copiando stock' : 'Cantidades = 0'}
-                    </span>
-                  </div>
-                );
-              })()}
-
-              {/* Nombre + validación y contador */}
-              {(() => {
-                const nameExists = productos.some(
-                  (p) =>
-                    p.id !== dupGroup?.producto_id &&
-                    (p.nombre || '').trim().toLowerCase() ===
-                      dupNombre.trim().toLowerCase()
-                );
-                const tooLong = dupNombre.trim().length > MAX_NOMBRE;
-                const invalid = !dupNombre.trim() || tooLong;
-
-                // guardamos la condición para el botón
-                window.__dupInvalid = invalid;
-
-                return (
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-semibold">
-                        Nuevo nombre
-                      </label>
-                      <span
-                        className={`text-xs ${
-                          tooLong ? 'text-red-300' : 'text-white/50'
-                        }`}
-                      >
-                        {dupNombre.trim().length}/{MAX_NOMBRE}
+                  return (
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10">
+                        Ítems: <b>{totalItems}</b>
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10">
+                        Stock total: <b>{totalQty}</b>
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10">
+                        Local: <b>{localName}</b>
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10">
+                        Lugar: <b>{lugarName}</b>
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10">
+                        Estado: <b>{estadoName}</b>
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10">
+                        {dupCopiarCant ? 'Copiando stock' : 'Cantidades = 0'}
                       </span>
                     </div>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={dupNombre}
-                        onChange={(e) => setDupNombre(e.target.value)}
-                        autoFocus
-                        className={`mt-1 w-full rounded-xl bg-white/5 border px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:ring-2
+                  );
+                })()}
+
+                {/* Nombre + validación y contador */}
+                {(() => {
+                  const nameExists = productos.some(
+                    (p) =>
+                      p.id !== dupGroup?.producto_id &&
+                      (p.nombre || '').trim().toLowerCase() ===
+                        dupNombre.trim().toLowerCase()
+                  );
+                  const tooLong = dupNombre.trim().length > MAX_NOMBRE;
+                  const invalid = !dupNombre.trim() || tooLong;
+
+                  // guardamos la condición para el botón
+                  window.__dupInvalid = invalid;
+
+                  return (
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-semibold">
+                          Nuevo nombre
+                        </label>
+                        <span
+                          className={`text-xs ${
+                            tooLong ? 'text-red-300' : 'text-white/50'
+                          }`}
+                        >
+                          {dupNombre.trim().length}/{MAX_NOMBRE}
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={dupNombre}
+                          onChange={(e) => setDupNombre(e.target.value)}
+                          autoFocus
+                          className={`mt-1 w-full rounded-xl bg-white/5 border px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:ring-2
                     ${
                       invalid
                         ? 'border-red-400 focus:ring-red-500'
                         : 'border-white/10 focus:ring-purple-500'
                     }`}
-                        placeholder="Ingresá el nuevo nombre…"
-                      />
-                      {!!dupNombre && (
-                        <button
-                          type="button"
-                          onClick={() => setDupNombre('')}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-white/60 hover:text-white"
-                          aria-label="Limpiar"
-                        >
-                          <FaTimes />
-                        </button>
-                      )}
-                    </div>
-                    <div className="mt-1 text-xs">
-                      <p className="text-white/60">
-                        Se copiará la <b>estructura de stock</b> del producto
-                        original.
-                      </p>
-                      {nameExists && (
-                        <p className="text-yellow-300 mt-1">
-                          Ya existe otro producto con este nombre. Podés
-                          continuar, pero conviene diferenciarlo.
+                          placeholder="Ingresá el nuevo nombre…"
+                        />
+                        {!!dupNombre && (
+                          <button
+                            type="button"
+                            onClick={() => setDupNombre('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-white/60 hover:text-white"
+                            aria-label="Limpiar"
+                          >
+                            <FaTimes />
+                          </button>
+                        )}
+                      </div>
+                      <div className="mt-1 text-xs">
+                        <p className="text-white/60">
+                          Se copiará la <b>estructura de stock</b> del producto
+                          original.
                         </p>
-                      )}
-                      {tooLong && (
-                        <p className="text-red-300 mt-1">
-                          Máximo {MAX_NOMBRE} caracteres.
-                        </p>
-                      )}
+                        {nameExists && (
+                          <p className="text-yellow-300 mt-1">
+                            Ya existe otro producto con este nombre. Podés
+                            continuar, pero conviene diferenciarlo.
+                          </p>
+                        )}
+                        {tooLong && (
+                          <p className="text-red-300 mt-1">
+                            Máximo {MAX_NOMBRE} caracteres.
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })()}
+                  );
+                })()}
 
-              {/* Opciones */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <label className="flex items-center gap-2">
-                  <input
-                    id="chk-copiar-cant"
-                    type="checkbox"
-                    checked={dupCopiarCant}
-                    onChange={(e) => setDupCopiarCant(e.target.checked)}
-                    className="h-4 w-4 accent-purple-600"
-                  />
-                  <span className="text-sm">Copiar stock</span>
-                </label>
+                {/* Opciones */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      id="chk-copiar-cant"
+                      type="checkbox"
+                      checked={dupCopiarCant}
+                      onChange={(e) => setDupCopiarCant(e.target.checked)}
+                      className="h-4 w-4 accent-purple-600"
+                    />
+                    <span className="text-sm">Copiar stock</span>
+                  </label>
 
-                {/* Dropdown de Locales (Req 3 listo) */}
-                {/* <div className="relative">
+                  {/* Dropdown de Locales (Req 3 listo) */}
+                  {/* <div className="relative">
                   <button
                     type="button"
                     onClick={() => setDupShowLocales((v) => !v)}
@@ -1852,264 +1906,265 @@ const StockGet = () => {
                     </div>
                   )}
                 </div> */}
-              </div>
+                </div>
 
-              {/* Preview SKU (sin talle) */}
-              {(() => {
-                const localName = locales.find(
-                  (l) => l.id === dupGroup?.local_id
-                )?.nombre;
-                const lugarName = lugares.find(
-                  (g) => g.id === dupGroup?.lugar_id
-                )?.nombre;
-                const estadoName = estados.find(
-                  (e) => e.id === dupGroup?.estado_id
-                )?.nombre;
+                {/* Preview SKU (sin talle) */}
+                {(() => {
+                  const localName = locales.find(
+                    (l) => l.id === dupGroup?.local_id
+                  )?.nombre;
+                  const lugarName = lugares.find(
+                    (g) => g.id === dupGroup?.lugar_id
+                  )?.nombre;
+                  const estadoName = estados.find(
+                    (e) => e.id === dupGroup?.estado_id
+                  )?.nombre;
 
-                // 🔧 Si tenías un helper buildSkuPreview que incluía talleNombre, ajustalo a esta firma.
-                const buildSkuPreview = ({
-                  productoNombre,
-                  localNombre,
-                  lugarNombre,
-                  estadoNombre
-                }) => {
-                  const parts = [
-                    (productoNombre || '').trim(),
+                  // 🔧 Si tenías un helper buildSkuPreview que incluía talleNombre, ajustalo a esta firma.
+                  const buildSkuPreview = ({
+                    productoNombre,
                     localNombre,
                     lugarNombre,
                     estadoNombre
-                  ].filter(Boolean);
-                  return parts.join(' · ');
-                };
+                  }) => {
+                    const parts = [
+                      (productoNombre || '').trim(),
+                      localNombre,
+                      lugarNombre,
+                      estadoNombre
+                    ].filter(Boolean);
+                    return parts.join(' · ');
+                  };
 
-                const productoNombre =
-                  dupNombre ||
-                  productos.find((p) => p.id === dupGroup?.producto_id)
-                    ?.nombre ||
-                  '';
+                  const productoNombre =
+                    dupNombre ||
+                    productos.find((p) => p.id === dupGroup?.producto_id)
+                      ?.nombre ||
+                    '';
 
-                const exampleSku = buildSkuPreview({
-                  productoNombre,
-                  localNombre: localName,
-                  lugarNombre: lugarName,
-                  estadoNombre: estadoName
-                });
+                  const exampleSku = buildSkuPreview({
+                    productoNombre,
+                    localNombre: localName,
+                    lugarNombre: lugarName,
+                    estadoNombre: estadoName
+                  });
 
-                return (
-                  <div className="text-xs text-white/70 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                    <span className="text-white/90 font-semibold">
-                      Preview SKU:
-                    </span>{' '}
-                    {exampleSku}
-                  </div>
-                );
-              })()}
+                  return (
+                    <div className="text-xs text-white/70 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
+                      <span className="text-white/90 font-semibold">
+                        Preview SKU:
+                      </span>{' '}
+                      {exampleSku}
+                    </div>
+                  );
+                })()}
 
-              {/* Detalle de stock (sin talles) */}
-              <button
-                type="button"
-                onClick={() => setDupShowPreview((v) => !v)}
-                className="w-full text-left text-sm text-white/80 flex items-center justify-between bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-3 py-2"
-              >
-                <span>Ver detalle de stock</span>
-                <span className="text-white/60">
-                  {dupShowPreview ? '▲' : '▼'}
-                </span>
-              </button>
+                {/* Detalle de stock (sin talles) */}
+                <button
+                  type="button"
+                  onClick={() => setDupShowPreview((v) => !v)}
+                  className="w-full text-left text-sm text-white/80 flex items-center justify-between bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-3 py-2"
+                >
+                  <span>Ver detalle de stock</span>
+                  <span className="text-white/60">
+                    {dupShowPreview ? '▲' : '▼'}
+                  </span>
+                </button>
 
-              {dupShowPreview && (
-                <div className="max-h-56 overflow-auto rounded-xl border border-white/10">
-                  <table className="w-full text-sm">
-                    <thead className="bg-white/5 sticky top-0">
-                      <tr>
-                        <th className="text-left px-3 py-2">Ítem</th>
-                        <th className="text-right px-3 py-2">
-                          Cantidad origen
-                        </th>
-                        <th className="text-right px-3 py-2">
-                          Cantidad destino
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(dupGroup?.items || []).map((it) => (
-                        <tr key={it.id} className="border-t border-white/10">
-                          <td className="px-3 py-2">
-                            {/* Si querés más info, podés incluir: `ID ${it.id}` o nombre del producto */}
-                            ID {it.id}
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            {it.cantidad ?? 0}
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            {dupCopiarCant ? (it.cantidad ?? 0) : 0}
-                          </td>
+                {dupShowPreview && (
+                  <div className="max-h-56 overflow-auto rounded-xl border border-white/10">
+                    <table className="w-full text-sm">
+                      <thead className="bg-white/5 sticky top-0">
+                        <tr>
+                          <th className="text-left px-3 py-2">Ítem</th>
+                          <th className="text-right px-3 py-2">
+                            Cantidad origen
+                          </th>
+                          <th className="text-right px-3 py-2">
+                            Cantidad destino
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-white/10 flex flex-col sm:flex-row sm:justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setDupOpen(false)}
-                className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-semibold"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => duplicarProducto(dupLocalesSel)}
-                disabled={
-                  dupLoading ||
-                  !dupNombre.trim() ||
-                  dupNombre.trim().length > MAX_NOMBRE
-                }
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-50"
-                title={
-                  !dupNombre.trim()
-                    ? 'Ingresá un nombre'
-                    : dupNombre.trim().length > MAX_NOMBRE
-                      ? `Máximo ${MAX_NOMBRE} caracteres`
-                      : ''
-                }
-              >
-                {dupLoading ? 'Duplicando…' : 'Duplicar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      <ModalFeedback
-        open={modalFeedbackOpen}
-        onClose={() => setModalFeedbackOpen(false)}
-        msg={modalFeedbackMsg}
-        type={modalFeedbackType}
-      />
-      <ToastContainer />
-      <ModalAlertasStockBajo
-        open={showAlertasStock}
-        onClose={() => setShowAlertasStock(false)}
-        threshold={10}
-      />
-      <StockGuiaModal open={helpOpen} onClose={() => setHelpOpen(false)} />
-      {/* ---------- Modal ---------- */}
-      {modalExportOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => !exportando && setModalExportOpen(false)}
-          />
-
-          {/* Panel */}
-          <div className="relative w-full max-w-lg rounded-2xl bg-slate-900/90 ring-1 ring-white/10 shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-white/10">
-              <div>
-                <div className="text-xs uppercase tracking-widest text-white/50">
-                  Exportación
-                </div>
-                <div className="text-lg titulo uppercase font-semibold text-white">
-                  Elegí qué querés exportar
-                </div>
+                      </thead>
+                      <tbody>
+                        {(dupGroup?.items || []).map((it) => (
+                          <tr key={it.id} className="border-t border-white/10">
+                            <td className="px-3 py-2">
+                              {/* Si querés más info, podés incluir: `ID ${it.id}` o nombre del producto */}
+                              ID {it.id}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              {it.cantidad ?? 0}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              {dupCopiarCant ? (it.cantidad ?? 0) : 0}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
-              <button
-                type="button"
-                disabled={exportando}
-                onClick={() => setModalExportOpen(false)}
-                className="h-9 w-9 rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 flex items-center justify-center text-white/80 disabled:opacity-50"
-                aria-label="Cerrar"
-              >
-                <FaTimes />
-              </button>
-            </div>
-
-            <div className="p-4 space-y-3">
-              {/* Opción 1: Visualizando */}
-              <button
-                type="button"
-                disabled={exportando}
-                onClick={handleExportVisualizando}
-                className="w-full rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 p-4 text-left transition disabled:opacity-50"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-cyan-500/15 ring-1 ring-cyan-400/20 flex items-center justify-center text-cyan-200">
-                    <FaEye />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-white font-semibold">
-                      Lo que estás visualizando
-                    </div>
-                    <div className="text-sm text-white/60">
-                      Exporta únicamente los registros filtrados/visibles
-                      actualmente.
-                    </div>
-                  </div>
-                  <div className="text-xs text-white/50 mt-1">
-                    {rows_2?.length ?? 0} items
-                  </div>
-                </div>
-              </button>
-
-              {/* Opción 2: Todo */}
-              <button
-                type="button"
-                disabled={exportando}
-                onClick={handleExportTodo}
-                className="w-full rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 p-4 text-left transition disabled:opacity-50"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/20 flex items-center justify-center text-emerald-200">
-                    <FaLayerGroup />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-white font-semibold">
-                      Exportar todo
-                    </div>
-                    <div className="text-sm text-white/60">
-                      Exporta el dataset completo, ignorando filtros y
-                      paginación.
-                    </div>
-                  </div>
-                </div>
-              </button>
-
               {/* Footer */}
-              <div className="pt-2 flex items-center justify-end gap-2">
+              <div className="px-6 py-4 border-t border-white/10 flex flex-col sm:flex-row sm:justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDupOpen(false)}
+                  className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-semibold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => duplicarProducto(dupLocalesSel)}
+                  disabled={
+                    dupLoading ||
+                    !dupNombre.trim() ||
+                    dupNombre.trim().length > MAX_NOMBRE
+                  }
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-50"
+                  title={
+                    !dupNombre.trim()
+                      ? 'Ingresá un nombre'
+                      : dupNombre.trim().length > MAX_NOMBRE
+                        ? `Máximo ${MAX_NOMBRE} caracteres`
+                        : ''
+                  }
+                >
+                  {dupLoading ? 'Duplicando…' : 'Duplicar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        <ModalFeedback
+          open={modalFeedbackOpen}
+          onClose={() => setModalFeedbackOpen(false)}
+          msg={modalFeedbackMsg}
+          type={modalFeedbackType}
+        />
+        <ToastContainer />
+        <ModalAlertasStockBajo
+          open={showAlertasStock}
+          onClose={() => setShowAlertasStock(false)}
+          threshold={10}
+        />
+        <StockGuiaModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+        {/* ---------- Modal ---------- */}
+        {modalExportOpen && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => !exportando && setModalExportOpen(false)}
+            />
+
+            {/* Panel */}
+            <div className="relative w-full max-w-lg rounded-2xl bg-slate-900/90 ring-1 ring-white/10 shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-white/10">
+                <div>
+                  <div className="text-xs uppercase tracking-widest text-white/50">
+                    Exportación
+                  </div>
+                  <div className="text-lg titulo uppercase font-semibold text-white">
+                    Elegí qué querés exportar
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   disabled={exportando}
                   onClick={() => setModalExportOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 text-white/80 disabled:opacity-50"
+                  className="h-9 w-9 rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 flex items-center justify-center text-white/80 disabled:opacity-50"
+                  aria-label="Cerrar"
                 >
-                  Cancelar
+                  <FaTimes />
                 </button>
               </div>
 
-              {exportando && (
-                <div className="text-xs text-white/55 pt-1">
-                  Generando Excel…
+              <div className="p-4 space-y-3">
+                {/* Opción 1: Visualizando */}
+                <button
+                  type="button"
+                  disabled={exportando}
+                  onClick={handleExportVisualizando}
+                  className="w-full rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 p-4 text-left transition disabled:opacity-50"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-cyan-500/15 ring-1 ring-cyan-400/20 flex items-center justify-center text-cyan-200">
+                      <FaEye />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-white font-semibold">
+                        Lo que estás visualizando
+                      </div>
+                      <div className="text-sm text-white/60">
+                        Exporta únicamente los registros filtrados/visibles
+                        actualmente.
+                      </div>
+                    </div>
+                    <div className="text-xs text-white/50 mt-1">
+                      {rows_2?.length ?? 0} items
+                    </div>
+                  </div>
+                </button>
+
+                {/* Opción 2: Todo */}
+                <button
+                  type="button"
+                  disabled={exportando}
+                  onClick={handleExportTodo}
+                  className="w-full rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 p-4 text-left transition disabled:opacity-50"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/20 flex items-center justify-center text-emerald-200">
+                      <FaLayerGroup />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-white font-semibold">
+                        Exportar todo
+                      </div>
+                      <div className="text-sm text-white/60">
+                        Exporta el dataset completo, ignorando filtros y
+                        paginación.
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Footer */}
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={exportando}
+                    onClick={() => setModalExportOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 ring-1 ring-white/10 text-white/80 disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
                 </div>
-              )}
+
+                {exportando && (
+                  <div className="text-xs text-white/55 pt-1">
+                    Generando Excel…
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      {/* Benjamin Orellana - 2026-02-02 - Se pasa el stock global para poder
+        )}
+        {/* Benjamin Orellana - 2026-02-02 - Se pasa el stock global para poder
       mostrar "Otros locales" del mismo producto. */}
-      <StockDetalleModal
-        open={detalleOpen}
-        onClose={cerrarDetalle}
-        group={detalleGroup}
-        stockAll={stock}
-      />
-    </div>
+        <StockDetalleModal
+          open={detalleOpen}
+          onClose={cerrarDetalle}
+          group={detalleGroup}
+          stockAll={stock}
+        />
+      </div>
+    </>
   );
-};;;
+};
 
 export default StockGet;

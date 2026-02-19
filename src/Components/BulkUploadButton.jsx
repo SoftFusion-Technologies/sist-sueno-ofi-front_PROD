@@ -48,7 +48,7 @@ export default function BulkUploadButton({ tabla, className = '', onSuccess }) {
         onClick={handleClick}
         disabled={loading}
         className={
-          `bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-all ` +
+          `text-white bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-all ` +
           (loading ? 'opacity-60 cursor-not-allowed ' : '') +
           className
         }
