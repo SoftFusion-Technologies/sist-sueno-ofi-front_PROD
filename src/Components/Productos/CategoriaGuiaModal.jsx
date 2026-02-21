@@ -93,6 +93,15 @@ export default function CategoriaGuiaModal({
     };
   }, [open, onClose]);
 
+  // Benjamin Orellana - 2026-02-21 - Enfoca el panel al abrir para mejorar navegación por teclado y accesibilidad básica del modal.
+  useEffect(() => {
+    if (!open || typeof window === 'undefined') return;
+    const raf = window.requestAnimationFrame(() => {
+      panelRef.current?.focus?.();
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [open]);
+
   const sections = useMemo(
     () => [
       {
@@ -264,8 +273,9 @@ export default function CategoriaGuiaModal({
     }
   }, [filteredSections, active, open]);
 
+  // Benjamin Orellana - 2026-02-21 - Cierre por click fuera del panel usando referencia del contenedor para evitar fallos por capas decorativas superpuestas.
   const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) onClose?.();
+    if (panelRef.current && !panelRef.current.contains(e.target)) onClose?.();
   };
 
   return (
@@ -279,18 +289,24 @@ export default function CategoriaGuiaModal({
           onMouseDown={handleBackdropClick}
           className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-4"
         >
-          <div className="absolute inset-0 bg-black/70" />
-          <div className="absolute inset-0 bg-[radial-gradient(1200px_700px_at_20%_10%,rgba(244,114,182,0.10),transparent_60%),radial-gradient(900px_500px_at_85%_30%,rgba(45,212,191,0.10),transparent_55%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-black/55 dark:bg-black/70" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1200px_700px_at_20%_10%,rgba(244,114,182,0.10),transparent_60%),radial-gradient(900px_500px_at_85%_30%,rgba(45,212,191,0.10),transparent_55%)]" />
 
           <motion.div
             ref={panelRef}
             variants={panelV}
-            className="relative w-full max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-slate-950/75 backdrop-blur-xl shadow-[0_18px_55px_rgba(0,0,0,0.55)]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Guía de categorías para usuarios"
+            tabIndex={-1}
+            className="relative w-full max-w-6xl overflow-hidden rounded-3xl border border-black/10 bg-white/90 text-slate-900 backdrop-blur-xl shadow-[0_18px_55px_rgba(15,23,42,0.20)] dark:border-white/10 dark:bg-slate-950/75 dark:text-white dark:shadow-[0_18px_55px_rgba(0,0,0,0.55)]"
           >
             <Header
               title="Categorías • Guía para usuarios"
               subtitle="Cómo crear y administrar categorías para productos"
-              icon={<Layers className="h-5 w-5 text-pink-200" />}
+              icon={
+                <Layers className="h-5 w-5 text-pink-600 dark:text-pink-200" />
+              }
               hidden={hidden}
               setHidden={toggleHidden}
               query={query}
@@ -313,17 +329,23 @@ export default function CategoriaGuiaModal({
             <Footer
               leftBadges={[
                 {
-                  icon: <Tag className="h-4 w-4 text-white/60" />,
+                  icon: (
+                    <Tag className="h-4 w-4 text-slate-500 dark:text-white/60" />
+                  ),
                   text: 'Categorías ordenan productos'
                 },
                 {
-                  icon: <PlusCircle className="h-4 w-4 text-white/60" />,
+                  icon: (
+                    <PlusCircle className="h-4 w-4 text-slate-500 dark:text-white/60" />
+                  ),
                   text: 'Creá antes de cargar productos'
                 }
               ]}
               rightBadges={[
                 {
-                  icon: <Search className="h-4 w-4 text-white/60" />,
+                  icon: (
+                    <Search className="h-4 w-4 text-slate-500 dark:text-white/60" />
+                  ),
                   text: 'Buscar por nombre'
                 }
               ]}
@@ -404,6 +426,15 @@ export function EstadoGuiaModal({
       document.body.style.overflow = prevOverflow;
     };
   }, [open, onClose]);
+
+  // Benjamin Orellana - 2026-02-21 - Enfoca el panel al abrir para mejorar navegación por teclado y accesibilidad básica del modal.
+  useEffect(() => {
+    if (!open || typeof window === 'undefined') return;
+    const raf = window.requestAnimationFrame(() => {
+      panelRef.current?.focus?.();
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [open]);
 
   const sections = useMemo(
     () => [
@@ -530,8 +561,9 @@ export function EstadoGuiaModal({
     }
   }, [filteredSections, active, open]);
 
+  // Benjamin Orellana - 2026-02-21 - Cierre por click fuera del panel usando referencia del contenedor para evitar fallos por capas decorativas superpuestas.
   const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) onClose?.();
+    if (panelRef.current && !panelRef.current.contains(e.target)) onClose?.();
   };
 
   return (
@@ -545,18 +577,24 @@ export function EstadoGuiaModal({
           onMouseDown={handleBackdropClick}
           className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-4"
         >
-          <div className="absolute inset-0 bg-black/70" />
-          <div className="absolute inset-0 bg-[radial-gradient(1200px_700px_at_20%_10%,rgba(34,197,94,0.10),transparent_60%),radial-gradient(900px_500px_at_85%_30%,rgba(56,189,248,0.10),transparent_55%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-black/55 dark:bg-black/70" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1200px_700px_at_20%_10%,rgba(34,197,94,0.10),transparent_60%),radial-gradient(900px_500px_at_85%_30%,rgba(56,189,248,0.10),transparent_55%)]" />
 
           <motion.div
             ref={panelRef}
             variants={panelV}
-            className="relative w-full max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-slate-950/75 backdrop-blur-xl shadow-[0_18px_55px_rgba(0,0,0,0.55)]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Guía de estados para usuarios"
+            tabIndex={-1}
+            className="relative w-full max-w-6xl overflow-hidden rounded-3xl border border-black/10 bg-white/90 text-slate-900 backdrop-blur-xl shadow-[0_18px_55px_rgba(15,23,42,0.20)] dark:border-white/10 dark:bg-slate-950/75 dark:text-white dark:shadow-[0_18px_55px_rgba(0,0,0,0.55)]"
           >
             <Header
               title="Estados • Guía para usuarios"
               subtitle="Crear estados que luego se asignan al Stock"
-              icon={<Tag className="h-5 w-5 text-emerald-200" />}
+              icon={
+                <Tag className="h-5 w-5 text-emerald-600 dark:text-emerald-200" />
+              }
               hidden={hidden}
               setHidden={toggleHidden}
               query={query}
@@ -579,17 +617,23 @@ export function EstadoGuiaModal({
             <Footer
               leftBadges={[
                 {
-                  icon: <Boxes className="h-4 w-4 text-white/60" />,
+                  icon: (
+                    <Boxes className="h-4 w-4 text-slate-500 dark:text-white/60" />
+                  ),
                   text: 'Se usa en Stock'
                 },
                 {
-                  icon: <PlusCircle className="h-4 w-4 text-white/60" />,
+                  icon: (
+                    <PlusCircle className="h-4 w-4 text-slate-500 dark:text-white/60" />
+                  ),
                   text: 'Crear antes de cargar stock'
                 }
               ]}
               rightBadges={[
                 {
-                  icon: <AlertTriangle className="h-4 w-4 text-white/60" />,
+                  icon: (
+                    <AlertTriangle className="h-4 w-4 text-slate-500 dark:text-white/60" />
+                  ),
                   text: 'No confundir con Lugares'
                 }
               ]}
@@ -670,6 +714,15 @@ export function LugarGuiaModal({
       document.body.style.overflow = prevOverflow;
     };
   }, [open, onClose]);
+
+  // Benjamin Orellana - 2026-02-21 - Enfoca el panel al abrir para mejorar navegación por teclado y accesibilidad básica del modal.
+  useEffect(() => {
+    if (!open || typeof window === 'undefined') return;
+    const raf = window.requestAnimationFrame(() => {
+      panelRef.current?.focus?.();
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [open]);
 
   const sections = useMemo(
     () => [
@@ -808,8 +861,9 @@ export function LugarGuiaModal({
     }
   }, [filteredSections, active, open]);
 
+  // Benjamin Orellana - 2026-02-21 - Cierre por click fuera del panel usando referencia del contenedor para evitar fallos por capas decorativas superpuestas.
   const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) onClose?.();
+    if (panelRef.current && !panelRef.current.contains(e.target)) onClose?.();
   };
 
   return (
@@ -823,18 +877,24 @@ export function LugarGuiaModal({
           onMouseDown={handleBackdropClick}
           className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-4"
         >
-          <div className="absolute inset-0 bg-black/70" />
-          <div className="absolute inset-0 bg-[radial-gradient(1200px_700px_at_20%_10%,rgba(168,85,247,0.10),transparent_60%),radial-gradient(900px_500px_at_85%_30%,rgba(45,212,191,0.10),transparent_55%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-black/55 dark:bg-black/70" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1200px_700px_at_20%_10%,rgba(168,85,247,0.10),transparent_60%),radial-gradient(900px_500px_at_85%_30%,rgba(45,212,191,0.10),transparent_55%)]" />
 
           <motion.div
             ref={panelRef}
             variants={panelV}
-            className="relative w-full max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-slate-950/75 backdrop-blur-xl shadow-[0_18px_55px_rgba(0,0,0,0.55)]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Guía de lugares para usuarios"
+            tabIndex={-1}
+            className="relative w-full max-w-6xl overflow-hidden rounded-3xl border border-black/10 bg-white/90 text-slate-900 backdrop-blur-xl shadow-[0_18px_55px_rgba(15,23,42,0.20)] dark:border-white/10 dark:bg-slate-950/75 dark:text-white dark:shadow-[0_18px_55px_rgba(0,0,0,0.55)]"
           >
             <Header
               title="Lugares • Guía para usuarios"
               subtitle="Crear lugares que luego se asignan al Stock"
-              icon={<MapPin className="h-5 w-5 text-violet-200" />}
+              icon={
+                <MapPin className="h-5 w-5 text-violet-600 dark:text-violet-200" />
+              }
               hidden={hidden}
               setHidden={toggleHidden}
               query={query}
@@ -857,14 +917,18 @@ export function LugarGuiaModal({
             <Footer
               leftBadges={[
                 {
-                  icon: <Boxes className="h-4 w-4 text-white/60" />,
+                  icon: (
+                    <Boxes className="h-4 w-4 text-slate-500 dark:text-white/60" />
+                  ),
                   text: 'Ubicación física del stock'
                 },
                 { icon: <ArrowIcon />, text: 'Mover con Transferencias' }
               ]}
               rightBadges={[
                 {
-                  icon: <AlertTriangle className="h-4 w-4 text-white/60" />,
+                  icon: (
+                    <AlertTriangle className="h-4 w-4 text-slate-500 dark:text-white/60" />
+                  ),
                   text: 'No confundir con Estados'
                 }
               ]}
@@ -889,46 +953,47 @@ function Header({
   onClose
 }) {
   return (
-    <div className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/65 backdrop-blur-xl">
+    <div className="sticky top-0 z-10 border-b border-black/10 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/65">
       <div className="flex items-start sm:items-center justify-between gap-3 p-3 sm:p-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+            <div className="h-9 w-9 rounded-2xl border border-black/10 bg-white/70 flex items-center justify-center dark:border-white/10 dark:bg-white/5">
               {icon}
             </div>
             <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-widest text-teal-200/80">
+              <div className="text-[11px] uppercase tracking-widest text-teal-700/80 dark:text-teal-200/80">
                 Ayuda
               </div>
-              <h2 className="text-base sm:text-lg font-semibold text-white/90 leading-tight truncate">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-900 leading-tight truncate dark:text-white/90">
                 {title}
               </h2>
-              <div className="mt-0.5 text-xs text-white/50 truncate">
+              <div className="mt-0.5 text-xs text-slate-500 truncate dark:text-white/50">
                 {subtitle}
               </div>
             </div>
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <label className="flex items-center gap-2 text-xs text-white/70 select-none">
+            <label className="flex items-center gap-2 text-xs text-slate-600 select-none dark:text-white/70">
               <input
                 type="checkbox"
                 checked={hidden}
                 onChange={(e) => setHidden(e.target.checked)}
-                className="h-4 w-4 rounded border-white/20 bg-white/10 text-teal-400 focus:ring-teal-400/30"
+                className="h-4 w-4 rounded border-black/20 bg-white text-teal-600 focus:ring-teal-500/30 dark:border-white/20 dark:bg-white/10 dark:text-teal-400 dark:focus:ring-teal-400/30"
               />
               No volver a mostrar automáticamente
             </label>
 
-            <span className="text-[11px] text-white/45">
+            <span className="text-[11px] text-slate-400 dark:text-white/45">
               Tip: ESC para cerrar
             </span>
           </div>
         </div>
 
         <button
+          type="button"
           onClick={onClose}
-          className="shrink-0 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10 hover:border-white/15 transition"
+          className="shrink-0 inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white/80 px-3 py-2 text-xs text-slate-700 hover:bg-white hover:border-black/15 transition dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10 dark:hover:border-white/15"
         >
           <X className="h-4 w-4" />
           Cerrar
@@ -936,18 +1001,22 @@ function Header({
       </div>
 
       <div className="px-3 sm:px-4 pb-3">
-        <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-          <Search className="h-4 w-4 text-white/50" />
+        <div className="flex items-center gap-2 rounded-2xl border border-black/10 bg-white/80 px-3 py-2 dark:border-white/10 dark:bg-white/5">
+          <Search className="h-4 w-4 text-slate-400 dark:text-white/50" />
           <input
+            type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar ayuda…"
-            className="w-full bg-transparent outline-none text-sm text-white/85 placeholder:text-white/35"
+            aria-label="Buscar secciones de ayuda"
+            autoComplete="off"
+            className="w-full bg-transparent outline-none text-sm text-slate-800 placeholder:text-slate-400 dark:text-white/85 dark:placeholder:text-white/35"
           />
           {query?.trim() && (
             <button
+              type="button"
               onClick={() => setQuery('')}
-              className="text-xs text-white/55 hover:text-white/85 transition"
+              className="text-xs text-slate-500 hover:text-slate-800 transition dark:text-white/55 dark:hover:text-white/85"
             >
               Limpiar
             </button>
@@ -971,9 +1040,9 @@ function Body({
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)]">
-      <div className="border-b lg:border-b-0 lg:border-r border-white/10 bg-white/[0.03]">
+      <div className="border-b lg:border-b-0 lg:border-r border-black/10 bg-slate-900/[0.02] dark:border-white/10 dark:bg-white/[0.03]">
         <div className="p-3 sm:p-4">
-          <div className="text-[11px] uppercase tracking-widest text-white/45 mb-2">
+          <div className="text-[11px] uppercase tracking-widest text-slate-400 mb-2 dark:text-white/45">
             Secciones
           </div>
 
@@ -983,6 +1052,7 @@ function Body({
               return (
                 <motion.button
                   key={s.id}
+                  type="button"
                   custom={i}
                   initial="hidden"
                   animate="visible"
@@ -991,8 +1061,8 @@ function Body({
                   className={[
                     'w-full text-left rounded-2xl border px-3 py-3 transition',
                     selected
-                      ? 'border-teal-400/30 bg-teal-400/10'
-                      : 'border-white/10 bg-white/5 hover:bg-white/8 hover:border-white/15'
+                      ? 'border-teal-500/25 bg-teal-500/10 dark:border-teal-400/30 dark:bg-teal-400/10'
+                      : 'border-black/10 bg-white/70 hover:bg-white hover:border-black/15 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/8 dark:hover:border-white/15'
                   ].join(' ')}
                 >
                   <div className="flex items-center gap-2">
@@ -1000,22 +1070,26 @@ function Body({
                       className={[
                         'h-8 w-8 rounded-xl flex items-center justify-center border',
                         selected
-                          ? 'bg-teal-400/15 border-teal-300/25'
-                          : 'bg-white/5 border-white/10'
+                          ? 'bg-teal-500/10 border-teal-500/20 dark:bg-teal-400/15 dark:border-teal-300/25'
+                          : 'bg-white/70 border-black/10 dark:bg-white/5 dark:border-white/10'
                       ].join(' ')}
                     >
                       <span
-                        className={selected ? 'text-teal-200' : 'text-white/70'}
+                        className={
+                          selected
+                            ? 'text-teal-700 dark:text-teal-200'
+                            : 'text-slate-600 dark:text-white/70'
+                        }
                       >
                         {s.icon}
                       </span>
                     </div>
 
                     <div className="min-w-0">
-                      <div className="text-sm font-medium text-white/85 truncate">
+                      <div className="text-sm font-medium text-slate-800 truncate dark:text-white/85">
                         {s.title}
                       </div>
-                      <div className="text-xs text-white/45 truncate">
+                      <div className="text-xs text-slate-400 truncate dark:text-white/45">
                         {hintFn?.(s.id) || '—'}
                       </div>
                     </div>
@@ -1025,7 +1099,7 @@ function Body({
             })}
 
             {filteredSections.length === 0 && (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+              <div className="rounded-2xl border border-black/10 bg-white/70 p-4 text-sm text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/70">
                 No hay secciones que coincidan con tu búsqueda.
               </div>
             )}
@@ -1036,31 +1110,33 @@ function Body({
       <div className="min-h-[60vh] max-h-[78vh] overflow-y-auto">
         <div className="p-4 sm:p-6">
           {hidden ? (
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <div className="rounded-3xl border border-black/10 bg-white/70 p-6 dark:border-white/10 dark:bg-white/5">
               <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-2xl bg-amber-400/10 border border-amber-300/20 flex items-center justify-center">
-                  <AlertTriangle className="h-5 w-5 text-amber-200" />
+                <div className="h-10 w-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-200" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-white/90 font-semibold">
+                  <div className="text-slate-900 font-semibold dark:text-white/90">
                     Esta ayuda está desactivada
                   </div>
-                  <div className="mt-1 text-sm text-white/65">
+                  <div className="mt-1 text-sm text-slate-600 dark:text-white/65">
                     Podés volver a habilitarla desde acá.
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
+                      type="button"
                       onClick={onShow}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm text-white/85 hover:bg-white/15 transition"
+                      className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition dark:border-white/10 dark:bg-white/10 dark:text-white/85 dark:hover:bg-white/15"
                     >
-                      <BookOpen className="h-4 w-4 text-teal-200" />
+                      <BookOpen className="h-4 w-4 text-teal-600 dark:text-teal-200" />
                       Mostrar ayuda ahora
                     </button>
 
                     <button
+                      type="button"
                       onClick={onClose}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/75 hover:bg-white/10 transition"
+                      className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white/70 px-4 py-2 text-sm text-slate-600 hover:bg-white transition dark:border-white/10 dark:bg-white/5 dark:text-white/75 dark:hover:bg-white/10"
                     >
                       <X className="h-4 w-4" />
                       Cerrar
@@ -1072,15 +1148,15 @@ function Body({
           ) : (
             <>
               <div className="mb-4">
-                <div className="text-xs uppercase tracking-widest text-teal-200/80">
+                <div className="text-xs uppercase tracking-widest text-teal-700/80 dark:text-teal-200/80">
                   Sección
                 </div>
-                <h3 className="mt-1 text-lg sm:text-xl font-semibold text-white/90">
+                <h3 className="mt-1 text-lg sm:text-xl font-semibold text-slate-900 dark:text-white/90">
                   {activeSection?.title || 'Ayuda'}
                 </h3>
               </div>
 
-              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
+              <div className="rounded-3xl border border-black/10 bg-white/65 p-4 sm:p-6 dark:border-white/10 dark:bg-white/[0.03]">
                 {activeSection?.content}
               </div>
             </>
@@ -1093,13 +1169,13 @@ function Body({
 
 function Footer({ leftBadges = [], rightBadges = [] }) {
   return (
-    <div className="border-t border-white/10 bg-slate-950/55 backdrop-blur-xl p-3 sm:p-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-white/50">
+    <div className="border-t border-black/10 bg-white/70 backdrop-blur-xl p-3 sm:p-4 dark:border-white/10 dark:bg-slate-950/55">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 dark:text-white/50">
         <div className="flex flex-wrap items-center gap-2">
           {leftBadges.map((b, idx) => (
             <span
               key={idx}
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2"
+              className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white/75 px-3 py-2 dark:border-white/10 dark:bg-white/5"
             >
               {b.icon}
               {b.text}
@@ -1111,7 +1187,7 @@ function Footer({ leftBadges = [], rightBadges = [] }) {
           {rightBadges.map((b, idx) => (
             <span
               key={idx}
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2"
+              className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white/75 px-3 py-2 dark:border-white/10 dark:bg-white/5"
             >
               {b.icon}
               {b.text}
@@ -1128,17 +1204,19 @@ function Footer({ leftBadges = [], rightBadges = [] }) {
 function H3({ children, icon }) {
   return (
     <div className="mt-1 mb-3 flex items-center gap-2">
-      <div className="h-8 w-8 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-        <span className="text-teal-200/90">{icon}</span>
+      <div className="h-8 w-8 rounded-2xl bg-white/75 border border-black/10 flex items-center justify-center dark:bg-white/5 dark:border-white/10">
+        <span className="text-teal-700/90 dark:text-teal-200/90">{icon}</span>
       </div>
-      <div className="text-base font-semibold text-white/90">{children}</div>
+      <div className="text-base font-semibold text-slate-900 dark:text-white/90">
+        {children}
+      </div>
     </div>
   );
 }
 
 function H4({ children }) {
   return (
-    <div className="mt-5 mb-2 text-sm font-semibold text-white/85">
+    <div className="mt-5 mb-2 text-sm font-semibold text-slate-800 dark:text-white/85">
       {children}
     </div>
   );
@@ -1146,37 +1224,45 @@ function H4({ children }) {
 
 function P({ children }) {
   return (
-    <p className="text-sm leading-relaxed text-white/70 mb-3">{children}</p>
+    <p className="text-sm leading-relaxed text-slate-600 mb-3 dark:text-white/70">
+      {children}
+    </p>
   );
 }
 
 function UL({ children }) {
   return (
-    <ul className="list-disc pl-5 space-y-2 text-sm text-white/70 mb-3">
+    <ul className="list-disc pl-5 space-y-2 text-sm text-slate-600 mb-3 dark:text-white/70">
       {children}
     </ul>
   );
 }
 
 function LI({ children }) {
-  return <li className="marker:text-white/35">{children}</li>;
+  return (
+    <li className="marker:text-slate-300 dark:marker:text-white/35">
+      {children}
+    </li>
+  );
 }
 
 function Callout({ children, tone = 'info', icon }) {
   const skin =
     tone === 'warning'
-      ? 'border-amber-300/20 bg-amber-400/10'
+      ? 'border-amber-500/20 bg-amber-500/10 dark:border-amber-300/20 dark:bg-amber-400/10'
       : tone === 'danger'
-        ? 'border-rose-300/20 bg-rose-400/10'
-        : 'border-teal-300/20 bg-teal-400/10';
+        ? 'border-rose-500/20 bg-rose-500/10 dark:border-rose-300/20 dark:bg-rose-400/10'
+        : 'border-teal-500/20 bg-teal-500/10 dark:border-teal-300/20 dark:bg-teal-400/10';
 
   return (
     <div className={`my-4 rounded-2xl border ${skin} p-3`}>
       <div className="flex items-start gap-3">
-        <div className="h-9 w-9 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-          <span className="text-white/80">{icon}</span>
+        <div className="h-9 w-9 rounded-2xl bg-white/70 border border-black/10 flex items-center justify-center shrink-0 dark:bg-white/5 dark:border-white/10">
+          <span className="text-slate-700 dark:text-white/80">{icon}</span>
         </div>
-        <div className="text-sm leading-relaxed text-white/75">{children}</div>
+        <div className="text-sm leading-relaxed text-slate-700 dark:text-white/75">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -1240,7 +1326,8 @@ function ArrowIcon() {
       height="16"
       viewBox="0 0 24 24"
       fill="none"
-      className="text-white/60"
+      className="text-slate-500 dark:text-white/60"
+      aria-hidden="true"
     >
       <path
         d="M7 7h11l-2-2m2 2-2 2M17 17H6l2 2m-2-2 2-2"
