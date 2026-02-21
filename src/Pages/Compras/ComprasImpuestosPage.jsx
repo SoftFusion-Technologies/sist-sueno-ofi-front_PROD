@@ -302,13 +302,14 @@ const ComprasImpuestosPage = () => {
   return (
     <>
       <NavbarStaff />
-      <section className="relative w-full min-h-screen bg-white">
-        <div className="min-h-screen bg-gradient-to-b from-[#041f1a] via-[#064e3b] to-[#0b3b2f] relative">
+      <section className="relative w-full min-h-screen bg-white dark:bg-slate-950">
+        {/* Benjamin Orellana - 2026-02-21 - Se adapta el fondo general y gradientes para compatibilidad light/dark manteniendo el mismo layout y comportamiento */}
+        <div className="min-h-screen bg-gradient-to-b from-emerald-100 via-emerald-50 to-white dark:from-[#041f1a] dark:via-[#064e3b] dark:to-[#0b3b2f] relative">
           <ParticlesBackground />
           <ButtonBack />
 
           {/* Glow superior */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/40 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/10 dark:from-black/40 to-transparent" />
 
           {/* Header */}
           <div className="text-center pt-24 px-4">
@@ -316,7 +317,7 @@ const ComprasImpuestosPage = () => {
               initial={{ opacity: 0, y: -18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-3xl sm:text-4xl titulo uppercase font-bold text-white drop-shadow-md"
+              className="text-3xl sm:text-4xl titulo uppercase font-bold text-slate-900 dark:text-white drop-shadow-md"
             >
               Impuestos por Compra
             </motion.h1>
@@ -324,7 +325,7 @@ const ComprasImpuestosPage = () => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="mt-3 text-sm sm:text-base text-emerald-200"
+              className="mt-3 text-sm sm:text-base text-emerald-700 dark:text-emerald-200"
             >
               IVA, percepciones y retenciones desglosadas por comprobante.
             </motion.p>
@@ -333,25 +334,25 @@ const ComprasImpuestosPage = () => {
           {/* Contenido principal */}
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
             {/* Línea decorativa */}
-            <div className="h-px w-full bg-gradient-to-r from-transparent via-white/30 to-transparent mb-2" />
+            <div className="h-px w-full bg-gradient-to-r from-transparent via-black/20 dark:via-white/30 to-transparent mb-2" />
 
             {/* Filtros */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="relative rounded-3xl p-[1px] bg-gradient-to-br from-emerald-400/60 via-teal-300/40 to-cyan-400/60 shadow-[0_1px_30px_rgba(16,185,129,0.35)]"
+              className="relative rounded-3xl p-[1px] bg-gradient-to-br from-emerald-400/60 via-teal-300/40 to-cyan-400/60 shadow-[0_1px_30px_rgba(16,185,129,0.20)] dark:shadow-[0_1px_30px_rgba(16,185,129,0.35)]"
             >
-              <div className="rounded-3xl bg-white/95 backdrop-blur-xl ring-1 ring-white/40 p-4 sm:p-5">
+              <div className="rounded-3xl bg-white/95 dark:bg-slate-900/75 backdrop-blur-xl ring-1 ring-black/5 dark:ring-white/10 p-4 sm:p-5">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                  <div className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
                     <FaFilter />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-gray-900">
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white">
                       Filtros
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 dark:text-slate-400">
                       Combiná fecha, tipo, código y proveedor para segmentar.
                     </div>
                   </div>
@@ -359,9 +360,10 @@ const ComprasImpuestosPage = () => {
                     <button
                       type="button"
                       onClick={handleClearFilters}
-                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs border border-gray-200 text-gray-600 bg-white hover:bg-gray-50"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs border border-gray-200 dark:border-white/10 text-gray-600 dark:text-slate-200 bg-white dark:bg-slate-900/70 hover:bg-gray-50 dark:hover:bg-slate-800"
                     >
-                      <FaSyncAlt className="text-gray-500" /> Limpiar
+                      <FaSyncAlt className="text-gray-500 dark:text-slate-400" />{' '}
+                      Limpiar
                     </button>
                   </div>
                 </div>
@@ -372,40 +374,44 @@ const ComprasImpuestosPage = () => {
                 >
                   {/* Fechas */}
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                      <FaCalendarAlt className="text-gray-400" /> Fecha desde
+                    <label className="text-xs font-medium text-gray-600 dark:text-slate-300 flex items-center gap-1">
+                      <FaCalendarAlt className="text-gray-400 dark:text-slate-500" />{' '}
+                      Fecha desde
                     </label>
+                    {/* Benjamin Orellana - 2026-02-21 - Se mejora contraste de inputs de fecha y se define color-scheme para render nativo correcto en light/dark */}
                     <input
                       type="date"
                       name="fecha_desde"
                       value={filters.fecha_desde}
                       onChange={handleFilterChange}
-                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
+                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900/70 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-400/60 [color-scheme:light] dark:[color-scheme:dark]"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                      <FaCalendarAlt className="text-gray-400" /> Fecha hasta
+                    <label className="text-xs font-medium text-gray-600 dark:text-slate-300 flex items-center gap-1">
+                      <FaCalendarAlt className="text-gray-400 dark:text-slate-500" />{' '}
+                      Fecha hasta
                     </label>
                     <input
                       type="date"
                       name="fecha_hasta"
                       value={filters.fecha_hasta}
                       onChange={handleFilterChange}
-                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
+                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900/70 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-400/60 [color-scheme:light] dark:[color-scheme:dark]"
                     />
                   </div>
 
                   {/* Tipo impuesto */}
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                      <FaPercent className="text-gray-400" /> Tipo impuesto
+                    <label className="text-xs font-medium text-gray-600 dark:text-slate-300 flex items-center gap-1">
+                      <FaPercent className="text-gray-400 dark:text-slate-500" />{' '}
+                      Tipo impuesto
                     </label>
                     <select
                       name="tipo"
                       value={filters.tipo}
                       onChange={handleFilterChange}
-                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
+                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900/70 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
                     >
                       <option value="">Todos</option>
                       {tiposImpuesto.map((t) => (
@@ -418,7 +424,7 @@ const ComprasImpuestosPage = () => {
 
                   {/* Código */}
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-600">
+                    <label className="text-xs font-medium text-gray-600 dark:text-slate-300">
                       Código impuesto (ej: IVA_21, IIBB_TUC)
                     </label>
                     <input
@@ -427,15 +433,15 @@ const ComprasImpuestosPage = () => {
                       value={filters.codigo}
                       onChange={handleFilterChange}
                       placeholder="Match parcial por código…"
-                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
+                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900/70 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
                     />
                   </div>
 
                   {/* Proveedor */}
                   <div className="space-y-1 md:col-span-2">
-                    <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                      <FaBuilding className="text-gray-400" /> Proveedor (razón
-                      social, fantasía o CUIT)
+                    <label className="text-xs font-medium text-gray-600 dark:text-slate-300 flex items-center gap-1">
+                      <FaBuilding className="text-gray-400 dark:text-slate-500" />{' '}
+                      Proveedor (razón social, fantasía o CUIT)
                     </label>
                     <input
                       type="text"
@@ -443,7 +449,7 @@ const ComprasImpuestosPage = () => {
                       value={filters.q_proveedor}
                       onChange={handleFilterChange}
                       placeholder="Buscar por nombre / CUIT…"
-                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
+                      className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900/70 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
                     />
                   </div>
 
@@ -512,17 +518,17 @@ const ComprasImpuestosPage = () => {
               animate={{ opacity: 1, y: 0 }}
               className="relative rounded-3xl p-[1px] bg-gradient-to-br from-emerald-400/50 via-teal-300/40 to-cyan-400/50"
             >
-              <div className="rounded-3xl bg-white/95 backdrop-blur-xl ring-1 ring-white/40 p-4 sm:p-5">
+              <div className="rounded-3xl bg-white/95 dark:bg-slate-900/75 backdrop-blur-xl ring-1 ring-black/5 dark:ring-white/10 p-4 sm:p-5">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
                       <FaPercent />
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-gray-900">
+                      <div className="text-sm font-semibold text-gray-900 dark:text-white">
                         Detalle de impuestos
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-500 dark:text-slate-400">
                         {(meta.total || rows.length || 0).toLocaleString(
                           'es-AR'
                         )}{' '}
@@ -534,8 +540,8 @@ const ComprasImpuestosPage = () => {
 
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-xs sm:text-sm">
-                    <thead className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-gray-100">
-                      <tr className="text-left text-gray-600">
+                    <thead className="sticky top-0 z-10 bg-white/95 dark:bg-slate-900/90 backdrop-blur border-b border-gray-100 dark:border-white/10">
+                      <tr className="text-left text-gray-600 dark:text-slate-200">
                         <th className="px-3 py-2">Fecha</th>
                         <th className="px-3 py-2">Compra</th>
                         <th className="px-3 py-2">Proveedor</th>
@@ -570,9 +576,9 @@ const ComprasImpuestosPage = () => {
                           return (
                             <tr
                               key={r.id}
-                              className="border-t border-gray-100 hover:bg-gray-50/60 transition-colors"
+                              className="border-t border-gray-100 dark:border-white/10 hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition-colors"
                             >
-                              <td className="px-3 py-2 whitespace-nowrap">
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-700 dark:text-slate-200">
                                 {compra?.fecha
                                   ? new Date(compra.fecha).toLocaleDateString(
                                       'es-AR'
@@ -583,13 +589,13 @@ const ComprasImpuestosPage = () => {
                                 {compra?.id ? (
                                   <Link
                                     to={`/dashboard/compras/${compra.id}`} // ajustá a tu ruta real
-                                    className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900"
+                                    className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-200"
                                   >
                                     <FaFileInvoice className="text-[10px]" />
                                     <span className="font-mono">
                                       #{compra.id}
                                     </span>
-                                    <span className="hidden sm:inline text-[11px] text-gray-500">
+                                    <span className="hidden sm:inline text-[11px] text-gray-500 dark:text-slate-400">
                                       {fmtComprobante(compra)}
                                     </span>
                                   </Link>
@@ -598,30 +604,30 @@ const ComprasImpuestosPage = () => {
                                 )}
                               </td>
                               <td className="px-3 py-2">
-                                <div className="font-medium text-gray-900 truncate max-w-[180px]">
+                                <div className="font-medium text-gray-900 dark:text-white truncate max-w-[180px]">
                                   {proveedorDisplay(proveedor)}
                                 </div>
                                 {proveedor?.cuit && (
-                                  <div className="text-[11px] text-gray-500">
+                                  <div className="text-[11px] text-gray-500 dark:text-slate-400">
                                     CUIT {proveedor.cuit}
                                   </div>
                                 )}
                               </td>
-                              <td className="px-3 py-2 whitespace-nowrap">
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-700 dark:text-slate-200">
                                 {r.tipo}
                               </td>
-                              <td className="px-3 py-2 whitespace-nowrap">
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-700 dark:text-slate-200">
                                 {r.codigo || '—'}
                               </td>
-                              <td className="px-3 py-2 text-right whitespace-nowrap">
+                              <td className="px-3 py-2 text-right whitespace-nowrap text-gray-700 dark:text-slate-200">
                                 {moneyAR(r.base || 0)}
                               </td>
-                              <td className="px-3 py-2 text-right whitespace-nowrap">
+                              <td className="px-3 py-2 text-right whitespace-nowrap text-gray-700 dark:text-slate-200">
                                 {r.alicuota != null
                                   ? `${Number(r.alicuota).toFixed(4)}`
                                   : '—'}
                               </td>
-                              <td className="px-3 py-2 text-right whitespace-nowrap font-semibold">
+                              <td className="px-3 py-2 text-right whitespace-nowrap font-semibold text-gray-900 dark:text-white">
                                 {moneyAR(r.monto || 0)}
                               </td>
                             </tr>
@@ -633,7 +639,8 @@ const ComprasImpuestosPage = () => {
                 </div>
 
                 {/* Paginación */}
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-gray-600">
+                {/* Benjamin Orellana - 2026-02-21 - Se ajustan estilos de paginación para mantener contraste y estados disabled en ambos temas */}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-gray-600 dark:text-slate-300">
                   <div>
                     Página{' '}
                     <span className="font-semibold">
@@ -649,7 +656,7 @@ const ComprasImpuestosPage = () => {
                       type="button"
                       onClick={() => handleChangePage('prev')}
                       disabled={loading || (meta.page || 1) <= 1}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900/70 text-gray-700 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <FaArrowLeft /> Anterior
                     </button>
@@ -657,7 +664,7 @@ const ComprasImpuestosPage = () => {
                       type="button"
                       onClick={() => handleChangePage('next')}
                       disabled={loading || (meta.page || 1) >= totalPages}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900/70 text-gray-700 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Siguiente <FaArrowRight />
                     </button>

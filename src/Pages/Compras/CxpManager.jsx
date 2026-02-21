@@ -233,8 +233,9 @@ export default function CxpManager() {
   return (
     <>
       <NavbarStaff />
-      <section className="relative w-full min-h-screen bg-white">
-        <div className="min-h-screen bg-gradient-to-b from-[#052e16] via-[#065f46] to-[#10b981]">
+      <section className="relative w-full min-h-screen bg-white dark:bg-slate-950">
+        {/* Benjamin Orellana - 2026-02-21 - Ajuste visual para compatibilidad light/dark manteniendo la misma estructura y comportamiento del módulo */}
+        <div className="min-h-screen bg-gradient-to-b from-emerald-100 via-emerald-50 to-white dark:from-[#052e16] dark:via-[#065f46] dark:to-[#10b981]">
           <ParticlesBackground />
           <ButtonBack />
 
@@ -244,11 +245,11 @@ export default function CxpManager() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-4xl titulo uppercase font-bold text-white mb-3 drop-shadow-md"
+              className="text-4xl titulo uppercase font-bold text-slate-900 dark:text-white mb-3 drop-shadow-md"
             >
               Cuentas por Pagar
             </motion.h1>
-            <p className="text-white/85">
+            <p className="text-slate-700 dark:text-white/85">
               Gestioná CxP con filtros, KPIs, vencimientos y acciones rápidas.
             </p>
           </div>
@@ -262,17 +263,22 @@ export default function CxpManager() {
               </div>
               <div className="flex items-center gap-2">
                 {/* <button
-                  onClick={() => setOpenCreate(true)}
-                  className="px-4 py-2 rounded-2xl font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-xl bg-gradient-to-r from-emerald-600 to-teal-600 ring-1 ring-emerald-500/60 inline-flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" /> Nuevo
-                </button> */}
+              onClick={() => setOpenCreate(true)}
+              className="px-4 py-2 rounded-2xl font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-xl bg-gradient-to-r from-emerald-600 to-teal-600 ring-1 ring-emerald-500/60 inline-flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" /> Nuevo
+            </button> */}
                 <button
+                  type="button"
                   title="Refrescar"
+                  aria-label="Refrescar listado"
                   onClick={fetchList}
-                  className={`${glass} ${ring} p-2 rounded-xl shadow-sm transition hover:-translate-y-0.5 hover:shadow-md text-slate-800 dark:text-slate-100`}
+                  className={`${glass} ${ring} p-2 rounded-xl shadow-sm transition hover:-translate-y-0.5 hover:shadow-md text-slate-800 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed`}
+                  disabled={loading}
                 >
-                  <RefreshCw className="h-5 w-5" />
+                  <RefreshCw
+                    className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`}
+                  />
                 </button>
               </div>
             </div>
@@ -293,13 +299,14 @@ export default function CxpManager() {
                       value={q}
                       onChange={setQ}
                       placeholder="Razón social o CUIT"
-                      className={`pl-3 pr-3 py-2 w-full rounded-xl ${glass} ${ring} text-slate-800 dark:text-slate-100 placeholder-slate-500`}
+                      className={`pl-3 pr-3 py-2 w-full rounded-xl ${glass} ${ring} text-slate-800 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400`}
                     />
                   </div>
                 </div>
+
                 <div className="md:col-span-3">
-                  <label className="flex items-center gap-2 text-xs font-medium text-slate-100 mb-1">
-                    <Factory className="h-3.5 w-3.5 text-emerald-200/80" />
+                  <label className="flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-200 mb-1">
+                    <Factory className="h-3.5 w-3.5 text-emerald-600/80 dark:text-emerald-200/80" />
                     Proveedor
                   </label>
                   <SearchableSelect
@@ -328,7 +335,7 @@ export default function CxpManager() {
                   <select
                     value={estado}
                     onChange={(e) => setEstado(e.target.value)}
-                    className={`px-3 py-2 w-full rounded-xl ${glass} ${ring} text-slate-800 dark:text-slate-100`}
+                    className={`px-3 py-2 w-full rounded-xl ${glass} ${ring} text-slate-800 dark:text-slate-100 bg-white/70 dark:bg-slate-900/60`}
                   >
                     <option value="">Todos</option>
                     <option value="pendiente">Pendiente</option>
@@ -336,6 +343,7 @@ export default function CxpManager() {
                     <option value="cancelado">Cancelado</option>
                   </select>
                 </div>
+
                 <div className="md:col-span-3 grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-xs text-slate-700 dark:text-slate-200">
@@ -345,7 +353,7 @@ export default function CxpManager() {
                       type="date"
                       value={desdeVenc}
                       onChange={(e) => setDesdeVenc(e.target.value)}
-                      className={`px-3 py-2 w-full rounded-xl ${glass} ${ring} text-slate-800 dark:text-slate-100`}
+                      className={`px-3 py-2 w-full rounded-xl ${glass} ${ring} text-slate-800 dark:text-slate-100 bg-white/70 dark:bg-slate-900/60`}
                     />
                   </div>
                   <div>
@@ -356,12 +364,14 @@ export default function CxpManager() {
                       type="date"
                       value={hastaVenc}
                       onChange={(e) => setHastaVenc(e.target.value)}
-                      className={`px-3 py-2 w-full rounded-xl ${glass} ${ring} text-slate-800 dark:text-slate-100`}
+                      className={`px-3 py-2 w-full rounded-xl ${glass} ${ring} text-slate-800 dark:text-slate-100 bg-white/70 dark:bg-slate-900/60`}
                     />
                   </div>
                 </div>
+
                 <div className="md:col-span-1 flex gap-2">
                   <button
+                    type="button"
                     onClick={() => {
                       setQ('');
                       setProveedorId('');
@@ -382,26 +392,26 @@ export default function CxpManager() {
             {/* KPIs */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
               <div className={`${card} p-4`}>
-                <div className="text-slate-100/80 text-sm">
+                <div className="text-slate-700 dark:text-slate-100/80 text-sm">
                   Monto total (página)
                 </div>
-                <div className="text-xl font-semibold text-white">
+                <div className="text-xl font-semibold text-slate-900 dark:text-white">
                   {moneyAR(kpis.totalMonto)}
                 </div>
               </div>
               <div className={`${card} p-4`}>
-                <div className="text-slate-100/80 text-sm">
+                <div className="text-slate-700 dark:text-slate-100/80 text-sm">
                   Saldo total (página)
                 </div>
-                <div className="text-xl font-semibold text-white">
+                <div className="text-xl font-semibold text-slate-900 dark:text-white">
                   {moneyAR(kpis.totalSaldo)}
                 </div>
               </div>
               <div className={`${card} p-4`}>
-                <div className="text-slate-100/80 text-sm">
+                <div className="text-slate-700 dark:text-slate-100/80 text-sm">
                   Pendientes (página)
                 </div>
-                <div className="text-xl font-semibold text-white">
+                <div className="text-xl font-semibold text-slate-900 dark:text-white">
                   {kpis.countPend}
                 </div>
               </div>
@@ -417,8 +427,10 @@ export default function CxpManager() {
                       <tr className="text-left text-slate-700 dark:text-slate-200">
                         <th className="px-4 py-3 w-20">
                           <button
+                            type="button"
                             onClick={() => onSort('id')}
                             className="inline-flex items-center gap-1"
+                            aria-label="Ordenar por ID"
                           >
                             ID <ArrowUpDown className="h-3.5 w-3.5" />
                           </button>
@@ -426,32 +438,40 @@ export default function CxpManager() {
                         <th className="px-4 py-3">Proveedor</th>
                         <th className="px-4 py-3">
                           <button
+                            type="button"
                             onClick={() => onSort('fecha_emision')}
                             className="inline-flex items-center gap-1"
+                            aria-label="Ordenar por fecha de emisión"
                           >
                             Emisión <ArrowUpDown className="h-3.5 w-3.5" />
                           </button>
                         </th>
                         <th className="px-4 py-3">
                           <button
+                            type="button"
                             onClick={() => onSort('fecha_vencimiento')}
                             className="inline-flex items-center gap-1"
+                            aria-label="Ordenar por fecha de vencimiento"
                           >
                             Vencimiento <ArrowUpDown className="h-3.5 w-3.5" />
                           </button>
                         </th>
                         <th className="px-4 py-3">
                           <button
+                            type="button"
                             onClick={() => onSort('monto_total')}
                             className="inline-flex items-center gap-1"
+                            aria-label="Ordenar por monto"
                           >
                             Monto <ArrowUpDown className="h-3.5 w-3.5" />
                           </button>
                         </th>
                         <th className="px-4 py-3">
                           <button
+                            type="button"
                             onClick={() => onSort('saldo')}
                             className="inline-flex items-center gap-1"
+                            aria-label="Ordenar por saldo"
                           >
                             Saldo <ArrowUpDown className="h-3.5 w-3.5" />
                           </button>
@@ -462,18 +482,26 @@ export default function CxpManager() {
                     <tbody className="divide-y divide-white/50 dark:divide-slate-800/60 text-slate-800 dark:text-slate-100">
                       {loading && (
                         <tr>
-                          <td colSpan={7} className="px-4 py-6 text-slate-500">
+                          <td
+                            colSpan={7}
+                            className="px-4 py-6 text-slate-500 dark:text-slate-300"
+                          >
                             Cargando…
                           </td>
                         </tr>
                       )}
+
                       {!loading && rows.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="px-4 py-6 text-slate-500">
+                          <td
+                            colSpan={7}
+                            className="px-4 py-6 text-slate-500 dark:text-slate-300"
+                          >
                             Sin resultados
                           </td>
                         </tr>
                       )}
+
                       {!loading &&
                         rows.map((r) => (
                           <tr
@@ -485,6 +513,7 @@ export default function CxpManager() {
                             }`}
                           >
                             <td className="px-4 py-2 font-semibold">#{r.id}</td>
+
                             <td className="px-4 py-2">
                               <div className="font-medium">
                                 {r.proveedor?.razon_social ||
@@ -494,34 +523,40 @@ export default function CxpManager() {
                                 CUIT {r.proveedor?.cuit || '—'}
                               </div>
                             </td>
+
                             <td className="px-4 py-2">
                               {fmtDateOnlyAR(r.fecha_emision)}
                             </td>
 
                             <td className="px-4 py-2">
                               <div className="inline-flex items-center gap-2">
+                                {/* Benjamin Orellana - 2026-02-21 - Se elimina carácter suelto que rompía el render en la columna de vencimiento */}
                                 {fmtDateOnlyAR(r.fecha_vencimiento)}
-n
                                 {isOverdue(r.fecha_vencimiento) && (
-                                  <span className="text-[11px] text-rose-400">
+                                  <span className="text-[11px] text-rose-500 dark:text-rose-400">
                                     (Vencida)
                                   </span>
                                 )}
                               </div>
                             </td>
+
                             <td className="px-4 py-2 font-semibold">
                               {moneyAR(r.monto_total)}
                             </td>
+
                             <td className="px-4 py-2 font-semibold">
                               {moneyAR(r.saldo)}
                             </td>
+
                             <td className="px-4 py-2">
                               <div className="flex items-center gap-2 uppercase titulo">
                                 <EstadoBadge estado={r.estado} />
                                 <button
+                                  type="button"
                                   onClick={() => openRowDetail(r.id)}
                                   className={`${glass} ${ring} px-2 py-1 rounded-lg inline-flex items-center gap-1 text-slate-800 dark:text-slate-100`}
                                   title="Ver detalle"
+                                  aria-label={`Ver detalle de CxP ${r.id}`}
                                 >
                                   <Eye className="h-4 w-4" />
                                   <span className="hidden xl:inline">Ver</span>
@@ -535,7 +570,7 @@ n
                 </div>
 
                 {/* Footer de tabla: paginación compacta */}
-                <div className="flex items-center justify-between px-4 py-3 border-t border-white/50 dark:border-slate-800/60 text-sm text-white/90">
+                <div className="flex items-center justify-between px-4 py-3 border-t border-white/50 dark:border-slate-800/60 text-sm text-slate-700 dark:text-white/90">
                   <div className="flex items-center gap-2">
                     <span>Total:</span>
                     <strong>{total}</strong>
@@ -546,7 +581,7 @@ n
                         setPageSize(Number(e.target.value));
                         setPage(1);
                       }}
-                      className={`${glass} ${ring} px-2 py-1 rounded-lg`}
+                      className={`${glass} ${ring} px-2 py-1 rounded-lg text-slate-800 dark:text-slate-100 bg-white/70 dark:bg-slate-900/60`}
                     >
                       {[10, 20, 30, 50, 100].map((n) => (
                         <option key={n} value={n}>
@@ -555,23 +590,32 @@ n
                       ))}
                     </select>
                   </div>
+
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      className={`${glass} ${ring} px-3 py-1.5 rounded-lg`}
+                      className={`${glass} ${ring} px-3 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed`}
                       disabled={page <= 1}
+                      aria-label="Página anterior"
+                      title="Página anterior"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
+
                     <span>
                       página <strong>{page}</strong>
                     </span>
+
                     <button
+                      type="button"
                       onClick={() =>
-                        setPage((p) => (rows.length < pageSize ? p : p + 1))
+                        setPage((p) => (page * pageSize >= total ? p : p + 1))
                       }
-                      className={`${glass} ${ring} px-3 py-1.5 rounded-lg`}
-                      disabled={rows.length < pageSize}
+                      className={`${glass} ${ring} px-3 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed`}
+                      disabled={page * pageSize >= total}
+                      aria-label="Página siguiente"
+                      title="Página siguiente"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -583,11 +627,17 @@ n
               <div className="md:hidden">
                 <div className="max-h-[62vh] overflow-auto divide-y divide-white/50 dark:divide-slate-800/60">
                   {loading && (
-                    <div className="p-4 text-white/80">Cargando…</div>
+                    <div className="p-4 text-slate-700 dark:text-white/80">
+                      Cargando…
+                    </div>
                   )}
+
                   {!loading && rows.length === 0 && (
-                    <div className="p-4 text-white/80">Sin resultados</div>
+                    <div className="p-4 text-slate-700 dark:text-white/80">
+                      Sin resultados
+                    </div>
                   )}
+
                   {!loading &&
                     rows.map((r) => (
                       <div
@@ -596,25 +646,35 @@ n
                           isOverdue(r.fecha_vencimiento) ? 'bg-rose-300/5' : ''
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm font-semibold text-white">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-sm font-semibold text-slate-900 dark:text-white">
                             #{r.id} ·{' '}
                             {r.proveedor?.razon_social ||
                               `Prov. ${r.proveedor_id}`}
                           </div>
                           <EstadoBadge estado={r.estado} />
                         </div>
-                        <div className="mt-1 text-xs text-white/85">
+
+                        <div className="mt-1 text-xs text-slate-600 dark:text-white/85">
                           CUIT {r.proveedor?.cuit || '—'}
                         </div>
-                        <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-white">
+
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-slate-800 dark:text-white">
                           <div>
-                            Emisión: <strong>{r.fecha_emision || '—'}</strong>
+                            Emisión:{' '}
+                            <strong>
+                              {fmtDateOnlyAR(r.fecha_emision) || '—'}
+                            </strong>
                           </div>
                           <div>
-                            Vence: <strong>{r.fecha_vencimiento || '—'}</strong>{' '}
+                            Vence:{' '}
+                            <strong>
+                              {fmtDateOnlyAR(r.fecha_vencimiento) || '—'}
+                            </strong>{' '}
                             {isOverdue(r.fecha_vencimiento) && (
-                              <span className="text-rose-300">(Vencida)</span>
+                              <span className="text-rose-600 dark:text-rose-300">
+                                (Vencida)
+                              </span>
                             )}
                           </div>
                           <div>
@@ -624,10 +684,13 @@ n
                             Saldo: <strong>{moneyAR(r.saldo)}</strong>
                           </div>
                         </div>
+
                         <div className="mt-3 flex items-center justify-end">
                           <button
+                            type="button"
                             onClick={() => openRowDetail(r.id)}
-                            className={`${glass} ${ring} px-3 py-1.5 rounded-lg inline-flex items-center gap-2 text-white`}
+                            className={`${glass} ${ring} px-3 py-1.5 rounded-lg inline-flex items-center gap-2 text-slate-800 dark:text-white`}
+                            aria-label={`Ver detalle de CxP ${r.id}`}
                           >
                             Ver detalle
                           </button>

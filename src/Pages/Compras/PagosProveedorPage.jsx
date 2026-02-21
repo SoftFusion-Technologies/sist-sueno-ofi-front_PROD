@@ -167,8 +167,9 @@ export default function PagosProveedorPage() {
   return (
     <>
       <NavbarStaff />
-      <section className="relative w-full min-h-screen bg-white">
-        <div className="relative min-h-screen bg-gradient-to-b from-[#052e16] via-[#065f46] to-[#10b981]">
+      <section className="relative w-full min-h-screen bg-white dark:bg-slate-950">
+        {/* Benjamin Orellana - 2026-02-21 - Se adapta el fondo general para compatibilidad visual en modo light/dark sin alterar la estructura ni la lógica */}
+        <div className="relative min-h-screen bg-gradient-to-b from-emerald-100 via-emerald-50 to-white dark:from-[#052e16] dark:via-[#065f46] dark:to-[#10b981]">
           <ParticlesBackground />
           <ButtonBack />
 
@@ -178,11 +179,11 @@ export default function PagosProveedorPage() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-4xl titulo uppercase font-bold text-white mb-3 drop-shadow-md"
+              className="text-4xl titulo uppercase font-bold text-slate-900 dark:text-white mb-3 drop-shadow-md"
             >
               Pagos a Proveedor
             </motion.h1>
-            <p className="text-white/85">
+            <p className="text-slate-700 dark:text-white/85">
               Un pago, múltiples medios, aplicá a CxP y mantené saldos al día.
             </p>
           </div>
@@ -201,11 +202,13 @@ export default function PagosProveedorPage() {
               ].map((k, i) => (
                 <div
                   key={i}
-                  className="relative rounded-3xl p-[1px] bg-gradient-to-br from-emerald-400/70 via-teal-300/50 to-cyan-400/70"
+                  className="relative rounded-3xl p-[1px] bg-gradient-to-br from-emerald-400/70 via-teal-300/50 to-cyan-400/70 dark:from-emerald-400/40 dark:via-teal-300/20 dark:to-cyan-400/40"
                 >
-                  <div className="rounded-3xl bg-white/95 backdrop-blur-xl ring-1 ring-white/40 p-4">
-                    <div className="text-xs text-gray-500">{k.t}</div>
-                    <div className="text-2xl font-bold text-gray-900">
+                  <div className="rounded-3xl bg-white/95 dark:bg-slate-900/70 backdrop-blur-xl ring-1 ring-black/5 dark:ring-white/10 p-4">
+                    <div className="text-xs text-gray-500 dark:text-slate-300">
+                      {k.t}
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
                       {k.v}
                     </div>
                   </div>
@@ -215,8 +218,8 @@ export default function PagosProveedorPage() {
 
             {/* Toolbar filtros + acciones */}
             <div className="mt-6">
-              <div className="relative rounded-3xl p-[1px] bg-gradient-to-r from-emerald-400/60 via-teal-300/40 to-cyan-400/60 shadow-[0_1px_30px_rgba(16,185,129,0.15)]">
-                <div className="rounded-3xl bg-white/90 backdrop-blur-xl ring-1 ring-white/30 p-4 md:p-5">
+              <div className="relative rounded-3xl p-[1px] bg-gradient-to-r from-emerald-400/60 via-teal-300/40 to-cyan-400/60 dark:from-emerald-400/40 dark:via-teal-300/20 dark:to-cyan-400/40 shadow-[0_1px_30px_rgba(16,185,129,0.15)] dark:shadow-[0_1px_30px_rgba(0,0,0,0.30)]">
+                <div className="rounded-3xl bg-white/90 dark:bg-slate-900/70 backdrop-blur-xl ring-1 ring-white/30 dark:ring-white/10 p-4 md:p-5">
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
                     {/* búsqueda */}
                     <div className="relative md:col-span-4">
@@ -224,7 +227,7 @@ export default function PagosProveedorPage() {
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
                         placeholder="Buscar por observaciones, referencia o #pago…"
-                        className="w-full pl-3 pr-3 py-2.5 rounded-2xl border border-white/30 bg-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full pl-3 pr-3 py-2.5 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/90 dark:bg-slate-900/70 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
 
@@ -245,7 +248,7 @@ export default function PagosProveedorPage() {
                       <select
                         value={estado}
                         onChange={(e) => setEstado(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-2xl border border-white/30 bg-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full px-3 py-2.5 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/90 dark:bg-slate-900/70 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       >
                         {ESTADOS.map((e) => (
                           <option key={e.value || 'all'} value={e.value}>
@@ -256,30 +259,34 @@ export default function PagosProveedorPage() {
                     </div>
 
                     {/* fechas */}
+                    {/* Benjamin Orellana - 2026-02-21 - Se ajustan inputs de fecha para mantener contraste y legibilidad en modo oscuro sin cambiar su comportamiento */}
                     <input
                       type="date"
                       value={desde}
                       onChange={(e) => setDesde(e.target.value)}
-                      className="md:col-span-1 w-full px-3 py-2.5 rounded-2xl border border-white/30 bg-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="md:col-span-1 w-full px-3 py-2.5 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/90 dark:bg-slate-900/70 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 [color-scheme:light] dark:[color-scheme:dark]"
                     />
                     <input
                       type="date"
                       value={hasta}
                       onChange={(e) => setHasta(e.target.value)}
-                      className="md:col-span-1 w-full px-3 py-2.5 rounded-2xl border border-white/30 bg-white/90 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="md:col-span-1 w-full px-3 py-2.5 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/90 dark:bg-slate-900/70 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 [color-scheme:light] dark:[color-scheme:dark]"
                     />
 
                     {/* acciones filtros */}
                     <div className="md:col-span-2 flex gap-2">
                       <button
+                        type="button"
                         onClick={() => fetchList({ page: 1 })}
-                        className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 w-full"
+                        className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={loading}
                       >
                         <FaFilter /> Aplicar
                       </button>
                       <button
+                        type="button"
                         onClick={clearFilters}
-                        className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 w-full"
+                        className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl border border-gray-300 dark:border-white/10 text-gray-700 dark:text-slate-100 bg-white dark:bg-slate-900/70 hover:bg-gray-50 dark:hover:bg-slate-800 w-full"
                       >
                         <FaSyncAlt /> Limpiar
                       </button>
@@ -287,31 +294,37 @@ export default function PagosProveedorPage() {
                   </div>
 
                   {/* Acciones rápidas */}
-                  <div className="mt-4 flex items-center justify-between">
-                    <div className="text-sm text-gray-600">
+                  <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="text-sm text-gray-600 dark:text-slate-300">
                       {q || proveedorId || estado || desde || hasta ? (
-                        <span className="inline-block px-2 py-1 rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
+                        <span className="inline-block px-2 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-400/20">
                           Filtros activos
                         </span>
                       ) : (
-                        <span className="inline-block px-2 py-1 rounded-xl bg-gray-50 text-gray-600 ring-1 ring-gray-200">
+                        <span className="inline-block px-2 py-1 rounded-xl bg-gray-50 dark:bg-slate-800/70 text-gray-600 dark:text-slate-300 ring-1 ring-gray-200 dark:ring-white/10">
                           Sin filtros
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+
+                    <div className="flex items-center gap-2 flex-wrap">
                       <button
+                        type="button"
                         onClick={() => setOpenCreate(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white text-gray-900 font-semibold shadow-sm ring-1 ring-white/40 hover:shadow-md hover:-translate-y-0.5 transition"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900/80 text-gray-900 dark:text-white font-semibold shadow-sm ring-1 ring-black/5 dark:ring-white/10 hover:shadow-md hover:-translate-y-0.5 transition"
                       >
                         <FaPlus /> Nuevo Pago
                       </button>
                       <button
+                        type="button"
                         onClick={() => fetchList()}
                         title="Refrescar"
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/90 text-gray-900 ring-1 ring-white/40 hover:shadow"
+                        aria-label="Refrescar listado de pagos"
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/90 dark:bg-slate-900/80 text-gray-900 dark:text-white ring-1 ring-black/5 dark:ring-white/10 hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={loading}
                       >
-                        <FaSyncAlt /> Refrescar
+                        <FaSyncAlt className={loading ? 'animate-spin' : ''} />{' '}
+                        Refrescar
                       </button>
                     </div>
                   </div>
@@ -320,20 +333,23 @@ export default function PagosProveedorPage() {
             </div>
 
             {/* Contenedor resultados */}
-            <div className="mt-6 relative rounded-3xl p-[1px] bg-gradient-to-br from-emerald-400/60 via-teal-300/40 to-cyan-400/60 shadow-[0_1px_30px_rgba(16,185,129,0.12)]">
-              <div className="rounded-3xl bg-white/95 backdrop-blur-xl ring-1 ring-white/40 p-2 sm:p-4">
+            <div className="mt-6 relative rounded-3xl p-[1px] bg-gradient-to-br from-emerald-400/60 via-teal-300/40 to-cyan-400/60 dark:from-emerald-400/40 dark:via-teal-300/20 dark:to-cyan-400/40 shadow-[0_1px_30px_rgba(16,185,129,0.12)] dark:shadow-[0_1px_30px_rgba(0,0,0,0.30)]">
+              <div className="rounded-3xl bg-white/95 dark:bg-slate-900/75 backdrop-blur-xl ring-1 ring-white/40 dark:ring-white/10 p-2 sm:p-4">
                 {loading ? (
-                  <div className="p-6 text-gray-600">Cargando…</div>
+                  <div className="p-6 text-gray-600 dark:text-slate-300">
+                    Cargando…
+                  </div>
                 ) : error ? (
-                  <div className="p-10 text-center text-rose-700 font-semibold">
+                  <div className="p-10 text-center text-rose-700 dark:text-rose-300 font-semibold">
                     {error}
                   </div>
                 ) : rows.length === 0 ? (
                   <div className="p-10 text-center">
-                    <div className="text-gray-600">
+                    <div className="text-gray-600 dark:text-slate-300">
                       No se encontraron pagos.
                     </div>
                     <button
+                      type="button"
                       onClick={() => setOpenCreate(true)}
                       className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700"
                     >
@@ -347,13 +363,13 @@ export default function PagosProveedorPage() {
                         <thead className="sticky top-0 z-10">
                           <tr>
                             <th
-                              colSpan={9}
-                              className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 bg-gradient-to-r from-white/95 to-white/70 backdrop-blur border-b border-gray-100"
+                              colSpan={7}
+                              className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-300 bg-gradient-to-r from-white/95 to-white/70 dark:from-slate-900/95 dark:to-slate-900/70 backdrop-blur border-b border-gray-100 dark:border-white/10"
                             >
                               Resultados · {meta.total} pagos
                             </th>
                           </tr>
-                          <tr className="text-left text-gray-600 bg-white/95 backdrop-blur border-b border-gray-100">
+                          <tr className="text-left text-gray-600 dark:text-slate-200 bg-white/95 dark:bg-slate-900/80 backdrop-blur border-b border-gray-100 dark:border-white/10">
                             <th className="px-3 py-2">#</th>
                             <th className="px-3 py-2">Fecha</th>
                             <th className="px-3 py-2">Proveedor</th>
@@ -384,13 +400,13 @@ export default function PagosProveedorPage() {
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, y: -6 }}
                                   className={classNames(
-                                    'border-t border-gray-100 hover:bg-gray-50/70 transition'
+                                    'border-t border-gray-100 dark:border-white/10 hover:bg-gray-50/70 dark:hover:bg-slate-800/40 transition'
                                   )}
                                 >
-                                  <td className="px-3 py-2 font-mono text-gray-800">
+                                  <td className="px-3 py-2 font-mono text-gray-800 dark:text-slate-100">
                                     {r.id}
                                   </td>
-                                  <td className="px-3 py-2">
+                                  <td className="px-3 py-2 text-gray-700 dark:text-slate-200">
                                     {r?.fecha
                                       ? new Date(r.fecha).toLocaleDateString(
                                           'es-AR'
@@ -398,27 +414,27 @@ export default function PagosProveedorPage() {
                                       : '—'}
                                   </td>
                                   <td className="px-3 py-2">
-                                    <div className="font-medium text-gray-900">
+                                    <div className="font-medium text-gray-900 dark:text-white">
                                       {r?.proveedor?.razon_social ||
                                         `Proveedor #${r.proveedor_id}`}
                                     </div>
                                     {r?.proveedor?.cuit && (
-                                      <div className="text-xs text-gray-500">
+                                      <div className="text-xs text-gray-500 dark:text-slate-400">
                                         CUIT: {r.proveedor.cuit}
                                       </div>
                                     )}
                                   </td>
-                                  <td className="px-3 py-2 text-right font-semibold">
+                                  <td className="px-3 py-2 text-right font-semibold text-gray-900 dark:text-white">
                                     {moneyAR(
                                       r.monto_total_num ?? r.monto_total
                                     )}
                                   </td>
-                                  <td className="px-3 py-2 text-right">
+                                  <td className="px-3 py-2 text-right text-gray-700 dark:text-slate-200">
                                     {moneyAR(
                                       r.aplicado_total ?? r.aplicado ?? 0
                                     )}
                                   </td>
-                                  <td className="px-3 py-2 text-right">
+                                  <td className="px-3 py-2 text-right text-gray-700 dark:text-slate-200">
                                     {moneyAR(
                                       r.disponible ??
                                         Math.max(
@@ -436,8 +452,9 @@ export default function PagosProveedorPage() {
                                   <td className="px-3 py-2">
                                     <div className="flex items-center gap-2">
                                       <button
+                                        type="button"
                                         onClick={() => openRowDetail(r.id)}
-                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50"
+                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 text-gray-700 dark:text-slate-100 bg-white/80 dark:bg-slate-900/60 hover:bg-gray-50 dark:hover:bg-slate-800"
                                       >
                                         <FaEye /> Ver
                                       </button>
@@ -453,7 +470,7 @@ export default function PagosProveedorPage() {
 
                     {/* Paginación */}
                     <div className="mt-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                      <div className="text-xs text-gray-600">
+                      <div className="text-xs text-gray-600 dark:text-slate-300">
                         Página {page} de{' '}
                         {Math.max(1, Math.ceil((meta.total || 0) / pageSize))} ·{' '}
                         {meta.total} resultados
@@ -468,7 +485,7 @@ export default function PagosProveedorPage() {
                               pageSize: Number(e.target.value)
                             }))
                           }
-                          className="px-2 py-1.5 rounded-xl border border-gray-200 bg-white text-sm"
+                          className="px-2 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900/70 text-sm text-gray-900 dark:text-slate-100"
                         >
                           {[10, 12, 20, 30, 50].map((n) => (
                             <option key={n} value={n}>
@@ -477,6 +494,7 @@ export default function PagosProveedorPage() {
                           ))}
                         </select>
                         <button
+                          type="button"
                           disabled={page <= 1}
                           onClick={() =>
                             setMeta((m) => ({
@@ -484,11 +502,12 @@ export default function PagosProveedorPage() {
                               page: Math.max(1, m.page - 1)
                             }))
                           }
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border disabled:opacity-40"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900/70 text-gray-700 dark:text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <FaChevronLeft /> Anterior
                         </button>
                         <button
+                          type="button"
                           disabled={
                             page >=
                             Math.max(1, Math.ceil((meta.total || 0) / pageSize))
@@ -505,7 +524,7 @@ export default function PagosProveedorPage() {
                               )
                             }))
                           }
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border disabled:opacity-40"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900/70 text-gray-700 dark:text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           Siguiente <FaChevronRight />
                         </button>
