@@ -2709,7 +2709,7 @@ export default function PuntoVenta() {
                       {canSeePrices ? (
                         <div className="rounded-xl border border-black/10 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-white/5">
                           <div className="text-[11px] uppercase tracking-widest text-slate-500 dark:text-slate-300/60">
-                            Precio
+                            Precio Venta Base
                           </div>
 
                           <div className="mt-1 text-[14px] font-extrabold text-emerald-700 dark:text-emerald-200">

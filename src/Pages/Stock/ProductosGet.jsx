@@ -120,7 +120,9 @@ const ProductosGet = () => {
     permite_descuento: true,
 
     // Precios/Descuentos (venta)
+    // Benjamin Orellana - 23-02-2026 - Campo para recargo de tarjeta usado en previews y submit.
     precio: '',
+    recargo_tarjeta_pct: '',
     descuento_porcentaje: '',
     codigo_sku: '',
     imagen_url: '',
@@ -411,7 +413,16 @@ const ProductosGet = () => {
             : Number(producto.permite_descuento ?? 1) === 1,
 
         // Precios/Descuentos (venta)
+        // Benjamin Orellana - 23-02-2026 - Se hidrata recargo de tarjeta para mantener consistencia con descuento sobre precio de venta.
         precio: producto.precio?.toString() ?? '',
+        recargo_tarjeta_pct:
+          producto.recargo_tarjeta_pct !== null &&
+          typeof producto.recargo_tarjeta_pct !== 'undefined'
+            ? String(producto.recargo_tarjeta_pct)
+            : producto.ajuste_porcentual !== null &&
+                typeof producto.ajuste_porcentual !== 'undefined'
+              ? String(producto.ajuste_porcentual)
+              : '40',
         descuento_porcentaje: producto.descuento_porcentaje?.toString() ?? '',
         codigo_sku: producto.codigo_sku || '',
         imagen_url: producto.imagen_url || '',
@@ -443,7 +454,10 @@ const ProductosGet = () => {
         permite_descuento: true,
 
         // Precios/Descuentos (venta)
+        // Precios/Descuentos (venta)
+        // Benjamin Orellana - 23-02-2026 - Se inicializa recargo de tarjeta editable con valor sugerido.
         precio: '0',
+        recargo_tarjeta_pct: '0',
         descuento_porcentaje: '',
         codigo_sku: '',
         imagen_url: '',
@@ -483,6 +497,26 @@ const ProductosGet = () => {
       await swalWarn(
         'IVA inválido',
         'La alícuota de IVA debe ser un número entre 0 y 100.'
+      );
+      return;
+    }
+
+    // Benjamin Orellana - 23-02-2026 - Validación de recargo de tarjeta (se usa para calcular precio de venta).
+    const parsedRecargoTarjeta = parseFloat(
+      formValues.recargo_tarjeta_pct === '' ||
+        formValues.recargo_tarjeta_pct === null
+        ? '40'
+        : formValues.recargo_tarjeta_pct
+    );
+
+    if (
+      Number.isNaN(parsedRecargoTarjeta) ||
+      parsedRecargoTarjeta < -100 ||
+      parsedRecargoTarjeta > 1000
+    ) {
+      await swalWarn(
+        'Recargo de tarjeta inválido',
+        'Ingresá un recargo válido entre -100 y 1000.'
       );
       return;
     }
@@ -548,17 +582,31 @@ const ProductosGet = () => {
         : null;
 
     // Valores derivados
+    // Benjamin Orellana - 23-02-2026 - El descuento ahora se aplica sobre el precio de venta (tarjeta), no sobre el precio base.
     const descuentoToSend =
       permiteDescuentoBool && descuentoNum > 0
         ? Number(descuentoNum.toFixed(2))
         : null;
 
+    const recargoTarjetaToSend = Number(parsedRecargoTarjeta.toFixed(2));
+
+    // precio base -> precio venta (tarjeta)
+    const precioTarjeta =
+      Number(parsedPrecio.toFixed(2)) *
+      (1 + Number(recargoTarjetaToSend) / 100);
+
+    const precioTarjetaRound = Number(precioTarjeta.toFixed(2));
+
+    // descuento aplicado sobre precio tarjeta
     const precioConDescuento =
       descuentoToSend !== null
         ? Number(
-            (parsedPrecio - parsedPrecio * (descuentoToSend / 100)).toFixed(2)
+            (
+              precioTarjetaRound -
+              precioTarjetaRound * (descuentoToSend / 100)
+            ).toFixed(2)
           )
-        : Number(parsedPrecio.toFixed(2));
+        : precioTarjetaRound;
 
     const uid = getUserId?.() ?? null;
 
@@ -600,10 +648,15 @@ const ProductosGet = () => {
         codigo_barra: codigoBarraNorm,
 
         // Precios / IVA
-        precio: Number(parsedPrecio.toFixed(2)),
+        precio: Number(parsedPrecio.toFixed(2)), // precio base
         precio_costo: Number(parsedCosto.toFixed(2)),
         iva_alicuota: Number(parsedIva.toFixed(2)),
         iva_incluido: formValues.iva_incluido ? 1 : 0,
+
+        // Benjamin Orellana - 23-02-2026 - Se envía recargo de tarjeta + precio de venta calculado para descuento sobre venta.
+        recargo_tarjeta_pct: recargoTarjetaToSend,
+        ajuste_porcentual: recargoTarjetaToSend, // compatibilidad si backend aún usa este nombre
+        precio_tarjeta: precioTarjetaRound, // compatibilidad / debug (backend puede recalcular)
 
         // Descuentos
         permite_descuento: permiteDescuentoBool ? 1 : 0,
@@ -876,18 +929,28 @@ const ProductosGet = () => {
   // ==============================
   // Preview de precios (UI)
   // ==============================
+  const precioTarjetaPreview = useMemo(() => {
+    // Benjamin Orellana - 23-02-2026 - Preview del precio de venta (tarjeta) a partir de precio base + recargo.
+    const pBase = Math.max(0, toNum(formValues.precio, 0));
+    const rec = toNum(formValues.recargo_tarjeta_pct, 40);
+
+    const venta = pBase * (1 + rec / 100);
+    return Number.isFinite(venta) ? Math.max(0, venta) : 0;
+  }, [formValues.precio, formValues.recargo_tarjeta_pct]);
+
   const precioFinalPreview = useMemo(() => {
-    const p = Math.max(0, toNum(formValues.precio, 0));
+    // Benjamin Orellana - 23-02-2026 - El descuento se aplica sobre el precio tarjeta, no sobre el base.
+    const pVenta = Math.max(0, Number(precioTarjetaPreview || 0));
 
     const permite = !!formValues.permite_descuento;
     const d = permite
       ? clamp(toNum(formValues.descuento_porcentaje, 0), 0, 100)
       : 0;
 
-    const final = p * (1 - d / 100);
+    const final = pVenta * (1 - d / 100);
     return Number.isFinite(final) ? Math.max(0, final) : 0;
   }, [
-    formValues.precio,
+    precioTarjetaPreview,
     formValues.descuento_porcentaje,
     formValues.permite_descuento
   ]);
@@ -915,7 +978,13 @@ const ProductosGet = () => {
     const factor = 1 + iva / 100;
 
     const precioBase = Math.max(0, toNum(formValues.precio, 0));
-    const precioFinal = Math.max(0, Number(precioFinalPreview || 0)); // asumimos con IVA
+
+    // Benjamin Orellana - 23-02-2026 - Se incorpora recargo de tarjeta al flujo comercial base -> tarjeta -> final.
+    const recargoTarjetaPct = toNum(formValues.recargo_tarjeta_pct, 40);
+    const factorTarjeta = 1 + recargoTarjetaPct / 100;
+    const precioTarjeta = Math.max(0, Number(precioTarjetaPreview || 0));
+
+    const precioFinal = Math.max(0, Number(precioFinalPreview || 0)); // precio final de venta con descuento (si aplica)
     const precioNeto = factor > 0 ? precioFinal / factor : 0;
 
     const costoInput = Math.max(0, toNum(formValues.precio_costo, 0));
@@ -927,15 +996,15 @@ const ProductosGet = () => {
           : costoInput
         : 0;
 
-    // Flags (evitan “100% margen” con costo 0)
+    // Flags
     const hasPrecio = precioFinal > 0;
-    const hasCosto = costoFinal > 0; // acá definimos "hay costo" si el costo final > 0
+    const hasCosto = costoFinal > 0;
     const hasCore = hasPrecio && hasCosto;
 
     // ===== NETO (sin IVA) =====
     const ganancia = precioNeto - costoNeto;
-    const margenPct = precioNeto > 0 ? (ganancia / precioNeto) * 100 : 0; // margen sobre venta
-    const markupPct = costoNeto > 0 ? (ganancia / costoNeto) * 100 : 0; // markup sobre costo
+    const margenPct = precioNeto > 0 ? (ganancia / precioNeto) * 100 : 0;
+    const markupPct = costoNeto > 0 ? (ganancia / costoNeto) * 100 : 0;
 
     // ===== CAJA (con IVA) =====
     const gananciaCaja = precioFinal - costoFinal;
@@ -946,37 +1015,49 @@ const ProductosGet = () => {
 
     const isPerdida = hasCore ? gananciaCaja < 0 : false;
 
-    // Descuento para sugerencias
+    // Descuento vigente (sobre precio tarjeta)
     const descPct = formValues.permite_descuento
       ? clamp(toNum(formValues.descuento_porcentaje, 0), 0, 100)
       : 0;
 
     const divisorDesc = 1 - descPct / 100;
 
-    // Objetivo (seguimos con tu margenObjetivo, 0–90)
+    // Objetivo
     const target = clamp(toNum(margenObjetivo, 0), 0, 90);
 
-    // Sugerencia: cumplir margen objetivo sobre VENTA NETA (sin IVA)
-    // margen = (Pnet - Cnet) / Pnet  =>  Pnet = Cnet / (1 - margen)
+    // Sugerencia: cumplir margen objetivo sobre venta neta final
+    // margen = (Pnet - Cnet) / Pnet => Pnet = Cnet / (1 - margen)
     const reqPrecioNetoFinal =
       hasCosto && target < 90 && 1 - target / 100 > 0
         ? costoNeto / (1 - target / 100)
         : Infinity;
 
+    // Precio final bruto (con IVA) necesario
     const reqPrecioBrutoFinal = reqPrecioNetoFinal * factor;
 
-    // Convertir a precio BASE si hay descuento aplicado
-    const reqPrecioBaseBruto =
-      divisorDesc > 0 ? reqPrecioBrutoFinal / divisorDesc : Infinity;
+    // Benjamin Orellana - 23-02-2026 - Convertimos el objetivo final a precio BASE considerando recargo de tarjeta y descuento sobre tarjeta.
+    const divisorVentaDesdeBase = factorTarjeta * divisorDesc;
 
-    // Punto de equilibrio (ganancia neta = 0)
+    const reqPrecioBaseBruto =
+      divisorVentaDesdeBase > 0
+        ? reqPrecioBrutoFinal / divisorVentaDesdeBase
+        : Infinity;
+
+    // Punto de equilibrio (ganancia = 0)
     const equilibrioFinalBruto = costoNeto * factor;
+
     const equilibrioBaseBruto =
-      divisorDesc > 0 ? equilibrioFinalBruto / divisorDesc : Infinity;
+      divisorVentaDesdeBase > 0
+        ? equilibrioFinalBruto / divisorVentaDesdeBase
+        : Infinity;
 
     return {
       iva,
       factor,
+
+      // Benjamin Orellana - 23-02-2026 - Se expone recargo/flujo tarjeta para UI de resumen y asistentes.
+      recargoTarjetaPct,
+      factorTarjeta,
 
       // Flags
       hasPrecio,
@@ -986,6 +1067,7 @@ const ProductosGet = () => {
 
       // Inputs/Previews
       precioBase,
+      precioTarjeta,
       precioFinal,
       precioNeto,
 
@@ -1024,11 +1106,13 @@ const ProductosGet = () => {
     };
   }, [
     formValues.precio,
+    formValues.recargo_tarjeta_pct,
     formValues.precio_costo,
     formValues.iva_alicuota,
     formValues.iva_incluido,
     formValues.permite_descuento,
     formValues.descuento_porcentaje,
+    precioTarjetaPreview,
     precioFinalPreview,
     costoFinalPreview,
     margenObjetivo
@@ -1111,8 +1195,8 @@ const ProductosGet = () => {
         <ParticlesBackground />
         <ButtonBack />
 
-        <div className="max-w-6xl mx-auto">
-          <div className="max-w-6xl mx-auto">
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 xl:px-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
               {/* Título */}
               <h1 className="text-4xl font-bold titulo text-rose-600 dark:text-rose-400 flex items-center gap-3 uppercase drop-shadow">
@@ -1357,8 +1441,10 @@ const ProductosGet = () => {
               </div>
             </div>
           </div>
+
           <div className="relative z-0">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {' '}
               {rows.map((p) => (
                 <motion.div
                   key={p.id}
@@ -1381,6 +1467,32 @@ const ProductosGet = () => {
                       <span className="text-[0.7rem] uppercase tracking-wide text-slate-500 dark:text-gray-300/70">
                         ID #{p.id}
                       </span>
+                      {(p.codigo_interno || p.codigo_barra) && (
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {p.codigo_interno ? (
+                            <span className="text-[0.7rem] uppercase tracking-wide text-slate-500 dark:text-gray-300/70">
+                              COD. INTERNO:{' '}
+                              <span className="font-semibold">
+                                {p.codigo_interno}
+                              </span>
+                            </span>
+                          ) : null}
+
+                          {p.codigo_barra ? (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[0.68rem] max-w-[220px]
+            bg-slate-100 text-slate-700 border-slate-200
+            dark:bg-white/10 dark:text-slate-100 dark:border-white/10"
+                              title={`Código de barras: ${p.codigo_barra}`}
+                            >
+                              COD. BAR:{' '}
+                              <span className="font-semibold truncate">
+                                {p.codigo_barra}
+                              </span>
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
                       <h2 className="mt-1 text-lg font-semibold leading-snug truncate text-rose-700 dark:text-rose-300">
                         {p.nombre}
                       </h2>
@@ -1399,46 +1511,46 @@ const ProductosGet = () => {
                   </div>
 
                   {/* META */}
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-700 dark:text-gray-200">
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-700 dark:text-gray-200">
                     {/* Columna izquierda */}
-                    <div className="space-y-1">
-                      <div>
-                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
-                          Marca
-                        </div>
-                        <div className="truncate text-slate-900 dark:text-gray-100">
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <span className="shrink-0 text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          Marca:
+                        </span>
+                        <span className="truncate text-slate-900 dark:text-gray-100">
                           {p.marca || 'Sin marca'}
-                        </div>
+                        </span>
                       </div>
 
-                      <div>
-                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
-                          Modelo
-                        </div>
-                        <div className="truncate text-slate-900 dark:text-gray-100">
+                      <div className="flex items-start gap-2">
+                        <span className="shrink-0 text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          Modelo:
+                        </span>
+                        <span className="truncate text-slate-900 dark:text-gray-100">
                           {p.modelo || 'Sin modelo'}
-                        </div>
+                        </span>
                       </div>
 
-                      <div>
-                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
-                          Medida
-                        </div>
-                        <div className="truncate text-slate-900 dark:text-gray-100">
+                      <div className="flex items-start gap-2">
+                        <span className="shrink-0 text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          Medida:
+                        </span>
+                        <span className="truncate text-slate-900 dark:text-gray-100">
                           {p.medida || 'Sin medida'}
-                        </div>
+                        </span>
                       </div>
                     </div>
 
                     {/* Columna derecha */}
-                    <div className="space-y-1">
-                      <div>
-                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
-                          Categoría
-                        </div>
-                        <div className="truncate text-slate-900 dark:text-gray-100">
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <span className="shrink-0 text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          Categoría:
+                        </span>
+                        <span className="truncate text-slate-900 dark:text-gray-100">
                           {p.categoria?.nombre || 'Sin categoría'}
-                        </div>
+                        </span>
                       </div>
 
                       {/* Proveedor preferido */}
@@ -1450,16 +1562,16 @@ const ProductosGet = () => {
                             : null);
 
                         return (
-                          <div>
-                            <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
-                              Proveedor
-                            </div>
-                            <div className="truncate">
+                          <div className="flex items-start gap-2">
+                            <span className="shrink-0 text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                              Proveedor:
+                            </span>
+                            <div className="min-w-0 truncate">
                               {provName ? (
                                 <span
                                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[0.7rem]
-                      bg-emerald-50 text-emerald-700 border-emerald-200
-                      dark:bg-white/10 dark:text-emerald-300 dark:border-emerald-900/40"
+                bg-emerald-50 text-emerald-700 border-emerald-200
+                dark:bg-white/10 dark:text-emerald-300 dark:border-emerald-900/40"
                                 >
                                   {provName}
                                 </span>
@@ -1473,44 +1585,13 @@ const ProductosGet = () => {
                         );
                       })()}
 
-                      <div>
-                        <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
-                          SKU
-                        </div>
-                        <div className="truncate text-slate-900 dark:text-gray-100">
+                      <div className="flex items-start gap-2">
+                        <span className="shrink-0 text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                          SKU:
+                        </span>
+                        <span className="truncate text-slate-900 dark:text-gray-100">
                           {p.codigo_sku || 'No asignado'}
-                        </div>
-
-                        {(p.codigo_interno || p.codigo_barra) && (
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            {p.codigo_interno ? (
-                              <span
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[0.68rem]
-                    bg-slate-100 text-slate-700 border-slate-200
-                    dark:bg-white/10 dark:text-slate-100 dark:border-white/10"
-                              >
-                                COD. INTER:{' '}
-                                <span className="font-semibold">
-                                  {p.codigo_interno}
-                                </span>
-                              </span>
-                            ) : null}
-
-                            {p.codigo_barra ? (
-                              <span
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[0.68rem] max-w-[220px]
-                      bg-slate-100 text-slate-700 border-slate-200
-                      dark:bg-white/10 dark:text-slate-100 dark:border-white/10"
-                                title={`Código de barras: ${p.codigo_barra}`}
-                              >
-                                COD. BAR:{' '}
-                                <span className="font-semibold truncate">
-                                  {p.codigo_barra}
-                                </span>
-                              </span>
-                            ) : null}
-                          </div>
-                        )}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1523,67 +1604,292 @@ const ProductosGet = () => {
                   )}
 
                   {/* PRECIOS */}
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <div className="flex items-baseline gap-2">
-                      <span
-                        className={
-                          p.descuento_porcentaje > 0
-                            ? 'text-slate-500 line-through text-xs dark:text-gray-400'
-                            : 'text-emerald-700 font-semibold text-sm dark:text-green-300'
-                        }
-                      >
-                        {new Intl.NumberFormat('es-AR', {
-                          style: 'currency',
-                          currency: 'ARS',
-                          minimumFractionDigits: 2
-                        }).format(p.precio || 0)}
-                      </span>
+                  {(() => {
+                    // Benjamin Orellana - 2026-02-23 - UX: Se separan explícitamente "Precios de costo" (arriba) y "Precios de venta" (abajo) para evitar confusión.
+                    const fmtARS = (v) =>
+                      new Intl.NumberFormat('es-AR', {
+                        style: 'currency',
+                        currency: 'ARS',
+                        minimumFractionDigits: 2
+                      }).format(Number(v) || 0);
 
-                      {p.descuento_porcentaje > 0 && (
-                        <span className="text-emerald-700 font-bold text-sm drop-shadow dark:text-green-400">
-                          {new Intl.NumberFormat('es-AR', {
-                            style: 'currency',
-                            currency: 'ARS',
-                            minimumFractionDigits: 2
-                          }).format(p.precio_con_descuento)}
-                        </span>
-                      )}
-                    </div>
+                    // Benjamin Orellana - 2026-02-23 - Normalización de venta: base -> tarjeta -> final con descuento (descuento sobre tarjeta).
+                    const precioBase = Number(p.precio) || 0;
+                    const recargoTarjetaPct =
+                      Number(p.recargo_tarjeta_pct) || 0;
 
-                    {p.descuento_porcentaje > 0 && (
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[0.7rem] font-bold border
-            bg-rose-50 text-rose-700 border-rose-200
-            dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-400/40"
-                      >
-                        -{p.descuento_porcentaje}% OFF
-                      </span>
-                    )}
+                    const precioTarjetaCalculado = Number(
+                      (precioBase * (1 + recargoTarjetaPct / 100)).toFixed(2)
+                    );
 
-                    {(p.permite_descuento === 0 ||
-                      p.permite_descuento === false) && (
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[0.7rem] font-bold border
-            bg-slate-100 text-slate-700 border-slate-200
-            dark:bg-white/10 dark:text-slate-200 dark:border-white/10"
-                      >
-                        Sin desc.
-                      </span>
-                    )}
-                  </div>
+                    const precioTarjeta =
+                      Number(p.precio_tarjeta) || precioTarjetaCalculado;
+
+                    const permiteDescuento = !(
+                      p.permite_descuento === 0 || p.permite_descuento === false
+                    );
+
+                    const descuentoPct = permiteDescuento
+                      ? Number(p.descuento_porcentaje) || 0
+                      : 0;
+
+                    const precioFinalCalculado =
+                      descuentoPct > 0
+                        ? Number(
+                            (
+                              precioTarjeta -
+                              precioTarjeta * (descuentoPct / 100)
+                            ).toFixed(2)
+                          )
+                        : precioTarjeta;
+
+                    const precioFinalVenta =
+                      descuentoPct > 0
+                        ? Number(p.precio_con_descuento) || precioFinalCalculado
+                        : precioTarjeta;
+
+                    const ahorroDescuento =
+                      descuentoPct > 0
+                        ? Math.max(
+                            0,
+                            Number(
+                              (precioTarjeta - precioFinalVenta).toFixed(2)
+                            )
+                          )
+                        : 0;
+
+                    // Benjamin Orellana - 2026-02-23 - Normalización de costo: costo cargado, IVA y costo final (c/IVA) para lectura rápida.
+                    const ivaPct = Number(p.iva_alicuota) || 0;
+                    const costoIngresado = Number(p.precio_costo) || 0;
+                    const ivaIncluido = !(
+                      p.iva_incluido === 0 || p.iva_incluido === false
+                    );
+
+                    const costoFinal = ivaIncluido
+                      ? costoIngresado
+                      : Number(
+                          (costoIngresado * (1 + ivaPct / 100)).toFixed(2)
+                        );
+
+                    return (
+                      <div className="mt-3 space-y-3">
+                        {/* =========================
+                            PRECIOS DE COSTO (ARRIBA)
+                           ========================= */}
+                        <RoleGate allow={['socio', 'administrativo']}>
+                          <div className="rounded-xl border border-black/10 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 p-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="text-[0.68rem] uppercase tracking-wide text-black font-bold dark:text-gray-400">
+                                Precios de costo
+                              </div>
+
+                              <span
+                                className="rounded-full px-2 py-0.5 text-[0.68rem] font-semibold border
+                                bg-amber-50 text-amber-700 border-amber-200
+                                dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-400/40"
+                                title="Costo utilizado para cálculo de rentabilidad"
+                              >
+                                {ivaIncluido ? 'Costo c/IVA' : 'Costo s/IVA'}
+                              </span>
+                            </div>
+
+                            <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                              <div className="rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2">
+                                <div className="text-[0.62rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                                  Costo cargado
+                                </div>
+                                <div className="mt-0.5 text-sm font-bold text-slate-900 dark:text-gray-100">
+                                  {fmtARS(costoIngresado)}
+                                </div>
+                                <div className="text-[0.62rem] text-slate-500 dark:text-gray-400">
+                                  {ivaIncluido ? 'ya incluye IVA' : 'sin IVA'}
+                                </div>
+                              </div>
+
+                              <div className="rounded-lg border border-slate-200/80 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2">
+                                <div className="text-[0.62rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                                  IVA
+                                </div>
+                                <div className="mt-0.5 text-sm font-bold text-slate-900 dark:text-gray-100">
+                                  {ivaPct.toFixed(2)}%
+                                </div>
+                                <div className="text-[0.62rem] text-slate-500 dark:text-gray-400">
+                                  Alícuota
+                                </div>
+                              </div>
+
+                              <div className="rounded-lg border border-amber-200/80 dark:border-amber-400/30 bg-amber-50/70 dark:bg-amber-500/10 px-3 py-2">
+                                <div className="text-[0.62rem] uppercase tracking-wide text-amber-700/80 dark:text-amber-300/90">
+                                  Costo final (c/IVA)
+                                </div>
+                                <div className="mt-0.5 text-sm font-bold text-amber-800 dark:text-amber-200">
+                                  {fmtARS(costoFinal)}
+                                </div>
+                                <div className="text-[0.62rem] text-amber-700/80 dark:text-amber-300/80">
+                                  para margen caja
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-2 rounded-lg border border-dashed border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/5 px-3 py-2">
+                              <div className="text-[0.65rem] text-slate-600 dark:text-gray-300/90 leading-5">
+                                <span className="font-semibold text-slate-700 dark:text-gray-200">
+                                  Lectura:
+                                </span>{' '}
+                                {fmtARS(costoIngresado)}{' '}
+                                {ivaIncluido ? (
+                                  <span className="text-slate-500 dark:text-gray-400">
+                                    (ya c/IVA)
+                                  </span>
+                                ) : (
+                                  <>
+                                    <span className="text-slate-500 dark:text-gray-400">
+                                      + IVA {ivaPct.toFixed(2)}%
+                                    </span>{' '}
+                                    ={' '}
+                                    <span className="font-semibold text-amber-700 dark:text-amber-300">
+                                      {fmtARS(costoFinal)}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </RoleGate>
+
+                        {/* =========================
+                            PRECIOS DE VENTA (ABAJO)
+                           ========================= */}
+                        <div className="rounded-xl border border-black/10 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="text-[0.68rem] uppercase tracking-wide text-black font-bold dark:text-gray-400">
+                              Precios de venta
+                            </div>
+
+                            <div className="flex flex-wrap justify-end gap-1.5">
+                              <span
+                                className="rounded-full px-2 py-0.5 text-[0.68rem] font-semibold border
+                                bg-indigo-50 text-indigo-700 border-indigo-200
+                                dark:bg-indigo-500/15 dark:text-indigo-300 dark:border-indigo-400/40"
+                                title="Recargo aplicado sobre precio base para obtener precio tarjeta"
+                              >
+                                Tarjeta +{recargoTarjetaPct.toFixed(2)}%
+                              </span>
+
+                              {descuentoPct > 0 && (
+                                <span
+                                  className="rounded-full px-2 py-0.5 text-[0.68rem] font-bold border
+                                  bg-rose-50 text-rose-700 border-rose-200
+                                  dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-400/40"
+                                  title="Descuento aplicado sobre precio tarjeta"
+                                >
+                                  -{descuentoPct}% OFF
+                                </span>
+                              )}
+
+                              {!permiteDescuento && (
+                                <span
+                                  className="rounded-full px-2 py-0.5 text-[0.68rem] font-bold border
+                                  bg-slate-100 text-slate-700 border-slate-200
+                                  dark:bg-white/10 dark:text-slate-200 dark:border-white/10"
+                                >
+                                  Sin desc.
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {/* Precio base */}
+                            <div className="rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2">
+                              <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                                Precio base
+                              </div>
+                              <div className="mt-0.5 text-sm font-bold text-slate-900 dark:text-gray-100">
+                                {fmtARS(precioBase)}
+                              </div>
+                            </div>
+
+                            {/* Precio tarjeta */}
+                            <div className="rounded-lg border border-indigo-200/80 dark:border-indigo-400/30 bg-indigo-50/60 dark:bg-indigo-500/10 px-3 py-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="text-[0.65rem] uppercase tracking-wide text-indigo-700/80 dark:text-indigo-300/90">
+                                  Precio tarjeta
+                                </div>
+                                <span className="text-[0.65rem] text-indigo-700/80 dark:text-indigo-300/80">
+                                  Base +{recargoTarjetaPct.toFixed(2)}%
+                                </span>
+                              </div>
+                              <div className="mt-0.5 text-sm font-bold text-indigo-800 dark:text-indigo-200">
+                                {fmtARS(precioTarjeta)}
+                              </div>
+                            </div>
+
+                            {/* Precio final venta */}
+                            <div className="sm:col-span-2 rounded-lg border border-emerald-200/80 dark:border-emerald-400/30 bg-emerald-50/70 dark:bg-emerald-500/10 px-3 py-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="text-[0.65rem] uppercase tracking-wide text-emerald-700/80 dark:text-emerald-300/90">
+                                  Precio final venta
+                                </div>
+
+                                {descuentoPct > 0 ? (
+                                  <span className="text-[0.68rem] text-emerald-700 dark:text-emerald-300">
+                                    Tarjeta - {descuentoPct.toFixed(2)}%
+                                  </span>
+                                ) : (
+                                  <span className="text-[0.68rem] text-slate-500 dark:text-gray-400">
+                                    Sin descuento activo
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="mt-0.5 text-sm font-bold text-emerald-800 dark:text-emerald-200">
+                                {fmtARS(precioFinalVenta)}
+                              </div>
+
+                              {descuentoPct > 0 && (
+                                <div className="mt-1 text-[0.68rem] text-emerald-700/90 dark:text-emerald-300/90">
+                                  Ahorro por descuento:{' '}
+                                  {fmtARS(ahorroDescuento)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="mt-2 rounded-lg border border-dashed border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/5 px-3 py-2">
+                            <div className="text-[0.65rem] text-slate-600 dark:text-gray-300/90 leading-5">
+                              <span className="font-semibold text-slate-700 dark:text-gray-200">
+                                Flujo:
+                              </span>{' '}
+                              {fmtARS(precioBase)}{' '}
+                              <span className="text-slate-500 dark:text-gray-400">
+                                + recargo {recargoTarjetaPct.toFixed(2)}%
+                              </span>{' '}
+                              ={' '}
+                              <span className="font-semibold text-indigo-700 dark:text-indigo-300">
+                                {fmtARS(precioTarjeta)}
+                              </span>
+                              {descuentoPct > 0 && (
+                                <>
+                                  {' '}
+                                  <span className="text-slate-500 dark:text-gray-400">
+                                    - descuento {descuentoPct.toFixed(2)}%
+                                  </span>{' '}
+                                  ={' '}
+                                  <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                                    {fmtARS(precioFinalVenta)}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <RoleGate allow={['socio', 'administrativo']}>
-                    <div className="mt-2 flex items-center justify-between gap-2 text-[0.72rem]">
-                      <div className="text-slate-600 dark:text-gray-300/80">
-                        Costo:{' '}
-                        <span className="font-semibold text-slate-900 dark:text-gray-100">
-                          {nfARS.format(getCostoFinal(p))}
-                        </span>
-                        <span className="text-slate-500 ml-1 dark:text-gray-400/70">
-                          {p.iva_incluido ? '(c/IVA)' : '(+IVA)'}
-                        </span>
-                      </div>
-
+                    <div className="mt-2 flex items-center justify-end gap-2 text-[0.72rem]">
                       {(() => {
                         const m = getMargenCajaPct(p);
                         const cls =
@@ -1637,6 +1943,125 @@ const ProductosGet = () => {
                   </div>
                 </motion.div>
               ))}
+            </div>
+          </div>
+
+          {/* Info + paginación */}
+          <div className="mt-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+            <div className="text-slate-700 dark:text-white/80 text-xs sm:text-sm">
+              Total: <b>{total}</b> · Página <b>{currPage}</b> de{' '}
+              <b>{totalPages}</b>
+            </div>
+
+            <div className="-mx-2 sm:mx-0">
+              <div className="overflow-x-auto no-scrollbar px-2 sm:px-0">
+                <div className="inline-flex items-center whitespace-nowrap gap-2">
+                  <button
+                    className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                    onClick={() => setPage(1)}
+                    disabled={!hasPrev}
+                  >
+                    «
+                  </button>
+
+                  <button
+                    className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                    onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                    disabled={!hasPrev}
+                  >
+                    ‹
+                  </button>
+
+                  <div className="flex flex-wrap gap-2 max-w-[80vw]">
+                    {Array.from({ length: totalPages })
+                      .slice(
+                        Math.max(0, currPage - 3),
+                        Math.max(0, currPage - 3) + 6
+                      )
+                      .map((_, idx) => {
+                        const start = Math.max(1, currPage - 2);
+                        const num = start + idx;
+                        if (num > totalPages) return null;
+                        const active = num === currPage;
+
+                        return (
+                          <button
+                            key={num}
+                            onClick={() => setPage(num)}
+                            className={`px-3 py-2 rounded-lg border ring-1 transition ${
+                              active
+                                ? 'bg-rose-600 border-rose-400 text-white ring-rose-500/20'
+                                : 'bg-white/90 border-black/10 text-slate-800 ring-black/5 hover:bg-slate-50 dark:bg-white/10 dark:border-white/15 dark:text-white/75 dark:ring-white/15 dark:hover:bg-white/15'
+                            }`}
+                            aria-current={active ? 'page' : undefined}
+                          >
+                            {num}
+                          </button>
+                        );
+                      })}
+                  </div>
+
+                  <button
+                    className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                    onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                    disabled={!hasNext}
+                  >
+                    ›
+                  </button>
+
+                  <button
+                    className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/15 disabled:opacity-40 ring-1 ring-black/5 dark:ring-white/15"
+                    onClick={() => setPage(totalPages)}
+                    disabled={!hasNext}
+                  >
+                    »
+                  </button>
+
+                  {/* selector de límite */}
+                  <select
+                    value={limit}
+                    onChange={(e) => {
+                      setLimit(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="ml-3 px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                    aria-label="Items por página"
+                  >
+                    <option value={6}>6</option>
+                    <option value={12}>12</option>
+                    <option value={24}>24</option>
+                    <option value={48}>48</option>
+                  </select>
+
+                  {/* orden servidor opcional */}
+                  <select
+                    value={orderBy}
+                    onChange={(e) => {
+                      setOrderBy(e.target.value);
+                      setPage(1);
+                    }}
+                    className="ml-2 px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                  >
+                    <option value="id">ID</option>
+                    <option value="nombre">Nombre</option>
+                    <option value="codigo">Código</option>
+                    {/* <option value="created_at">Creación</option>
+              <option value="updated_at">Actualización</option> */}
+                  </select>
+
+                  <select
+                    value={orderDir}
+                    onChange={(e) => {
+                      setOrderDir(e.target.value);
+                      setPage(1);
+                    }}
+                    className="px-3 py-2 rounded-lg bg-white/90 dark:bg-white/10 border border-black/10 dark:border-white/15 text-slate-900 dark:text-white ring-1 ring-black/5 dark:ring-white/15 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                  >
+                    <option value="ASC">Ascendente</option>
+                    <option value="DESC">Descendente</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2079,11 +2504,12 @@ const ProductosGet = () => {
                         <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between gap-4">
                           <div className="min-w-0">
                             <h3 className="text-sm font-semibold text-slate-900">
-                              Precio de venta
+                              Precio de venta y descuento
                             </h3>
                             <p className="text-[12px] text-slate-500 mt-1">
-                              Precio base, descuento opcional y cálculo de
-                              precio final.
+                              Definí precio base y recargo de tarjeta. El
+                              descuento se aplica sobre el precio de venta
+                              (tarjeta), no sobre el precio base.
                             </p>
                           </div>
 
@@ -2110,9 +2536,10 @@ const ProductosGet = () => {
 
                         <div className="p-5">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Precio base */}
                             <div>
                               <label className="block text-[12px] font-medium text-slate-700 mb-1">
-                                Precio{' '}
+                                Precio base{' '}
                                 <span className="text-orange-600">*</span>
                               </label>
                               <input
@@ -2130,8 +2557,109 @@ const ProductosGet = () => {
                                 placeholder="0.00"
                                 required
                               />
+                              <div className="mt-1 text-[11px] text-slate-500">
+                                Precio base / lista antes de recargo de tarjeta.
+                              </div>
                             </div>
 
+                            {/* Recargo tarjeta */}
+                            <div>
+                              <label className="block text-[12px] font-medium text-slate-700 mb-1">
+                                Recargo tarjeta (%)
+                              </label>
+
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="-100"
+                                max="1000"
+                                value={formValues.recargo_tarjeta_pct ?? ''}
+                                onChange={(e) =>
+                                  setFormValues({
+                                    ...formValues,
+                                    recargo_tarjeta_pct: e.target.value
+                                  })
+                                }
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-300 transition"
+                                placeholder="Ej: 40"
+                              />
+
+                              {/* Benjamin Orellana - 23-02-2026 - Sugerencias rápidas de recargo para evitar un valor fijo rígido y mejorar UX. */}
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                {[0, 10, 15, 20, 30, 40, 50].map((pct) => {
+                                  const active =
+                                    Number(
+                                      formValues.recargo_tarjeta_pct || 0
+                                    ) === Number(pct);
+
+                                  return (
+                                    <button
+                                      key={pct}
+                                      type="button"
+                                      onClick={() =>
+                                        setFormValues((prev) => ({
+                                          ...prev,
+                                          recargo_tarjeta_pct: String(pct)
+                                        }))
+                                      }
+                                      className={[
+                                        'px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition',
+                                        active
+                                          ? 'bg-orange-50 text-orange-700 border-orange-200'
+                                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                                      ].join(' ')}
+                                      title={`Usar ${pct}%`}
+                                    >
+                                      {pct > 0 ? `+${pct}%` : '0%'}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Badge dinámico */}
+                              <div className="mt-2">
+                                <span
+                                  className={[
+                                    'inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-semibold',
+                                    (Number(formValues.recargo_tarjeta_pct) ||
+                                      0) < 0
+                                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                      : (Number(
+                                            formValues.recargo_tarjeta_pct
+                                          ) || 0) > 0
+                                        ? 'border-rose-200 bg-rose-50 text-rose-700'
+                                        : 'border-slate-200 bg-slate-50 text-slate-700'
+                                  ].join(' ')}
+                                >
+                                  <span
+                                    className={[
+                                      'h-1.5 w-1.5 rounded-full',
+                                      (Number(formValues.recargo_tarjeta_pct) ||
+                                        0) < 0
+                                        ? 'bg-emerald-500/80'
+                                        : (Number(
+                                              formValues.recargo_tarjeta_pct
+                                            ) || 0) > 0
+                                          ? 'bg-rose-500/80'
+                                          : 'bg-slate-400/80'
+                                    ].join(' ')}
+                                  />
+                                  Recargo tarjeta:{' '}
+                                  {(Number(formValues.recargo_tarjeta_pct) ||
+                                    0) > 0
+                                    ? '+'
+                                    : ''}
+                                  {Number(formValues.recargo_tarjeta_pct ?? 0)}%
+                                </span>
+                              </div>
+
+                              <div className="mt-1 text-[11px] text-slate-500">
+                                Se usa para calcular el precio de venta
+                                (tarjeta).
+                              </div>
+                            </div>
+
+                            {/* Descuento */}
                             <div>
                               <label className="block text-[12px] font-medium text-slate-700 mb-1">
                                 Descuento (%)
@@ -2160,33 +2688,118 @@ const ProductosGet = () => {
                                     : 'No aplica'
                                 }
                               />
+                              <div className="mt-1 text-[11px] text-slate-500">
+                                Se descuenta sobre precio tarjeta.
+                              </div>
                             </div>
 
+                            {/* Resumen visual consistente */}
                             <div className="md:col-span-2">
-                              <div className="rounded-2xl bg-gradient-to-r from-orange-50 via-white to-white border border-orange-200/60 p-4 flex items-center justify-between gap-4">
-                                <div className="min-w-0">
-                                  <div className="text-[11px] text-slate-500">
-                                    Precio final estimado
-                                  </div>
-                                  <div className="text-xl font-semibold text-slate-900 mt-1">
-                                    {formatARS(precioFinalPreview)}
-                                  </div>
-                                  <div className="text-[11px] text-slate-500 mt-1">
-                                    {formValues.permite_descuento
-                                      ? 'Con descuento aplicado'
-                                      : 'Sin descuentos'}
-                                  </div>
-                                </div>
+                              {(() => {
+                                // Benjamin Orellana - 23-02-2026 - Preview comercial consistente: base -> tarjeta -> descuento sobre tarjeta -> final.
+                                const base = Number(formValues.precio || 0);
+                                const recargoPct = Number(
+                                  formValues.recargo_tarjeta_pct || 0
+                                );
+                                const descPct = formValues.permite_descuento
+                                  ? Number(formValues.descuento_porcentaje || 0)
+                                  : 0;
 
-                                <div className="text-right">
-                                  <div className="text-[11px] text-slate-500">
-                                    Precio base
+                                const round2 = (n) =>
+                                  Math.round((Number(n) || 0) * 100) / 100;
+
+                                const precioTarjetaCalc = round2(
+                                  base * (1 + recargoPct / 100)
+                                );
+                                const descuentoMonto = round2(
+                                  precioTarjetaCalc * (descPct / 100)
+                                );
+                                const precioFinalCalc = round2(
+                                  precioTarjetaCalc - descuentoMonto
+                                );
+
+                                return (
+                                  <div className="rounded-2xl bg-gradient-to-r from-orange-50 via-white to-white border border-orange-200/60 p-4">
+                                    <div className="flex flex-col gap-4">
+                                      <div className="flex flex-wrap items-center justify-between gap-3">
+                                        <div className="min-w-0">
+                                          <div className="text-[11px] text-slate-500">
+                                            Precio final estimado (venta)
+                                          </div>
+                                          <div className="text-xl font-semibold text-slate-900 mt-1">
+                                            {formatARS(precioFinalCalc)}
+                                          </div>
+                                          <div className="text-[11px] text-slate-500 mt-1">
+                                            {formValues.permite_descuento
+                                              ? 'Descuento aplicado sobre precio tarjeta'
+                                              : 'Sin descuento (igual a precio tarjeta)'}
+                                          </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <span className="text-[11px] px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-700">
+                                            Base: {formatARS(base)}
+                                          </span>
+                                          <span className="text-[11px] px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-700">
+                                            Tarjeta:{' '}
+                                            {formatARS(precioTarjetaCalc)}
+                                          </span>
+                                          {formValues.permite_descuento &&
+                                          descPct > 0 ? (
+                                            <span className="text-[11px] px-2.5 py-1 rounded-full border border-rose-200 bg-rose-50 text-rose-700">
+                                              -{descPct}% (
+                                              {formatARS(descuentoMonto)})
+                                            </span>
+                                          ) : (
+                                            <span className="text-[11px] px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50 text-slate-600">
+                                              Sin descuento
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <div className="rounded-xl bg-white border border-slate-200 p-3">
+                                          <div className="text-[11px] text-slate-500">
+                                            Precio base
+                                          </div>
+                                          <div className="text-sm font-semibold text-slate-900 mt-1">
+                                            {formatARS(base)}
+                                          </div>
+                                        </div>
+
+                                        <div className="rounded-xl bg-white border border-slate-200 p-3">
+                                          <div className="text-[11px] text-slate-500">
+                                            Precio tarjeta
+                                          </div>
+                                          <div className="text-sm font-semibold text-slate-900 mt-1">
+                                            {formatARS(precioTarjetaCalc)}
+                                          </div>
+                                          <div className="text-[10px] text-slate-500 mt-1">
+                                            Base {recargoPct >= 0 ? '+' : ''}
+                                            {recargoPct}%
+                                          </div>
+                                        </div>
+
+                                        <div className="rounded-xl bg-white border border-slate-200 p-3">
+                                          <div className="text-[11px] text-slate-500">
+                                            Precio final venta
+                                          </div>
+                                          <div className="text-sm font-semibold text-slate-900 mt-1">
+                                            {formatARS(precioFinalCalc)}
+                                          </div>
+                                          <div className="text-[10px] text-slate-500 mt-1">
+                                            {formValues.permite_descuento &&
+                                            descPct > 0
+                                              ? `Tarjeta - ${descPct}%`
+                                              : 'Sin descuento'}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div className="text-sm font-semibold text-slate-700 mt-1">
-                                    {formatARS(Number(formValues.precio || 0))}
-                                  </div>
-                                </div>
-                              </div>
+                                );
+                              })()}
                             </div>
                           </div>
                         </div>
