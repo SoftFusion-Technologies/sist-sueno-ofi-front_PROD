@@ -43,7 +43,9 @@ export default function ModalMediosPago({
     icono: '',
     orden: 0,
     activo: 1,
-    ajuste_porcentual: 0
+    ajuste_porcentual: 0,
+    // Benjamin Orellana - 2026-03-10 - Se agrega el nuevo flag al estado del formulario para permitir configurar desde el front si el medio exige autorización POS.
+    requiere_autorizacion_pos: 0
   });
   const [loading, setLoading] = useState(false);
   const [mostrarModalCuotas, setMostrarModalCuotas] = useState(false);
@@ -72,7 +74,9 @@ export default function ModalMediosPago({
       icono: '',
       orden: 0,
       activo: 1,
-      ajuste_porcentual: 0
+      ajuste_porcentual: 0,
+      // Benjamin Orellana - 2026-03-10 - Resetea también el nuevo flag POS para evitar que una edición anterior contamine un alta nueva.
+      requiere_autorizacion_pos: 0
     });
 
   if (!show) return null;
@@ -87,16 +91,27 @@ export default function ModalMediosPago({
       return;
     }
 
+    // Benjamin Orellana - 2026-03-10 - Normaliza los campos numéricos del formulario, incluyendo el nuevo flag requiere_autorizacion_pos, antes de enviar al backend.
+    const payload = {
+      ...nuevo,
+      orden: Number.isFinite(Number(nuevo.orden)) ? Number(nuevo.orden) : 0,
+      activo: Number(nuevo.activo ? 1 : 0),
+      ajuste_porcentual: Number.isFinite(Number(nuevo.ajuste_porcentual))
+        ? Number(nuevo.ajuste_porcentual)
+        : 0,
+      requiere_autorizacion_pos: Number(nuevo.requiere_autorizacion_pos ? 1 : 0)
+    };
+
     setLoading(true);
     try {
       if (editando) {
         await axios.put(
           `https://api.rioromano.com.ar/medios-pago/${editando.id}`,
-          nuevo
+          payload
         );
 
         setMediosPago((prev) =>
-          prev.map((m) => (m.id === editando.id ? { ...m, ...nuevo } : m))
+          prev.map((m) => (m.id === editando.id ? { ...m, ...payload } : m))
         );
         setEditando(null);
 
@@ -107,7 +122,7 @@ export default function ModalMediosPago({
       } else {
         const res = await axios.post(
           'https://api.rioromano.com.ar/medios-pago',
-          nuevo
+          payload
         );
         setMediosPago((prev) => [...prev, res.data.medio]);
         setModoCrear(false);
@@ -219,7 +234,9 @@ export default function ModalMediosPago({
       icono: m.icono || '',
       orden: m.orden || 0,
       activo: m.activo ?? 1,
-      ajuste_porcentual: m.ajuste_porcentual || 0
+      ajuste_porcentual: m.ajuste_porcentual || 0,
+      // Benjamin Orellana - 2026-03-10 - Levanta el nuevo flag desde el registro seleccionado para que el CRUD permita editar la exigencia de autorización POS.
+      requiere_autorizacion_pos: Number(m.requiere_autorizacion_pos || 0)
     });
   };
 
@@ -324,7 +341,7 @@ export default function ModalMediosPago({
               <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-400/80 mb-1">
                 Configuración · Ventas
               </p>
-              <h2 className="text-xl sm:text-2xl font-semibold text-zinc-50 tracking-tight">
+              <h2 className="titulo uppercase text-xl sm:text-2xl font-semibold text-zinc-50 tracking-tight">
                 Gestionar medios de pago
               </h2>
             </div>
@@ -426,8 +443,9 @@ export default function ModalMediosPago({
                             {m.descripcion}
                           </p>
                         )}
-                        <div className="mt-1 flex items-center gap-3 text-[11px] text-zinc-500">
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
                           <span className="font-mono">Ord: {m.orden ?? 0}</span>
+
                           <span
                             className={`font-mono ${
                               m.ajuste_porcentual < 0
@@ -440,6 +458,14 @@ export default function ModalMediosPago({
                             {m.ajuste_porcentual > 0 && '+'}
                             {m.ajuste_porcentual}%
                           </span>
+
+                          {(m.requiere_autorizacion_pos === 1 ||
+                            m.requiere_autorizacion_pos === true) && (
+                            <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                              {/* Benjamin Orellana - 2026-03-10 - Badge visual en el listado para identificar rápidamente qué medios exigen autorización POS al cerrar la venta. */}
+                              Requiere Número de Autorización
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -515,7 +541,7 @@ export default function ModalMediosPago({
                     </div>
 
                     {/* Icono / Ajuste / Orden / Activo */}
-                    <div className="flex flex-col md:flex-row gap-3">
+                    <div className="flex flex-col xl:flex-row gap-3">
                       {/* ICONO + PREVIEW + SUGERENCIA */}
                       <div className="flex-1 flex flex-col gap-2">
                         <div className="flex gap-2 items-center">
@@ -550,66 +576,72 @@ export default function ModalMediosPago({
                         )}
                       </div>
 
-                      {/* ICONO / AJUSTE / ORDEN / ACTIVO */}
-                      <div className="flex flex-col md:flex-row gap-3">
-                        {/* ICONO + PREVIEW + SUGERENCIA */}
-                        <div className="flex-1 flex flex-col gap-2">
-                          <div className="flex gap-2 items-center">
-                            <input
-                              type="text"
-                              className="flex-1 rounded-2xl px-4 py-2.5 text-sm bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
-                              placeholder="Icono (ej: FaMoneyBillAlt)"
-                              value={nuevo.icono}
-                              onChange={(e) =>
-                                setNuevo({ ...nuevo, icono: e.target.value })
-                              }
-                            />
-                            {iconoElegido && (
-                              <span className="h-9 w-9 flex items-center justify-center rounded-2xl bg-zinc-900 border border-zinc-700 text-xl text-emerald-400">
-                                {dynamicIcon(iconoElegido)}
-                              </span>
-                            )}
-                          </div>
-
-                          {!nuevo.icono && sugerido && (
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-2 w-fit px-3 py-1.5 rounded-xl border border-emerald-500/60 bg-emerald-500/10 text-emerald-300 text-xs font-semibold hover:bg-emerald-500/20 transition"
-                              onClick={() =>
-                                setNuevo({ ...nuevo, icono: sugerido })
-                              }
-                            >
-                              {dynamicIcon(sugerido, {
-                                className: 'text-base'
-                              })}
-                              <span>Usar ícono sugerido</span>
-                            </button>
+                      {/* TOGGLES */}
+                      <div className="w-full xl:w-[320px] grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-2">
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-start gap-2 rounded-2xl px-3 py-3 text-sm border border-zinc-700 bg-zinc-900/80 text-zinc-200 hover:border-emerald-500/60 hover:bg-zinc-900 transition"
+                          title={nuevo.activo ? 'Activo' : 'Inactivo'}
+                          onClick={() =>
+                            setNuevo({
+                              ...nuevo,
+                              activo: nuevo.activo ? 0 : 1
+                            })
+                          }
+                        >
+                          {nuevo.activo ? (
+                            <FaToggleOn className="text-emerald-400 text-xl" />
+                          ) : (
+                            <FaToggleOff className="text-zinc-500 text-xl" />
                           )}
-                        </div>
-
-                        {/* ORDEN / AJUSTE / ACTIVO */}
-                        <div className="flex flex-col gap-2 w-full md:w-[40%]">
-                          <button
-                            type="button"
-                            className="inline-flex items-center justify-start gap-2 rounded-2xl px-3 py-2 text-sm border border-zinc-700 bg-zinc-900/80 text-zinc-200 hover:border-emerald-500/60 hover:bg-zinc-900 transition"
-                            title={nuevo.activo ? 'Activo' : 'Inactivo'}
-                            onClick={() =>
-                              setNuevo({
-                                ...nuevo,
-                                activo: nuevo.activo ? 0 : 1
-                              })
-                            }
-                          >
-                            {nuevo.activo ? (
-                              <FaToggleOn className="text-emerald-400 text-xl" />
-                            ) : (
-                              <FaToggleOff className="text-zinc-500 text-xl" />
-                            )}
+                          <div className="flex flex-col items-start">
                             <span className="text-xs uppercase tracking-[0.14em]">
                               {nuevo.activo ? 'Activo' : 'Inactivo'}
                             </span>
-                          </button>
-                        </div>
+                            <span className="text-[11px] text-zinc-500 normal-case tracking-normal">
+                              Estado general del medio
+                            </span>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          className={`inline-flex items-center justify-start gap-2 rounded-2xl px-3 py-3 text-sm border transition ${
+                            nuevo.requiere_autorizacion_pos
+                              ? 'border-amber-500/60 bg-amber-500/10 text-amber-200'
+                              : 'border-zinc-700 bg-zinc-900/80 text-zinc-200 hover:border-amber-500/40 hover:bg-zinc-900'
+                          }`}
+                          title={
+                            nuevo.requiere_autorizacion_pos
+                              ? 'Requiere autorización'
+                              : 'No requiere autorización'
+                          }
+                          onClick={() =>
+                            setNuevo({
+                              ...nuevo,
+                              // Benjamin Orellana - 2026-03-10 - Toggle del nuevo flag para marcar desde el CRUD si el medio obliga a capturar número de autorización POS/Posnet.
+                              requiere_autorizacion_pos:
+                                nuevo.requiere_autorizacion_pos ? 0 : 1
+                            })
+                          }
+                        >
+                          {nuevo.requiere_autorizacion_pos ? (
+                            <FaToggleOn className="text-amber-300 text-xl" />
+                          ) : (
+                            <FaToggleOff className="text-zinc-500 text-xl" />
+                          )}
+
+                          <div className="flex flex-col items-start min-w-0">
+                            <span className="text-xs uppercase tracking-[0.14em]">
+                              Autorización
+                            </span>
+                            <span className="text-[11px] normal-case tracking-normal text-zinc-400">
+                              {nuevo.requiere_autorizacion_pos
+                                ? 'Se pedirá número de autorización al finalizar'
+                                : 'No exige captura de autorización'}
+                            </span>
+                          </div>
+                        </button>
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -98,6 +98,7 @@ import AdminCajaRecibos from './Pages/Caja/AdminCajaRecibos';
 
 import StockMovimientosPage from './Pages/StockMovimientos/StockMovimientosPage';
 
+import VentasAutorizacionesPOSGet from './Pages/Ventas/VentasAutorizacionesPOSGet';
 // -------------------------
 // MÓDULO ARCA  - 08-12-2025 Benjamin Orellana
 // -------------------------
@@ -260,6 +261,14 @@ function AppContent() {
               <ProtectedRoute>
                 {' '}
                 <PuntoVenta />{' '}
+              </ProtectedRoute>
+            }
+          />
+          <Ruta
+            path="/dashboard/ventas/autorizaciones-pos"
+            element={
+              <ProtectedRoute>
+                <VentasAutorizacionesPOSGet />
               </ProtectedRoute>
             }
           />

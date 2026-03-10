@@ -10,18 +10,11 @@ function TotalConOpciones({
   mediosPago = [],
   setMedioPago,
   medioPago,
-  redondeoStep = 1000,
   userLevel // se agrega para ocultar el precio al vendedor Benjamin Orellana - 29-01-2026
 }) {
   const parsePct = (v) => {
     const n = parseFloat(String(v ?? '0').replace(',', '.'));
     return Number.isFinite(n) ? n : 0;
-  };
-
-  const roundToStep = (value, step = 1000) => {
-    const v = Number(value) || 0;
-    const s = Number(step) || 1;
-    return Math.floor(v / s) * s;
   };
 
   const previews = Array.isArray(totalCalculado?.previews)
@@ -41,178 +34,92 @@ function TotalConOpciones({
     return n.includes('efectivo') || n.includes('contado');
   };
 
+  const usaPrecioTarjeta = Boolean(totalCalculado?.carrito_usa_precio_tarjeta);
+
+  // Benjamin Orellana - 2026-03-09 - Enriquecemos previews con ajuste original/aplicado para poder mostrar correctamente cuándo el recargo del medio ya está absorbido en precio_tarjeta del producto.
+  const previewItems = previews.map((p) => {
+    const pctOriginal = parsePct(
+      p?.ajuste_porcentual_original ?? p?.ajuste_porcentual
+    );
+    const pctAplicado = parsePct(
+      p?.ajuste_porcentual_aplicado ?? p?.ajuste_porcentual
+    );
+    const recargoIncluido =
+      usaPrecioTarjeta && pctOriginal > 0 && pctAplicado === 0;
+
+    let sub = 'Sin recargo';
+    if (pctAplicado > 0) sub = `+${pctAplicado}% por método`;
+    else if (pctAplicado < 0) sub = `${Math.abs(pctAplicado)}% de descuento`;
+    else if (recargoIncluido) sub = 'Recargo ya incluido en producto';
+
+    return {
+      ...p,
+      pctOriginal,
+      pctAplicado,
+      recargoIncluido,
+      total: Number(p?.total ?? 0) || 0,
+      sub
+    };
+  });
+
   // 1) Sugerencias:
-  // - Normal: 2 tarjetas (mayor % y menor %)
-  // - Combo: 2 opciones claras: Tarjeta (precio fijo combo) + Efectivo (con ajuste del medio)
-  // IMPORTANTE: en combo NO hay fallback front, para evitar que reaparezca +40/+20.
+  // - Combo: mostramos una referencia de tarjeta/base y una opción con descuento si existe.
+  // - Normal: mostramos precio lista/tarjeta y una opción de descuento real si existe.
+  // IMPORTANTE: ahora se confía en previews del backend para evitar duplicar recargos en front.
   const suggestions = (() => {
-    // =========================
-    // MODO COMBO (solo previews)
-    // =========================
-    if (isComboMode) {
-      if (!previews.length) return [];
+    if (!previewItems.length) return [];
 
-      // preferimos: 1 efectivo + 1 tarjeta (no efectivo)
-      const prevEfectivo = previews.find((p) => isEfectivoLikeName(p?.nombre));
-      const prevTarjeta = previews.find((p) => !isEfectivoLikeName(p?.nombre));
+    const efectivosODescuento = previewItems
+      .filter((p) => isEfectivoLikeName(p?.nombre) || p.pctAplicado < 0)
+      .sort((a, b) => a.total - b.total || a.pctAplicado - b.pctAplicado);
 
-      const items = [];
+    const tarjetasONeutros = previewItems
+      .filter((p) => !isEfectivoLikeName(p?.nombre))
+      .sort((a, b) => b.total - a.total || b.pctOriginal - a.pctOriginal);
 
-      if (prevTarjeta) {
-        items.push({
-          key: 'tarjeta',
-          label: `${prevTarjeta.nombre || 'Tarjeta'} (Precio fijo combo)`,
-          medioId: prevTarjeta.medio_pago_id,
-          pct: parsePct(prevTarjeta?.ajuste_porcentual), // debería ser 0 en tarjeta cuando comboMode pisa recargos
-          total: Number(prevTarjeta.total ?? 0) || 0,
-          tag: 'combo'
-        });
-      }
+    const tarjetaRef =
+      tarjetasONeutros[0] ||
+      [...previewItems].sort((a, b) => b.total - a.total)[0] ||
+      null;
 
-      if (
-        prevEfectivo &&
-        prevEfectivo.medio_pago_id !== prevTarjeta?.medio_pago_id
-      ) {
-        items.push({
-          key: 'efectivo',
-          label: `${prevEfectivo.nombre || 'Efectivo'} (Con ajuste del medio)`,
-          medioId: prevEfectivo.medio_pago_id,
-          pct: parsePct(prevEfectivo?.ajuste_porcentual), // acá debería venir -10 si efectivo tiene descuento
-          total: Number(prevEfectivo.total ?? 0) || 0,
-          tag: 'combo'
-        });
-      }
+    const descuentoRef =
+      efectivosODescuento.find(
+        (p) => p.medio_pago_id !== tarjetaRef?.medio_pago_id
+      ) ||
+      [...previewItems]
+        .sort((a, b) => a.total - b.total)
+        .find((p) => p.medio_pago_id !== tarjetaRef?.medio_pago_id) ||
+      null;
 
-      // Fallback interno SOLO con previews: elegimos 2 extremos (menor y mayor total)
-      if (items.length === 0) {
-        const sorted = [...previews].sort(
-          (a, b) => Number(a?.total || 0) - Number(b?.total || 0)
-        );
-        const min = sorted[0];
-        const max = sorted[sorted.length - 1];
-
-        if (min) {
-          items.push({
-            key: 'min',
-            label: `${min.nombre || 'Opción'} (Menor total)`,
-            medioId: min.medio_pago_id,
-            pct: parsePct(min?.ajuste_porcentual),
-            total: Number(min.total ?? 0) || 0,
-            tag: 'combo'
-          });
-        }
-
-        if (max && max.medio_pago_id !== min?.medio_pago_id) {
-          items.push({
-            key: 'max',
-            label: `${max.nombre || 'Opción'} (Mayor total)`,
-            medioId: max.medio_pago_id,
-            pct: parsePct(max?.ajuste_porcentual),
-            total: Number(max.total ?? 0) || 0,
-            tag: 'combo'
-          });
-        }
-      }
-
-      return items.slice(0, 2);
-    }
-
-    // =========================
-    // MODO NORMAL (tu lógica)
-    // =========================
-    const previewPositivos = previews
-      .map((p) => ({
-        ...p,
-        _pct: parsePct(p?.ajuste_porcentual)
-      }))
-      .filter((p) => p._pct > 0);
-
-    let topPreview = null;
-    let lowPreview = null;
-
-    if (previewPositivos.length > 0) {
-      topPreview = previewPositivos.reduce(
-        (acc, p) => (!acc || p._pct > acc._pct ? p : acc),
-        null
-      );
-
-      lowPreview = previewPositivos.reduce(
-        (acc, p) => (!acc || p._pct < acc._pct ? p : acc),
-        null
-      );
-    }
-
-    const activos = Array.isArray(mediosPago)
-      ? mediosPago.filter((m) => Number(m?.activo) === 1)
-      : [];
-
-    const positivosFront = activos
-      .map((m) => ({ ...m, _pct: parsePct(m?.ajuste_porcentual) }))
-      .filter((m) => m._pct > 0)
-      .sort(
-        (a, b) => b._pct - a._pct || (a?.orden ?? 9999) - (b?.orden ?? 9999)
-      );
-
-    const topFront = positivosFront[0] || null;
-    const lowFront = positivosFront.length
-      ? positivosFront[positivosFront.length - 1]
-      : null;
-
-    const precioBase = Number(totalCalculado?.precio_base ?? 0) || 0;
-
-    const baseConDescuento = aplicarDescuento
-      ? precioBase * (1 - Number(descuentoPersonalizado || 0) / 100)
-      : precioBase;
-
-    // Preferimos previews del backend
-    if (topPreview && lowPreview) {
-      const items = [];
-
-      items.push({
-        key: 'top',
-        label: `${topPreview.nombre || 'Tarjeta'} (Mayor %)`,
-        medioId: topPreview.medio_pago_id,
-        pct: topPreview._pct,
-        total: Number(topPreview.total ?? 0) || 0
-      });
-
-      if (lowPreview.medio_pago_id !== topPreview.medio_pago_id) {
-        items.push({
-          key: 'low',
-          label: `${lowPreview.nombre || 'Tarjeta'} (Menor %)`,
-          medioId: lowPreview.medio_pago_id,
-          pct: lowPreview._pct,
-          total: Number(lowPreview.total ?? 0) || 0
-        });
-      }
-
-      return items;
-    }
-
-    // Fallback front (solo modo normal)
     const items = [];
 
-    if (topFront) {
+    if (tarjetaRef) {
       items.push({
-        key: 'top',
-        label: `${topFront.nombre?.trim() || 'Tarjeta'} (Mayor %)`,
-        medioId: topFront.id,
-        pct: topFront._pct,
-        total: baseConDescuento * (1 + topFront._pct / 100)
+        key: `tarjeta-${tarjetaRef.medio_pago_id}`,
+        label: isComboMode
+          ? `${tarjetaRef.nombre || 'Tarjeta'} (Precio base)`
+          : `${tarjetaRef.nombre || 'Tarjeta'}`,
+        medioId: tarjetaRef.medio_pago_id,
+        pct: tarjetaRef.pctAplicado,
+        total: tarjetaRef.total,
+        sub: tarjetaRef.sub
       });
     }
 
-    if (lowFront && (!topFront || lowFront.id !== topFront.id)) {
+    if (descuentoRef) {
       items.push({
-        key: 'low',
-        label: `${lowFront.nombre?.trim() || 'Tarjeta'} (Menor %)`,
-        medioId: lowFront.id,
-        pct: lowFront._pct,
-        total: baseConDescuento * (1 + lowFront._pct / 100)
+        key: `descuento-${descuentoRef.medio_pago_id}`,
+        label: isComboMode
+          ? `${descuentoRef.nombre || 'Efectivo'} (Con descuento)`
+          : `${descuentoRef.nombre || 'Efectivo'}`,
+        medioId: descuentoRef.medio_pago_id,
+        pct: descuentoRef.pctAplicado,
+        total: descuentoRef.total,
+        sub: descuentoRef.sub
       });
     }
 
-    return items;
+    return items.slice(0, 2);
   })();
 
   const precioBase = Number(totalCalculado?.precio_base ?? 0) || 0;
@@ -220,12 +127,20 @@ function TotalConOpciones({
     Number(totalCalculado?.precio_contado ?? 0) || precioBase;
   const totalFinal = Number(totalCalculado?.total ?? 0) || 0;
 
-  const pctLabel = (pct) => {
-    const p = Number(pct ?? 0) || 0;
-    if (p > 0) return `+${p}% por método`;
-    if (p < 0) return `${Math.abs(p)}% de descuento`;
-    return 'Sin recargo';
-  };
+  const ajusteAplicado = parsePct(
+    totalCalculado?.ajuste_porcentual_aplicado ??
+      totalCalculado?.ajuste_porcentual ??
+      0
+  );
+
+  const ajusteOriginal = parsePct(
+    totalCalculado?.ajuste_porcentual_original ??
+      totalCalculado?.ajuste_porcentual ??
+      0
+  );
+
+  const recargoMedioIncluido =
+    usaPrecioTarjeta && ajusteOriginal > 0 && ajusteAplicado === 0;
 
   return (
     <>
@@ -283,19 +198,17 @@ function TotalConOpciones({
               Sugerencias vendedor
             </div>
             <div className="text-[11px] text-slate-500 dark:text-white/60">
-              Redondeo:{' '}
-              {formatearPrecio(
-                totalCalculado?.redondeo_step_aplicado || redondeoStep
-              )}
+              {totalCalculado?.redondeo_step_aplicado
+                ? `Redondeo: ${formatearPrecio(
+                    totalCalculado.redondeo_step_aplicado
+                  )}`
+                : 'Sin redondeo automático'}
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {suggestions.map((s) => {
-              const totalShow = previews.length
-                ? Number(s.total || 0)
-                : roundToStep(s.total, redondeoStep);
-
+              const totalShow = Number(s.total || 0) || 0;
               const selected = medioPago === s.medioId;
 
               return (
@@ -320,15 +233,9 @@ function TotalConOpciones({
                   </div>
 
                   <div className="mt-0.5 text-[11px] text-slate-500 dark:text-white/60">
-                    {typeof s.sub === 'string'
-                      ? s.sub
-                      : s.pct > 0
-                        ? `+${s.pct}% por método`
-                        : s.pct < 0
-                          ? `${Math.abs(s.pct)}% de descuento`
-                          : 'Sin recargo'}
+                    {s.sub}
                     {!isComboMode && aplicarDescuento
-                      ? ' · desc. sobre contado'
+                      ? ' · desc. manual aplicado'
                       : ''}
                   </div>
                 </button>
@@ -351,8 +258,8 @@ function TotalConOpciones({
             {userLevel !== 'vendedor' && (
               <div className="text-right">
                 <div className="text-[12px] text-slate-500 dark:text-white/60">
-                  Precio cargado en Prod.
-                  {aplicarDescuento ? ' (con desc.)' : ''}
+                  Precio base venta
+                  {aplicarDescuento ? ' (con desc. manual)' : ''}
                 </div>
                 <div className="text-[14px] font-semibold text-slate-800 dark:text-white/85">
                   {formatearPrecio(precioContado || precioBase)}
@@ -367,7 +274,7 @@ function TotalConOpciones({
               <div
                 className={[
                   'text-[22px] font-black',
-                  Number(totalCalculado?.ajuste_porcentual ?? 0) < 0
+                  ajusteAplicado < 0
                     ? 'text-emerald-700 dark:text-emerald-300'
                     : 'text-orange-700 dark:text-orange-300'
                 ].join(' ')}
@@ -388,22 +295,29 @@ function TotalConOpciones({
             </div>
           )}
 
-          {(Number(totalCalculado?.ajuste_porcentual ?? 0) !== 0 ||
-            Number(totalCalculado?.porcentaje_recargo_cuotas ?? 0) !== 0) && (
+          {(ajusteAplicado !== 0 ||
+            Number(totalCalculado?.porcentaje_recargo_cuotas ?? 0) !== 0 ||
+            recargoMedioIncluido) && (
             <div
               className={[
                 'text-xs font-medium italic',
-                Number(totalCalculado?.ajuste_porcentual ?? 0) < 0
+                ajusteAplicado < 0
                   ? 'text-emerald-700 dark:text-emerald-300'
                   : 'text-orange-700 dark:text-orange-300'
               ].join(' ')}
             >
-              {Number(totalCalculado?.ajuste_porcentual ?? 0) > 0 &&
-                `+${totalCalculado.ajuste_porcentual}% por método de pago`}
-              {Number(totalCalculado?.ajuste_porcentual ?? 0) < 0 &&
-                `${Math.abs(totalCalculado.ajuste_porcentual)}% de descuento`}
+              {recargoMedioIncluido &&
+                'Recargo del medio ya incluido en el precio del producto'}
+              {!recargoMedioIncluido &&
+                ajusteAplicado > 0 &&
+                `+${ajusteAplicado}% por método de pago`}
+              {!recargoMedioIncluido &&
+                ajusteAplicado < 0 &&
+                `${Math.abs(ajusteAplicado)}% de descuento`}
               {Number(totalCalculado?.porcentaje_recargo_cuotas ?? 0) > 0 &&
-                ` + ${totalCalculado.porcentaje_recargo_cuotas}% por ${totalCalculado.cuotas} cuota${
+                `${recargoMedioIncluido || ajusteAplicado !== 0 ? ' + ' : ''}${
+                  totalCalculado.porcentaje_recargo_cuotas
+                }% por ${totalCalculado.cuotas} cuota${
                   totalCalculado.cuotas > 1 ? 's' : ''
                 }`}
             </div>

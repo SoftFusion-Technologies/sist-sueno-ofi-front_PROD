@@ -36,6 +36,10 @@ import ModalConsultarStock from '../../Components/Productos/ModalConsultarStock'
 // Se adiciona componente para vista previa de factura A4
 import FacturaA4Modal from '../../Components/Ventas/FacturaA4Modal';
 import NavbarStaff from '../Dash/NavbarStaff';
+
+// Benjamin Orellana - 10-03-2026 - Modal obligatorio para capturar número de autorización POS antes de registrar ventas con medios que lo exigen.
+import ModalAutorizacionPOS from './Components/ModalAutorizacionPOS';
+
 const toast = Swal.mixin({
   toast: true,
   position: 'top-end',
@@ -127,6 +131,14 @@ export default function PuntoVenta() {
 
   const finalizarVentaLockRef = useRef(false);
   const [finalizandoVenta, setFinalizandoVenta] = useState(false);
+
+  // Benjamin Orellana - 10-03-2026 - Estados para flujo obligatorio de autorización POS cuando el medio de pago lo requiere.
+  const [modalAutorizacionPOSOpen, setModalAutorizacionPOSOpen] =
+    useState(false);
+  const [nroAutorizacionPOS, setNroAutorizacionPOS] = useState('');
+  const [observacionesAutorizacionPOS, setObservacionesAutorizacionPOS] =
+    useState('');
+
   // =========================
   // ARCA: Comprobante solicitado (F10 / F11) - FRONT ONLY
   // =========================
@@ -778,6 +790,53 @@ export default function PuntoVenta() {
   //   descuento_porcentaje, cantidad_disponible, codigo_sku, categoria_id
   // }
 
+  // Benjamin Orellana - 2026-03-09 - Calcula el precio tarjeta real priorizando el valor persistido y, si falta, lo recompone desde el precio base interno para no contaminarse con item.precio ya transformado por UI.
+  const getPrecioTarjetaReal = (item) => {
+    const precioTarjetaDirecto =
+      Number(item?.precio_tarjeta ?? item?.producto?.precio_tarjeta ?? 0) || 0;
+    if (precioTarjetaDirecto > 0) return precioTarjetaDirecto;
+
+    const precioBaseInterno =
+      Number(
+        item?.precio_base_interno ??
+          item?.producto?.precio_base_interno ??
+          item?.precio_original ??
+          item?.producto?.precio_original ??
+          item?.precio ??
+          item?.producto?.precio ??
+          0
+      ) || 0;
+
+    const recargoPct =
+      Number(
+        item?.recargo_tarjeta_pct ?? item?.producto?.recargo_tarjeta_pct ?? 0
+      ) || 0;
+
+    if (precioBaseInterno > 0 && recargoPct !== 0) {
+      return parseFloat(
+        (precioBaseInterno * (1 + recargoPct / 100)).toFixed(2)
+      );
+    }
+
+    return precioBaseInterno > 0 ? precioBaseInterno : 0;
+  };
+
+  // Benjamin Orellana - 2026-03-09 - Obtiene el precio comercial visible del producto para catálogo y carrito.
+  const getPrecioVentaBaseProducto = (producto) => {
+    const precioTarjeta = getPrecioTarjetaReal(producto);
+    if (precioTarjeta > 0) return precioTarjeta;
+
+    return Number(producto?.precio ?? 0) || 0;
+  };
+
+  // Benjamin Orellana - 2026-03-09 - Obtiene el precio comercial visible del item del carrito priorizando el precio tarjeta real.
+  const getPrecioVentaBaseItem = (item) => {
+    const precioTarjeta = getPrecioTarjetaReal(item);
+    if (precioTarjeta > 0) return precioTarjeta;
+
+    return Number(item?.precio ?? 0) || 0;
+  };
+
   // agregarAlCarrito(item, usarDesc = true, cantidad = 1)
   const agregarAlCarrito = (item, usarDesc = true, cantidad = 1) => {
     const stockId = item?.stock_id;
@@ -802,22 +861,40 @@ export default function PuntoVenta() {
     // Precio proporcional del combo (unitario)
     const precioComboUnit = toNum(item?.precio, 0);
 
-    // Coerción y fallbacks de precios (modo normal)
-    const precioBase = toNum(item?.precio, 0);
-    const precioDesc = toNum(item?.precio_con_descuento, precioBase);
+    // Benjamin Orellana - 2026-03-09 - En ítems normales se toma como base comercial el precio tarjeta real; si no viene persistido, se recompone desde precio + recargo_tarjeta_pct.
+    const precioBaseInterno = toNum(item?.precio, 0);
+    const recargoTarjetaPct = toNum(item?.recargo_tarjeta_pct, 0);
+    const precioTarjetaPersistido = toNum(item?.precio_tarjeta, 0);
+    const precioTarjetaCalculado =
+      precioTarjetaPersistido > 0
+        ? precioTarjetaPersistido
+        : parseFloat(
+            (precioBaseInterno * (1 + recargoTarjetaPct / 100)).toFixed(2)
+          );
 
-    // % descuento solo si NO es combo
-    const descPct =
-      !isComboItem && usarDesc ? toNum(item?.descuento_porcentaje, 0) : 0;
+    const precioBaseVentaNormal =
+      precioTarjetaCalculado > 0 ? precioTarjetaCalculado : precioBaseInterno;
+
+    // Benjamin Orellana - 2026-03-09 - El descuento del producto se conserva como metadata y referencia de contado sugerido, pero ya no define el precio unitario del carrito.
+    const descuentoProductoPct = !isComboItem
+      ? toNum(item?.descuento_porcentaje, 0)
+      : 0;
+
+    const descPct = !isComboItem && usarDesc ? descuentoProductoPct : 0;
+
+    const precioContadoSugerido = !isComboItem
+      ? parseFloat(
+          (
+            precioBaseVentaNormal *
+            (1 - toNum(descuentoProductoPct, 0) / 100)
+          ).toFixed(2)
+        )
+      : precioLista;
 
     // Precio unitario efectivo:
     // - Combo: SIEMPRE el proporcional (precioComboUnit)
-    // - Normal: según usarDesc
-    const precioUnit = isComboItem
-      ? precioComboUnit
-      : usarDesc
-        ? precioDesc
-        : precioBase;
+    // - Normal: SIEMPRE el precio comercial base (precio tarjeta)
+    const precioUnit = isComboItem ? precioComboUnit : precioBaseVentaNormal;
 
     setCarrito((prev) => {
       const idx = prev.findIndex((i) => i.stock_id === stockId);
@@ -835,14 +912,48 @@ export default function PuntoVenta() {
         if (nuevaCant === linea.cantidad) return prev; // ya está al tope
 
         // Benjamin Orellana - 2026-02-02 - No perder precio_lista / flags de combo al incrementar.
+        // Benjamin Orellana - 2026-03-09 - Corrige snapshots de precios normales para mantener el carrito alineado con precio tarjeta.
         const nuevaLinea = {
           ...linea,
           cantidad: nuevaCant,
-          // preservo siempre el precio real/lista si existe
           precio_lista: toNum(linea?.precio_lista, 0) || precioLista,
-          // preservo flags combo si ya estaban
           is_combo_item: !!linea?.is_combo_item || isComboItem,
-          combo_id: linea?.combo_id ?? item?.combo_id ?? null
+          combo_id: linea?.combo_id ?? item?.combo_id ?? null,
+
+          precio: isComboItem
+            ? toNum(linea?.precio, 0) || precioComboUnit
+            : precioBaseVentaNormal,
+
+          precio_tarjeta: isComboItem
+            ? toNum(linea?.precio_tarjeta, 0)
+            : precioTarjetaCalculado,
+
+          precio_base_interno: isComboItem
+            ? toNum(linea?.precio_base_interno, 0)
+            : precioBaseInterno,
+
+          precio_con_descuento: !isComboItem
+            ? precioContadoSugerido
+            : toNum(linea?.precio_con_descuento, 0) || precioLista,
+
+          descuento_porcentaje: isComboItem
+            ? toNum(linea?.descuento_porcentaje, 0)
+            : descPct,
+          descuentoPorcentaje: isComboItem
+            ? toNum(linea?.descuentoPorcentaje, 0)
+            : descPct,
+
+          descuento_porcentaje_producto: isComboItem
+            ? toNum(linea?.descuento_porcentaje_producto, 0)
+            : descuentoProductoPct,
+
+          usar_descuento_producto: isComboItem
+            ? !!linea?.usar_descuento_producto
+            : !!usarDesc,
+
+          recargo_tarjeta_pct: isComboItem
+            ? toNum(linea?.recargo_tarjeta_pct, 0)
+            : recargoTarjetaPct
         };
 
         const copia = prev.slice();
@@ -863,19 +974,26 @@ export default function PuntoVenta() {
         precio_lista: precioLista,
         precio_original: precioLista,
 
-        // precio_con_descuento (solo aplica a ítems normales)
+        // Benjamin Orellana - 2026-03-09 - Snapshot explícito de precio tarjeta/base comercial y del precio interno original.
+        precio_tarjeta: !isComboItem ? precioTarjetaCalculado : 0,
+        precio_base_interno: !isComboItem ? precioBaseInterno : 0,
+        recargo_tarjeta_pct: !isComboItem ? recargoTarjetaPct : 0,
+
+        // precio_con_descuento queda como referencia de contado sugerido
         precio_con_descuento: !isComboItem
-          ? toNum(item?.precio_con_descuento, precioLista)
+          ? precioContadoSugerido
           : precioLista,
 
         // precio efectivo unitario:
         // - combo => proporcional
-        // - normal => (desc o no desc)
+        // - normal => precio tarjeta
         precio: precioUnit,
 
-        // compatibilidad: guardo ambos nombres (hay código que usa snake y otro camel)
         descuento_porcentaje: descPct,
         descuentoPorcentaje: descPct,
+
+        descuento_porcentaje_producto: descuentoProductoPct,
+        usar_descuento_producto: !!usarDesc,
 
         // flags combo
         is_combo_item: isComboItem,
@@ -891,9 +1009,7 @@ export default function PuntoVenta() {
       return [...prev, nuevaLinea];
     });
   };
-
-  // Manejo click para agregar producto (modal si tiene varios talles)
-  // handler sin talles
+  // Manejo click para agregar producto
   const manejarAgregarProducto = (itemStock, usarDesc = true, cantidad = 1) => {
     if (!itemStock?.stock_id) return; // requiere stock_id
     if (!itemStock?.cantidad_disponible) return; // sin stock, no agregues
@@ -908,19 +1024,44 @@ export default function PuntoVenta() {
 
         const aplicarDesc = usarDescuentoPorProducto[item.producto_id] ?? true;
 
-        const nuevoPrecio = aplicarDesc
-          ? (item.precio_con_descuento ?? item.precio_original)
-          : item.precio_original;
+        // Benjamin Orellana - 2026-03-09 - El toggle de descuento por producto deja de pisar el precio efectivo del carrito; solo actualiza metadata y el contado sugerido.
+        const precioTarjetaReal = getPrecioTarjetaReal(item);
+        const precioBaseInterno = toNum(
+          item?.precio_base_interno,
+          toNum(item?.precio_original, toNum(item?.precio, 0))
+        );
 
-        // Solo actualiza si el precio cambió para evitar renders innecesarios
-        if (item.precio !== nuevoPrecio) {
-          return {
-            ...item,
-            precio: nuevoPrecio
-          };
-        }
+        const descuentoProductoPct = toNum(
+          item?.descuento_porcentaje_producto,
+          toNum(item?.descuento_porcentaje, 0)
+        );
 
-        return item;
+        const precioContadoSugerido =
+          precioTarjetaReal > 0
+            ? parseFloat(
+                (
+                  precioTarjetaReal *
+                  (1 - toNum(descuentoProductoPct, 0) / 100)
+                ).toFixed(2)
+              )
+            : toNum(item?.precio_con_descuento, toNum(item?.precio, 0));
+
+        return {
+          ...item,
+
+          // El precio efectivo del carrito queda SIEMPRE en precio tarjeta/base comercial
+          precio: precioTarjetaReal,
+          precio_tarjeta: precioTarjetaReal,
+          precio_base_interno: precioBaseInterno,
+
+          // Esto queda como referencia sugerida, no como precio efectivo
+          precio_con_descuento: precioContadoSugerido,
+
+          // Metadata del toggle
+          descuento_porcentaje: aplicarDesc ? descuentoProductoPct : 0,
+          descuentoPorcentaje: aplicarDesc ? descuentoProductoPct : 0,
+          usar_descuento_producto: aplicarDesc
+        };
       })
     );
   }, [usarDescuentoPorProducto]);
@@ -1298,9 +1439,22 @@ export default function PuntoVenta() {
   function calcularTotalAjustado(precioBase, ajuste) {
     return parseFloat((precioBase * (1 + ajuste / 100)).toFixed(2));
   }
-  const medioSeleccionado = mediosPago.find((m) => m.id === medioPago);
+
+  const medioSeleccionado =
+    mediosPago.find((m) => Number(m.id) === Number(medioPago)) || null;
   const ajuste = medioSeleccionado?.ajuste_porcentual || 0;
 
+  // Benjamin Orellana - 10-03-2026 - Determina si el medio elegido exige número de autorización POS para habilitar el flujo obligatorio en el cierre de venta.
+  const requiereAutorizacionPOS =
+    Number(medioSeleccionado?.requiere_autorizacion_pos || 0) === 1;
+
+  useEffect(() => {
+    if (!requiereAutorizacionPOS) {
+      setModalAutorizacionPOSOpen(false);
+      setNroAutorizacionPOS('');
+      setObservacionesAutorizacionPOS('');
+    }
+  }, [requiereAutorizacionPOS, medioPago]);
   const totalBase = carrito.reduce(
     (acc, item) => acc + item.precio * item.cantidad,
     0
@@ -1311,23 +1465,6 @@ export default function PuntoVenta() {
   const [cuotasDisponibles, setCuotasDisponibles] = useState([]);
   const [cuotasSeleccionadas, setCuotasSeleccionadas] = useState(1);
   const [totalCalculado, setTotalCalculado] = useState(null);
-
-  // useEffect(() => {
-  //   if (!totalCalculado) return; //  Esto lo previene
-
-  //   let total = totalCalculado.precio_base;
-  //   let ajuste = 0;
-  //   if (aplicarDescuento && descuentoPersonalizado !== '') {
-  //     ajuste = parseFloat(descuentoPersonalizado);
-  //     if (!isNaN(ajuste) && ajuste > 0) {
-  //       total = total * (1 - ajuste / 100);
-  //     }
-  //   } else if (aplicarDescuento && totalCalculado.ajuste_porcentual < 0) {
-  //     ajuste = Math.abs(totalCalculado.ajuste_porcentual);
-  //     total = total * (1 - ajuste / 100);
-  //   }
-  //   // ...
-  // }, [totalCalculado, descuentoPersonalizado, aplicarDescuento]);
 
   useEffect(() => {
     if (!medioPago) return;
@@ -1350,14 +1487,44 @@ export default function PuntoVenta() {
   useEffect(() => {
     const calcularTotal = async () => {
       if (!medioPago || carrito.length === 0) return;
-      const precio_base = carrito.reduce(
-        (acc, item) => acc + item.precio * item.cantidad,
-        0
-      );
+
+      // Benjamin Orellana - 2026-03-09 - Normaliza el carrito priorizando precio_tarjeta para que el backend calcule desde el valor comercial exacto del producto y no desde un precio ya descontado.
+      const carritoNormalizado = carrito.map((item) => {
+        const precio = Number(item?.precio ?? item?.producto?.precio ?? 0) || 0;
+
+        // Benjamin Orellana - 2026-03-09 - Evita falsos positivos de precio_tarjeta; solo usa el valor real o lo recompone desde precio + recargo_tarjeta_pct.
+        const precioTarjeta = getPrecioTarjetaReal(item);
+
+        const precioLista =
+          Number(
+            item?.precio_lista ??
+              item?.producto?.precio_lista ??
+              item?.precio_original ??
+              item?.producto?.precio_original ??
+              0
+          ) || 0;
+
+        const precioOriginal =
+          Number(
+            item?.precio_original ??
+              item?.producto?.precio_original ??
+              precioLista ??
+              0
+          ) || precioLista;
+
+        return {
+          ...item,
+          cantidad: Number(item?.cantidad ?? 0) || 0,
+          precio,
+          precio_tarjeta: precioTarjeta,
+          precio_lista: precioLista,
+          precio_original: precioOriginal
+        };
+      });
 
       // Armar el payload con descuento personalizado si corresponde
       let payload = {
-        carrito,
+        carrito: carritoNormalizado,
         medio_pago_id: medioPago,
         cuotas: cuotasSeleccionadas
       };
@@ -1371,9 +1538,9 @@ export default function PuntoVenta() {
         payload.descuento_personalizado = Number(descuentoPersonalizado);
       }
 
-      // Benjamin Orellana - 2026-01-28 - Envia redondeo final (1000, floor) y solicita previews.
-      payload.redondeo_step = 1000;
-      payload.redondeo_mode = 'floor';
+      // Benjamin Orellana - 2026-03-09 - Se deja de enviar redondeo automático porque el total final ahora debe mostrarse exacto, sin truncar ni aproximar a múltiplos.
+      payload.redondeo_step = null;
+      payload.redondeo_mode = null;
 
       const parsePct = (v) => {
         const n = parseFloat(String(v ?? '0').replace(',', '.'));
@@ -1414,17 +1581,7 @@ export default function PuntoVenta() {
           (a, b) => b._pct - a._pct || (a?.orden ?? 9999) - (b?.orden ?? 9999)
         );
 
-      const contado =
-        activos.find((m) => parsePct(m?.ajuste_porcentual) === 0) ||
-        activos.find((m) => m?.id === 1) ||
-        null;
-
-      const top = positivos[0] || null;
-      const alt = top
-        ? positivos.find((m) => m._pct < top._pct) || positivos[1] || null
-        : positivos[0] || null;
-
-      // Benjamin Orellana - 2026-02-02 - En comboMode: pedimos previews de EFECTIVO + 1 TARJETA para evitar sugerencias infladas (+40/+20).
+      // Benjamin Orellana - 2026-03-09 - Se prioriza preview de efectivo/descuento y una o dos tarjetas para que las sugerencias del backend reflejen correctamente precio_tarjeta y descuentos reales.
       const isEfectivoLike = (m) => {
         const n = String(m?.nombre || '').toLowerCase();
         return n.includes('efectivo') || n.includes('contado');
@@ -1435,17 +1592,24 @@ export default function PuntoVenta() {
         activos.find((m) => m?.id === 1) ||
         null;
 
-      if (hasCombo) {
-        const tarjetaRef = top || alt || positivos[0] || null;
+      const tarjetaRef =
+        positivos[0] || activos.find((m) => !isEfectivoLike(m)) || null;
 
+      const alt = activos
+        .filter((m) => !isEfectivoLike(m) && m?.id !== tarjetaRef?.id)
+        .map((m) => ({ ...m, _pct: parsePct(m?.ajuste_porcentual) }))
+        .sort(
+          (a, b) => b._pct - a._pct || (a?.orden ?? 9999) - (b?.orden ?? 9999)
+        )[0];
+
+      if (hasCombo) {
         payload.preview_medios_pago_ids = [efectivo?.id, tarjetaRef?.id].filter(
           Boolean
         );
       } else {
-        // Modo normal (sin combo): 3 previews (contado + tarjeta top + alternativa)
         payload.preview_medios_pago_ids = [
-          contado?.id,
-          top?.id,
+          efectivo?.id,
+          tarjetaRef?.id,
           alt?.id
         ].filter(Boolean);
       }
@@ -1460,6 +1624,7 @@ export default function PuntoVenta() {
         console.error('Error al calcular total', err);
       }
     };
+
     calcularTotal();
   }, [
     carrito,
@@ -1521,7 +1686,19 @@ export default function PuntoVenta() {
     };
   };
 
-  const finalizarVenta = async () => {
+  // Benjamin Orellana - 10-03-2026 - Confirma el modal de autorización POS y continúa con el cierre real de la venta sin volver a pedir el número.
+  const confirmarAutorizacionPOS = async () => {
+    const nro = String(nroAutorizacionPOS || '').trim();
+    if (!nro) return;
+
+    setModalAutorizacionPOSOpen(false);
+    await finalizarVenta({ skipConfirm: true, skipModalCheck: true });
+  };
+
+  const finalizarVenta = async ({
+    skipConfirm = false,
+    skipModalCheck = false
+  } = {}) => {
     // Benjamin Orellana - 2026-01-28 - Guardrail anti doble disparo: bloquea múltiples clics/F2 mientras la venta está en proceso.
     if (finalizarVentaLockRef.current) {
       await Swal.fire({
@@ -1542,11 +1719,22 @@ export default function PuntoVenta() {
       return;
     }
 
-    const confirm = await swalConfirm({
-      title: '¿Registrar la venta?',
-      text: 'Se confirmará la operación.'
-    });
-    if (!confirm.isConfirmed) return;
+    if (!skipConfirm) {
+      const confirm = await swalConfirm({
+        title: '¿Registrar la venta?',
+        text: 'Se confirmará la operación.'
+      });
+      if (!confirm.isConfirmed) return;
+    }
+
+    // Benjamin Orellana - 10-03-2026 - Si el medio de pago exige autorización POS, se interrumpe el cierre y se abre un modal obligatorio antes de llamar al backend.
+    if (requiereAutorizacionPOS && !skipModalCheck) {
+      const nro = String(nroAutorizacionPOS || '').trim();
+      if (!nro) {
+        setModalAutorizacionPOSOpen(true);
+        return;
+      }
+    }
 
     // Benjamin Orellana - 2026-01-28 - Loading UX: muestra “Generando…” y deshabilita acciones para evitar reintentos manuales.
     finalizarVentaLockRef.current = true;
@@ -1574,77 +1762,111 @@ export default function PuntoVenta() {
     };
 
     try {
-      //  carrito está en modo "stock": cada item tiene stock_id, precio, precio_con_descuento, etc.
-      const productosRequest = carrito.map((item) => {
-        const precioOriginal = Number(item.precio ?? 0);
-        const precioFinal = Number(
-          item.precio_con_descuento ?? item.precio ?? 0
-        );
-        const descuento = Math.max(0, precioOriginal - precioFinal);
-        const descuentoPorcentaje =
-          precioOriginal > 0 ? (descuento / precioOriginal) * 100 : 0;
-
-        return {
-          stock_id: item.stock_id,
-          cantidad: Number(item.cantidad || 0),
-          precio_unitario: precioOriginal,
-          descuento: Number(descuento.toFixed(2)),
-          descuento_porcentaje: descuentoPorcentaje.toFixed(2),
-          precio_unitario_con_descuento: precioFinal
-        };
-      });
-
-      const origenes_descuento = [];
-
-      // 1) Por producto (snapshot guardado en cada línea)
-      carrito.forEach((item) => {
-        const pct = Number(item.descuentoPorcentaje || 0);
-        if (pct > 0) {
-          origenes_descuento.push({
-            tipo: 'producto',
-            referencia_id: item.producto_id ?? null,
-            detalle: item.nombre ?? 'Producto',
-            porcentaje: pct,
-            monto:
-              (Number(item.precio_original || item.precio || 0) * pct) / 100
-          });
-        }
-      });
-
-      // ¿hay descuento manual?
+      // Benjamin Orellana - 2026-03-10 - Adapta el armado de productosRequest al nuevo esquema comercial: la base de línea es precio_tarjeta y el valor final de línea se calcula con el ajuste real aplicado por el backend, sin tomar precio_con_descuento como precio vendido.
       const hayDescuentoManual =
         aplicarDescuento &&
         descuentoPersonalizado !== '' &&
         parseFloat(descuentoPersonalizado) > 0;
 
-      // 2) Por medio de pago (solo si NO hay manual)
-      if (
-        aplicarDescuento &&
-        !hayDescuentoManual &&
-        totalCalculado.ajuste_porcentual !== 0
-      ) {
+      const descuentoManualPct = hayDescuentoManual
+        ? parseFloat(descuentoPersonalizado)
+        : 0;
+
+      // Benjamin Orellana - 2026-03-10 - Usamos el ajuste realmente aplicado por el backend (no el original del medio) para evitar duplicar recargos ya absorbidos en precio_tarjeta.
+      const ajusteMedioAplicado =
+        Number(
+          totalCalculado?.ajuste_porcentual_aplicado ??
+            totalCalculado?.ajuste_porcentual ??
+            0
+        ) || 0;
+
+      const descuentoBackendPct =
+        Number(totalCalculado?.descuento_porcentual ?? 0) || 0;
+
+      // Benjamin Orellana - 2026-03-10 - Factor normal: descuento manual/backend y luego ajuste del medio de pago.
+      const factorNormal = parseFloat(
+        (
+          (1 - descuentoBackendPct / 100) *
+          (1 + ajusteMedioAplicado / 100)
+        ).toFixed(8)
+      );
+
+      // Benjamin Orellana - 2026-03-10 - En combos el recargo positivo del medio no se aplica sobre la parte fija del combo; solo descuentos o neutro.
+      const factorCombo = parseFloat(
+        (
+          (1 - descuentoBackendPct / 100) *
+          (1 + Math.min(ajusteMedioAplicado, 0) / 100)
+        ).toFixed(8)
+      );
+
+      const productosRequest = carrito.map((item) => {
+        const isComboItem = !!item?.is_combo_item || !!item?.combo_id;
+        const cantidad = Number(item?.cantidad || 0);
+
+        // Benjamin Orellana - 2026-03-10 - Base unitaria real de venta:
+        // - combo => precio proporcional ya cargado en la línea
+        // - normal => precio comercial visible (precio_tarjeta)
+        const precioUnitarioBase = isComboItem
+          ? Number(item?.precio ?? 0)
+          : Number(getPrecioVentaBaseItem(item) ?? item?.precio ?? 0);
+
+        const factorLinea = isComboItem ? factorCombo : factorNormal;
+
+        const precioUnitarioFinal = parseFloat(
+          (precioUnitarioBase * factorLinea).toFixed(2)
+        );
+
+        const descuentoUnitario =
+          precioUnitarioFinal < precioUnitarioBase
+            ? parseFloat((precioUnitarioBase - precioUnitarioFinal).toFixed(2))
+            : 0;
+
+        const descuentoPorcentaje =
+          precioUnitarioBase > 0 && precioUnitarioFinal < precioUnitarioBase
+            ? parseFloat(
+                (
+                  ((precioUnitarioBase - precioUnitarioFinal) /
+                    precioUnitarioBase) *
+                  100
+                ).toFixed(2)
+              )
+            : 0;
+
+        return {
+          stock_id: item.stock_id,
+          cantidad,
+          precio_unitario: precioUnitarioBase,
+          descuento: descuentoUnitario,
+          descuento_porcentaje: descuentoPorcentaje.toFixed(2),
+          precio_unitario_con_descuento: precioUnitarioFinal
+        };
+      });
+
+      const origenes_descuento = [];
+
+      // Benjamin Orellana - 2026-03-10 - En el nuevo esquema el descuento sugerido del producto es informativo; no se registra como descuento aplicado de la venta porque la base real es precio_tarjeta.
+
+      // Medio de pago: registrar solo si efectivamente aplicó descuento negativo.
+      if (ajusteMedioAplicado < 0) {
         origenes_descuento.push({
           tipo: 'medio_pago',
           referencia_id: medioPago,
           detalle:
             mediosPago.find((m) => m.id === medioPago)?.nombre ||
             'Medio de pago',
-          porcentaje: totalCalculado.ajuste_porcentual,
-          monto:
-            (totalCalculado.precio_base * totalCalculado.ajuste_porcentual) /
-            100
+          porcentaje: ajusteMedioAplicado,
+          monto: (totalCalculado.precio_base * ajusteMedioAplicado) / 100
         });
       }
 
-      // 3) Manual (tiene prioridad)
+      // Manual: si existe, también se registra.
       if (hayDescuentoManual) {
-        const pct = parseFloat(descuentoPersonalizado);
         origenes_descuento.push({
           tipo: 'manual',
           referencia_id: null,
           detalle: 'Descuento personalizado',
-          porcentaje: pct,
-          monto: (totalCalculado.precio_base * pct) / 100
+          porcentaje: descuentoManualPct,
+          monto: (totalCalculado.precio_base * descuentoManualPct) / 100
         });
       }
 
@@ -1660,9 +1882,8 @@ export default function PuntoVenta() {
         return;
       }
 
-      const totalFinalCalculado = aplicarDescuento
-        ? totalCalculado.total
-        : totalCalculado.precio_base;
+      // Benjamin Orellana - 2026-03-10 - El total final de la venta siempre debe salir del cálculo consolidado del backend; no debe volver a caer a precio_base por el toggle visual del descuento.
+      const totalFinalCalculado = Number(totalCalculado?.total ?? 0) || 0;
 
       const ventaRequest = {
         cliente_id: clienteSeleccionado ? clienteSeleccionado.id : null,
@@ -1673,16 +1894,12 @@ export default function PuntoVenta() {
         usuario_id: userId,
         local_id: userLocalId,
         cbte_tipo: cbteTipoSolicitado,
-        descuento_porcentaje:
-          aplicarDescuento && descuentoPersonalizado !== ''
-            ? parseFloat(descuentoPersonalizado)
-            : aplicarDescuento && totalCalculado.ajuste_porcentual < 0
-              ? Math.abs(totalCalculado.ajuste_porcentual)
-              : 0,
-        recargo_porcentaje:
-          aplicarDescuento && totalCalculado.ajuste_porcentual > 0
-            ? totalCalculado.ajuste_porcentual
+        descuento_porcentaje: hayDescuentoManual
+          ? descuentoManualPct
+          : ajusteMedioAplicado < 0
+            ? Math.abs(ajusteMedioAplicado)
             : 0,
+        recargo_porcentaje: ajusteMedioAplicado > 0 ? ajusteMedioAplicado : 0,
         aplicar_descuento: aplicarDescuento,
         origenes_descuento,
         cuotas: totalCalculado.cuotas,
@@ -1691,7 +1908,15 @@ export default function PuntoVenta() {
           totalCalculado?.porcentaje_recargo_cuotas ?? 0,
         diferencia_redondeo: totalCalculado?.diferencia_redondeo ?? 0,
         precio_base: totalCalculado.precio_base,
-        recargo_monto_cuotas: totalCalculado?.recargo_monto_cuotas ?? 0
+        recargo_monto_cuotas: totalCalculado?.recargo_monto_cuotas ?? 0,
+
+        // Benjamin Orellana - 10-03-2026 - Se envían datos de autorización POS cuando el medio de pago lo requiere.
+        nro_autorizacion_pos: requiereAutorizacionPOS
+          ? String(nroAutorizacionPOS || '').trim()
+          : null,
+        observaciones_autorizacion_pos: requiereAutorizacionPOS
+          ? String(observacionesAutorizacionPOS || '').trim() || null
+          : null
       };
 
       // NUEVO: helpers locales (sin dependencias)
@@ -1835,6 +2060,9 @@ export default function PuntoVenta() {
             setAplicarDescuento(false);
             setClienteSeleccionado(null);
             setBusquedaCliente('');
+            setNroAutorizacionPOS('');
+            setObservacionesAutorizacionPOS('');
+            setModalAutorizacionPOSOpen(false);
 
             const ventaCompleta = await fetch(
               `https://api.rioromano.com.ar/ventas/${ventaId}`
@@ -1947,6 +2175,9 @@ export default function PuntoVenta() {
         setBusqueda('');
         setDescuentoPersonalizado('');
         setAplicarDescuento(false);
+        setNroAutorizacionPOS('');
+        setObservacionesAutorizacionPOS('');
+        setModalAutorizacionPOSOpen(false);
 
         if (busqueda.trim() !== '') {
           const res2 = await fetch(
@@ -2022,6 +2253,9 @@ export default function PuntoVenta() {
         setCarrito([]);
         setClienteSeleccionado(null);
         setBusquedaCliente('');
+        setNroAutorizacionPOS('');
+        setObservacionesAutorizacionPOS('');
+        setModalAutorizacionPOSOpen(false);
       } catch (err) {
         closeLoading();
 
@@ -2126,9 +2360,13 @@ export default function PuntoVenta() {
         stock_id: prod.stock_id,
         producto_id: prod.producto_id,
         nombre: prod.nombre,
-        precio: Number(prod.precio),
+        precio: Number(prod.precio ?? 0),
+        precio_tarjeta: Number(prod.precio_tarjeta ?? 0),
+        recargo_tarjeta_pct: Number(prod.recargo_tarjeta_pct ?? 0),
         descuento_porcentaje: Number(prod.descuento_porcentaje || 0),
-        precio_con_descuento: Number(prod.precio_con_descuento ?? prod.precio),
+        precio_con_descuento: Number(prod.precio_con_descuento ?? 0),
+        precio_original: Number(prod.precio_original ?? prod.precio ?? 0),
+        precio_lista: Number(prod.precio_lista ?? prod.precio ?? 0),
         cantidad_disponible: Number(prod.cantidad_disponible || 0),
         codigo_sku: prod.codigo_sku,
         categoria_id: prod.categoria_id
@@ -2712,25 +2950,29 @@ export default function PuntoVenta() {
                             Precio Venta Base
                           </div>
 
+                          {/* Benjamin Orellana - 2026-03-09 - La card del producto pasa a mostrar siempre el precio comercial visible (precio_tarjeta) y deja el precio interno como referencia secundaria. */}
                           <div className="mt-1 text-[14px] font-extrabold text-emerald-700 dark:text-emerald-200">
-                            {tieneDescuento && usarDescuento ? (
-                              <div className="flex flex-wrap items-baseline gap-2">
-                                <span className="text-rose-600/80 line-through font-bold dark:text-rose-300/80">
-                                  {formatearPrecio(producto.precio)}
-                                </span>
-                                <span>
-                                  {formatearPrecio(
-                                    producto.precio_con_descuento
-                                  )}
-                                </span>
-                                <span className="text-[11px] font-semibold text-emerald-700/90 dark:text-emerald-300/90">
-                                  Descuento aplicado
-                                </span>
-                              </div>
-                            ) : (
-                              <span>{formatearPrecio(producto.precio)}</span>
+                            <span>
+                              {formatearPrecio(
+                                getPrecioVentaBaseProducto(producto)
+                              )}
+                            </span>
+                          </div>
+
+                          <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-300/70">
+                            Base interna:{' '}
+                            {formatearPrecio(
+                              Number(producto?.precio ?? 0) || 0
                             )}
                           </div>
+
+                          {Number(producto?.descuento_porcentaje ?? 0) > 0 && (
+                            <div className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-300">
+                              Contado sugerido: -
+                              {Number(producto.descuento_porcentaje).toFixed(2)}
+                              %
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="rounded-xl border border-black/10 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-white/5">
@@ -2808,7 +3050,10 @@ export default function PuntoVenta() {
 
                     {userLevel !== 'vendedor' && (
                       <div className="text-emerald-700 w-24 text-right shrink-0 dark:text-emerald-300">
-                        {formatearPrecio(item.precio * item.cantidad)}
+                        {/* Benjamin Orellana - 2026-03-09 - El carrito muestra el precio comercial base del item priorizando precio_tarjeta para evitar seguir renderizando precio o precio_con_descuento heredados. */}
+                        {formatearPrecio(
+                          getPrecioVentaBaseItem(item) * item.cantidad
+                        )}
                       </div>
                     )}
 
@@ -2840,7 +3085,6 @@ export default function PuntoVenta() {
                   mediosPago={mediosPago}
                   setMedioPago={setMedioPago}
                   medioPago={medioPago}
-                  redondeoStep={1000}
                   userLevel={userLevel}
                 />
               )}
@@ -2873,36 +3117,54 @@ export default function PuntoVenta() {
               </div>
 
               {/* Medios + Cuotas */}
-              <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 space-y-2 dark:bg-white/5 dark:ring-white/10">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
-                    Medio de pago
+              {/* Medios + Cuotas */}
+              <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 space-y-3 dark:bg-white/5 dark:ring-white/10">
+                {/* Benjamin Orellana - 2026-03-10 - Reestructura el header del bloque para que en anchos angostos no se aplasten la alerta y el selector de cuotas. */}
+                <div className="space-y-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
+                        Medio de pago
+                      </div>
+
+                      <div className="text-[11px] text-slate-500 mt-0.5 dark:text-white/55">
+                        Seleccioná cómo se va a cobrar esta venta
+                      </div>
+                    </div>
+
+                    {/* Benjamin Orellana - 2026-01-28 - Mueve el selector de cuotas al header del bloque de medios para evitar que quede muy abajo y mejorar la lectura. */}
+                    {cuotasDisponibles.length > 0 && (
+                      <div className="flex items-center justify-between sm:justify-end gap-2 rounded-xl bg-slate-900/5 ring-1 ring-black/10 px-3 py-2 dark:bg-white/5 dark:ring-white/10">
+                        <span className="text-[12px] font-medium text-slate-600 dark:text-white/80">
+                          Cuotas
+                        </span>
+
+                        <select
+                          id="cuotas"
+                          value={cuotasSeleccionadas}
+                          onChange={(e) =>
+                            setCuotasSeleccionadas(Number(e.target.value))
+                          }
+                          className="bg-white border border-black/10 text-slate-900 rounded-lg px-2.5 py-1.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:bg-black/20 dark:border-white/15 dark:text-white dark:focus:ring-emerald-400/40"
+                        >
+                          {cuotasUnicas.map((num) => (
+                            <option
+                              key={num}
+                              value={num}
+                              className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white"
+                            >
+                              {num} cuota{num > 1 ? 's' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Benjamin Orellana - 2026-01-28 - Mueve el selector de cuotas al header del bloque de medios para evitar que quede muy abajo y mejorar la lectura. */}
-                  {cuotasDisponibles.length > 0 && (
-                    <div className="flex items-center gap-2 text-[12px] text-slate-600 shrink-0 dark:text-white/80">
-                      <span className="text-slate-500 dark:text-white/60">
-                        Cuotas
-                      </span>
-                      <select
-                        id="cuotas"
-                        value={cuotasSeleccionadas}
-                        onChange={(e) =>
-                          setCuotasSeleccionadas(Number(e.target.value))
-                        }
-                        className="bg-white border border-black/10 text-slate-900 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:bg-black/20 dark:border-white/15 dark:text-white dark:focus:ring-emerald-400/40"
-                      >
-                        {cuotasUnicas.map((num) => (
-                          <option
-                            key={num}
-                            value={num}
-                            className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white"
-                          >
-                            {num} cuota{num > 1 ? 's' : ''}
-                          </option>
-                        ))}
-                      </select>
+                  {requiereAutorizacionPOS && (
+                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2.5 text-[12px] leading-relaxed text-amber-700 dark:text-amber-200">
+                      Este medio de pago requiere número de autorización de la
+                      tarjeta al finalizar la venta.
                     </div>
                   )}
                 </div>
@@ -2912,7 +3174,13 @@ export default function PuntoVenta() {
                     Cargando...
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div
+                    className="grid gap-2"
+                    style={{
+                      gridTemplateColumns:
+                        'repeat(auto-fit, minmax(170px, 1fr))'
+                    }}
+                  >
                     {mediosPago
                       .filter((m) => m.activo)
                       .sort((a, b) => a.orden - b.orden)
@@ -2929,8 +3197,9 @@ export default function PuntoVenta() {
                           ) || 0;
 
                         // Benjamin Orellana - 2026-02-17 - Chip tema-aware (en light usa textos oscuros, en dark conserva el estilo actual)
-                        const chipClass =
-                          p > 0
+                        const chipClass = selected
+                          ? 'bg-white/15 text-white ring-white/20'
+                          : p > 0
                             ? 'bg-orange-500/15 text-orange-700 ring-orange-600/20 dark:bg-orange-500/15 dark:text-orange-200 dark:ring-orange-400/20'
                             : p < 0
                               ? 'bg-emerald-600/15 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20'
@@ -2942,34 +3211,39 @@ export default function PuntoVenta() {
                             type="button"
                             onClick={() => setMedioPago(m.id)}
                             className={[
-                              // Benjamin Orellana - 2026-01-28 - Agrega min-height para que el grid se vea parejo aunque algunos nombres ocupen varias líneas.
-                              'w-full min-h-[52px] flex items-start gap-2 rounded-xl px-3 py-2 transition ring-1',
-                              'text-[12px] font-semibold',
+                              // Benjamin Orellana - 2026-03-10 - Se rehace la tarjeta del medio para que no se rompa visualmente en sidebars angostos y mantenga altura pareja.
+                              'w-full min-h-[68px] rounded-2xl px-3 py-3 transition ring-1 text-left',
                               selected
-                                ? 'bg-emerald-600 text-white ring-emerald-500/30'
+                                ? 'bg-emerald-600 text-white ring-emerald-500/30 shadow-sm'
                                 : 'bg-slate-900/5 text-slate-800 hover:bg-slate-900/10 ring-black/10 hover:ring-black/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20'
                             ].join(' ')}
                             title={m.nombre}
                           >
-                            <span className="text-[14px] shrink-0 mt-[1px]">
-                              {dynamicIcon(m.icono)}
-                            </span>
+                            <div className="flex items-start gap-3">
+                              <div className="text-[16px] shrink-0 mt-0.5">
+                                {dynamicIcon(m.icono)}
+                              </div>
 
-                            {/* Benjamin Orellana - 2026-01-28 - Permite el nombre completo (sin clamp) haciendo wrap; el botón crece en alto si hace falta. */}
-                            <span className="min-w-0 flex-1 leading-snug whitespace-normal break-words">
-                              {m.nombre}
-                            </span>
+                              <div className="min-w-0 flex-1">
+                                {/* Benjamin Orellana - 2026-01-28 - Permite el nombre completo (sin clamp) haciendo wrap; el botón crece en alto si hace falta. */}
+                                <div className="text-[12px] font-semibold leading-snug whitespace-normal break-words">
+                                  {m.nombre}
+                                </div>
 
-                            {typeof m.ajuste_porcentual !== 'undefined' && (
-                              <span
-                                className={`ml-auto text-[10px] px-2 py-1 rounded-full ring-1 shrink-0 mt-[1px] ${chipClass}`}
-                                title={`${p > 0 ? '+' : ''}${p.toFixed(2)}%`}
-                              >
-                                {p > 0
-                                  ? `+${p.toFixed(2)}%`
-                                  : `${p.toFixed(2)}%`}
-                              </span>
-                            )}
+                                {typeof m.ajuste_porcentual !== 'undefined' && (
+                                  <div className="mt-2">
+                                    <span
+                                      className={`inline-flex items-center text-[10px] px-2 py-1 rounded-full ring-1 whitespace-nowrap ${chipClass}`}
+                                      title={`${p > 0 ? '+' : ''}${p.toFixed(2)}%`}
+                                    >
+                                      {p > 0
+                                        ? `+${p.toFixed(2)}%`
+                                        : `${p.toFixed(2)}%`}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </button>
                         );
                       })}
@@ -3372,6 +3646,23 @@ export default function PuntoVenta() {
           open={modalCBUsOpen}
           onClose={() => setModalCBUsOpen(false)}
           API_URL={API_URL}
+        />
+
+        <ModalAutorizacionPOS
+          open={modalAutorizacionPOSOpen}
+          loading={finalizandoVenta}
+          medioPagoNombre={medioSeleccionado?.nombre || ''}
+          total={Number(totalCalculado?.total ?? 0) || 0}
+          cuotas={Number(totalCalculado?.cuotas ?? 1) || 1}
+          nroAutorizacion={nroAutorizacionPOS}
+          setNroAutorizacion={setNroAutorizacionPOS}
+          observaciones={observacionesAutorizacionPOS}
+          setObservaciones={setObservacionesAutorizacionPOS}
+          onCancel={() => {
+            setModalAutorizacionPOSOpen(false);
+          }}
+          onConfirm={confirmarAutorizacionPOS}
+          formatearPrecio={formatearPrecio}
         />
       </div>
     </>

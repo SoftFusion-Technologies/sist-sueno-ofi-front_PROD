@@ -72,6 +72,13 @@ const ventasLinks = [
     desc: 'Listado completo con filtros'
   },
   {
+    to: '/dashboard/ventas/autorizaciones-pos',
+    label: 'Autorizaciones POS',
+    icon: <FaTable />,
+    // Benjamin Orellana - 10/03/2026 - Se agrega un acceso directo al nuevo módulo de autorizaciones POS para consultar números de autorización asociados a ventas y medios de pago.
+    desc: 'Consulta de números de autorización y trazabilidad POS'
+  },
+  {
     to: '/dashboard/ventas/movimientos',
     label: 'Movimientos',
     icon: <LiaCashRegisterSolid />,
