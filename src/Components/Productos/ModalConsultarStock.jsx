@@ -62,6 +62,20 @@ const pickAssoc = (row, keys) => {
   return null;
 };
 
+const moneyFormatter = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+
+const toNum = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const formatARS = (value) => moneyFormatter.format(toNum(value));
+
 const getProducto = (row) =>
   pickAssoc(row, [
     'producto',
@@ -403,7 +417,7 @@ export default function ModalConsultarStock({ open, onClose, API_URL }) {
         >
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-900/35 backdrop-blur-[3px]"
             onMouseDown={onClose}
             onClick={onClose}
           />
@@ -417,36 +431,37 @@ export default function ModalConsultarStock({ open, onClose, API_URL }) {
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
             className={[
-              'relative w-full max-w-5xl',
-              'overflow-hidden rounded-3xl',
-              'border border-emerald-500/25',
-              'bg-slate-950/90 supports-[backdrop-filter]:bg-slate-950/75 backdrop-blur-xl',
-              'shadow-[0_30px_90px_rgba(0,0,0,0.65)]',
+              'relative w-full max-w-8xl',
+              'overflow-hidden rounded-[30px]',
+              'border border-slate-200/80',
+              'bg-white',
+              'shadow-[0_30px_80px_rgba(15,23,42,0.18)]',
               'max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)]',
               'flex flex-col'
             ].join(' ')}
           >
             {/* Header */}
-            <div className="relative px-5 sm:px-6 pt-5 pb-4 border-b border-white/10">
-              <div className="pointer-events-none absolute -top-24 -right-24 h-60 w-60 rounded-full bg-emerald-500/12 blur-3xl" />
-              <div className="pointer-events-none absolute -bottom-24 -left-24 h-60 w-60 rounded-full bg-teal-500/10 blur-3xl" />
+            <div className="relative border-b border-slate-200 bg-gradient-to-r from-emerald-50 via-white to-teal-50 px-5 pb-5 pt-5 sm:px-6">
+              <div className="pointer-events-none absolute -top-24 right-0 h-56 w-56 rounded-full bg-emerald-200/35 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-24 left-0 h-56 w-56 rounded-full bg-teal-100/40 blur-3xl" />
 
               <div className="relative flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10">
-                      <FaWarehouse className="text-emerald-200" />
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200">
+                      <FaWarehouse />
                     </span>
 
                     <div className="min-w-0">
                       <h3
                         id="stockModalTitle"
-                        className="text-xl titulo uppercase sm:text-2xl font-extrabold tracking-tight text-white"
+                        className="titulo uppercase text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl"
                       >
-                        Consultar Stock
+                        Consultar stock
                       </h3>
-                      <p className="mt-0.5 text-sm text-white/60">
-                        Consulta. Filtrá y copiá SKU/ID si lo necesitás.
+                      <p className="mt-1 text-sm text-slate-600">
+                        Buscá productos, revisá cantidad disponible y visualizá
+                        precios de efectivo y tarjeta de forma clara.
                       </p>
                     </div>
                   </div>
@@ -455,289 +470,250 @@ export default function ModalConsultarStock({ open, onClose, API_URL }) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-2xl bg-white/8 hover:bg-white/12 ring-1 ring-white/10 transition"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
                   title="Cerrar (Esc)"
                   aria-label="Cerrar"
                 >
-                  <FaTimes className="text-white/85" />
+                  <FaTimes />
                 </button>
               </div>
 
               {/* Search */}
-              <div className="relative mt-4">
-                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
+              <div className="relative mt-5">
+                <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   ref={searchRef}
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Buscar por producto (nombre/código/descr)…"
+                  placeholder="Buscar por nombre, código interno, SKU o descripción..."
                   className={[
-                    'w-full rounded-2xl pl-10 pr-4 py-3',
-                    'bg-white/6 text-white placeholder-white/35',
-                    'ring-1 ring-white/10',
-                    'focus:outline-none focus:ring-2 focus:ring-emerald-500/70'
+                    'w-full rounded-2xl border border-slate-200 bg-white',
+                    'py-3 pl-11 pr-4 text-slate-900 placeholder:text-slate-400',
+                    'shadow-sm outline-none transition',
+                    'focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100'
                   ].join(' ')}
                 />
               </div>
 
               {/* Filters row */}
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
-                {/* Producto */}
-                <div className="xl:col-span-2 rounded-2xl bg-white/5 ring-1 ring-white/10 p-3">
-                  <div className="text-[11px] uppercase tracking-widest text-white/45">
-                    Producto
+              <div className="mt-5 rounded-3xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-bold text-slate-800">
+                      Filtros de consulta
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      Aplicá filtros para encontrar stock más rápido.
+                    </div>
                   </div>
 
-                  <select
-                    value={productoId}
-                    onChange={(e) => setProductoId(e.target.value)}
-                    disabled={loadingCatalogs}
-                    className={[
-                      'mt-1 w-full rounded-xl px-3 py-2 text-sm',
-                      'bg-white/6 text-white',
-                      'ring-1 ring-white/10',
-                      'focus:outline-none focus:ring-2 focus:ring-emerald-500/70',
-                      'appearance-none',
-                      loadingCatalogs ? 'opacity-60 cursor-wait' : ''
-                    ].join(' ')}
-                  >
-                    <option className="bg-slate-950 text-white" value="">
-                      {loadingCatalogs
-                        ? 'Cargando productos…'
-                        : 'Todos los productos'}
-                    </option>
-
-                    {(productos || []).map((p) => (
-                      <option
-                        key={p.id}
-                        value={String(p.id)}
-                        className="bg-slate-950 text-white"
-                      >
-                        {p?.nombre || `Producto #${p.id}`}
-                      </option>
-                    ))}
-                  </select>
-
-                  <div className="mt-1 text-[11px] text-white/35">
-                    Tip: también podés buscar por nombre/código desde el
-                    buscador general (q).
-                  </div>
-                </div>
-
-                {/* Local */}
-                <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-3">
-                  <div className="text-[11px] uppercase tracking-widest text-white/45">
-                    Local
-                  </div>
-
-                  <select
-                    value={localId}
-                    onChange={(e) => setLocalId(e.target.value)}
-                    disabled={loadingCatalogs}
-                    className={[
-                      'mt-1 w-full rounded-xl px-3 py-2 text-sm',
-                      'bg-white/6 text-white',
-                      'ring-1 ring-white/10',
-                      'focus:outline-none focus:ring-2 focus:ring-emerald-500/70',
-                      'appearance-none',
-                      loadingCatalogs ? 'opacity-60 cursor-wait' : ''
-                    ].join(' ')}
-                  >
-                    <option className="bg-slate-950 text-white" value="">
-                      {loadingCatalogs
-                        ? 'Cargando locales…'
-                        : 'Todos los locales'}
-                    </option>
-
-                    {(locales || []).map((l) => (
-                      <option
-                        key={l.id}
-                        value={String(l.id)}
-                        className="bg-slate-950 text-white"
-                      >
-                        {l?.nombre || `Local #${l.id}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Lugar */}
-                <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-3">
-                  <div className="text-[11px] uppercase tracking-widest text-white/45">
-                    Lugar
-                  </div>
-
-                  <select
-                    value={lugarId}
-                    onChange={(e) => setLugarId(e.target.value)}
-                    disabled={loadingCatalogs}
-                    className={[
-                      'mt-1 w-full rounded-xl px-3 py-2 text-sm',
-                      'bg-white/6 text-white',
-                      'ring-1 ring-white/10',
-                      'focus:outline-none focus:ring-2 focus:ring-emerald-500/70',
-                      'appearance-none',
-                      loadingCatalogs ? 'opacity-60 cursor-wait' : ''
-                    ].join(' ')}
-                  >
-                    <option className="bg-slate-950 text-white" value="">
-                      {loadingCatalogs
-                        ? 'Cargando lugares…'
-                        : 'Todos los lugares'}
-                    </option>
-
-                    {(lugares || []).map((lu) => (
-                      <option
-                        key={lu.id}
-                        value={String(lu.id)}
-                        className="bg-slate-950 text-white"
-                      >
-                        {lu?.nombre || `Lugar #${lu.id}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Estado */}
-                <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-3">
-                  <div className="text-[11px] uppercase tracking-widest text-white/45">
-                    Estado
-                  </div>
-
-                  <select
-                    value={estadoId}
-                    onChange={(e) => setEstadoId(e.target.value)}
-                    disabled={loadingCatalogs}
-                    className={[
-                      'mt-1 w-full rounded-xl px-3 py-2 text-sm',
-                      'bg-white/6 text-white',
-                      'ring-1 ring-white/10',
-                      'focus:outline-none focus:ring-2 focus:ring-emerald-500/70',
-                      'appearance-none',
-                      loadingCatalogs ? 'opacity-60 cursor-wait' : ''
-                    ].join(' ')}
-                  >
-                    <option className="bg-slate-950 text-white" value="">
-                      {loadingCatalogs
-                        ? 'Cargando estados…'
-                        : 'Todos los estados'}
-                    </option>
-
-                    {(estados || []).map((es) => (
-                      <option
-                        key={es.id}
-                        value={String(es.id)}
-                        className="bg-slate-950 text-white"
-                      >
-                        {es?.nombre || `Estado #${es.id}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Orden */}
-                <div className="xl:col-span-1 rounded-2xl bg-white/5 ring-1 ring-white/10 p-3">
-                  <div className="text-[11px] uppercase tracking-widest text-white/45">
-                    Orden
-                  </div>
-
-                  <div className="mt-1 grid grid-cols-2 gap-2">
-                    <select
-                      value={orderBy}
-                      onChange={(e) => setOrderBy(e.target.value)}
-                      className="w-full rounded-xl bg-white/6 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-500/70 appearance-none"
-                    >
-                      <option className="bg-slate-950 text-white" value="id">
-                        ID
-                      </option>
-                      <option
-                        className="bg-slate-950 text-white"
-                        value="created_at"
-                      >
-                        Creación
-                      </option>
-                      <option
-                        className="bg-slate-950 text-white"
-                        value="updated_at"
-                      >
-                        Actualización
-                      </option>
-                      <option
-                        className="bg-slate-950 text-white"
-                        value="producto_nombre"
-                      >
-                        Producto
-                      </option>
-                    </select>
-
-                    <select
-                      value={orderDir}
-                      onChange={(e) => setOrderDir(e.target.value)}
-                      className="w-full rounded-xl bg-white/6 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-500/70 appearance-none"
-                    >
-                      <option className="bg-slate-950 text-white" value="ASC">
-                        ASC
-                      </option>
-                      <option className="bg-slate-950 text-white" value="DESC">
-                        DESC
-                      </option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="xl:col-span-6 flex flex-wrap items-center justify-between gap-2 pt-1">
                   <button
                     type="button"
                     onClick={resetFilters}
-                    className="inline-flex items-center gap-2 text-xs font-extrabold px-3 py-2 rounded-xl bg-white/6 hover:bg-white/10 ring-1 ring-white/10 text-white/80 transition"
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100"
                     title="Limpiar filtros"
                   >
                     <FaSyncAlt className="opacity-80" />
                     Limpiar
                   </button>
+                </div>
 
-                  <div className="flex items-center gap-2">
-                    <div className="hidden sm:flex items-center gap-2 rounded-xl bg-white/5 ring-1 ring-white/10 px-3 py-2">
-                      <div className="text-xs text-white/55">Registros/pág</div>
-                      <select
-                        value={limit}
-                        onChange={(e) => setLimit(Number(e.target.value))}
-                        className="rounded-lg bg-white/6 px-2 py-1 text-xs text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-500/70 appearance-none"
-                      >
-                        <option className="bg-slate-950 text-white" value={10}>
-                          10
-                        </option>
-                        <option className="bg-slate-950 text-white" value={20}>
-                          20
-                        </option>
-                        <option className="bg-slate-950 text-white" value={30}>
-                          30
-                        </option>
-                        <option className="bg-slate-950 text-white" value={50}>
-                          50
-                        </option>
-                      </select>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
+                  {/* Producto */}
+                  <div className="xl:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                    <div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                      Producto
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => load({ page })}
-                      className="inline-flex items-center gap-2 text-xs font-extrabold px-3 py-2 rounded-xl bg-emerald-500/14 hover:bg-emerald-500/20 ring-1 ring-emerald-500/25 text-emerald-100 transition"
-                      title="Refrescar"
+                    <select
+                      value={productoId}
+                      onChange={(e) => setProductoId(e.target.value)}
+                      disabled={loadingCatalogs}
+                      className={[
+                        'mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800',
+                        'outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100',
+                        'appearance-none',
+                        loadingCatalogs ? 'cursor-wait opacity-60' : ''
+                      ].join(' ')}
                     >
-                      <FaSyncAlt />
-                      Refrescar
-                    </button>
+                      <option value="">
+                        {loadingCatalogs
+                          ? 'Cargando productos...'
+                          : 'Todos los productos'}
+                      </option>
+
+                      {(productos || []).map((p) => (
+                        <option key={p.id} value={String(p.id)}>
+                          {p?.nombre || `Producto #${p.id}`}
+                        </option>
+                      ))}
+                    </select>
+
+                    <div className="mt-2 text-[11px] text-slate-500">
+                      También podés buscar por nombre, código o SKU desde el
+                      buscador general.
+                    </div>
                   </div>
+
+                  {/* Local */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                    <div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                      Local
+                    </div>
+
+                    <select
+                      value={localId}
+                      onChange={(e) => setLocalId(e.target.value)}
+                      disabled={loadingCatalogs}
+                      className={[
+                        'mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800',
+                        'outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100',
+                        'appearance-none',
+                        loadingCatalogs ? 'cursor-wait opacity-60' : ''
+                      ].join(' ')}
+                    >
+                      <option value="">
+                        {loadingCatalogs
+                          ? 'Cargando locales...'
+                          : 'Todos los locales'}
+                      </option>
+
+                      {(locales || []).map((l) => (
+                        <option key={l.id} value={String(l.id)}>
+                          {l?.nombre || `Local #${l.id}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Lugar */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                    <div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                      Lugar
+                    </div>
+
+                    <select
+                      value={lugarId}
+                      onChange={(e) => setLugarId(e.target.value)}
+                      disabled={loadingCatalogs}
+                      className={[
+                        'mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800',
+                        'outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100',
+                        'appearance-none',
+                        loadingCatalogs ? 'cursor-wait opacity-60' : ''
+                      ].join(' ')}
+                    >
+                      <option value="">
+                        {loadingCatalogs
+                          ? 'Cargando lugares...'
+                          : 'Todos los lugares'}
+                      </option>
+
+                      {(lugares || []).map((lu) => (
+                        <option key={lu.id} value={String(lu.id)}>
+                          {lu?.nombre || `Lugar #${lu.id}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Estado */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                    <div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                      Estado
+                    </div>
+
+                    <select
+                      value={estadoId}
+                      onChange={(e) => setEstadoId(e.target.value)}
+                      disabled={loadingCatalogs}
+                      className={[
+                        'mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800',
+                        'outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100',
+                        'appearance-none',
+                        loadingCatalogs ? 'cursor-wait opacity-60' : ''
+                      ].join(' ')}
+                    >
+                      <option value="">
+                        {loadingCatalogs
+                          ? 'Cargando estados...'
+                          : 'Todos los estados'}
+                      </option>
+
+                      {(estados || []).map((es) => (
+                        <option key={es.id} value={String(es.id)}>
+                          {es?.nombre || `Estado #${es.id}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Orden */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                    <div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                      Orden
+                    </div>
+
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <select
+                        value={orderBy}
+                        onChange={(e) => setOrderBy(e.target.value)}
+                        className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                      >
+                        <option value="id">ID</option>
+                        <option value="created_at">Creación</option>
+                        <option value="updated_at">Actualización</option>
+                        <option value="producto_nombre">Producto</option>
+                      </select>
+
+                      <select
+                        value={orderDir}
+                        onChange={(e) => setOrderDir(e.target.value)}
+                        className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                      >
+                        <option value="ASC">ASC</option>
+                        <option value="DESC">DESC</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                    <div className="text-xs font-medium text-slate-600">
+                      Registros por página
+                    </div>
+
+                    <select
+                      value={limit}
+                      onChange={(e) => setLimit(Number(e.target.value))}
+                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={30}>30</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => load({ page })}
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-extrabold text-white shadow-sm transition hover:bg-emerald-700"
+                    title="Refrescar"
+                  >
+                    <FaSyncAlt />
+                    Refrescar
+                  </button>
                 </div>
               </div>
             </div>
 
             {/* Toolbar */}
-            <div className="px-5 sm:px-6 py-3 flex items-center justify-between gap-2 border-b border-white/10 bg-black/20">
-              <div className="text-white/75 text-sm">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3 sm:px-6">
+              <div className="text-sm text-slate-600">
                 {loading
-                  ? 'Cargando stock…'
+                  ? 'Cargando stock...'
                   : `Resultados: ${totalLabel}${meta ? ` • Página ${meta.page}/${meta.totalPages}` : ''}`}
               </div>
 
@@ -746,10 +722,10 @@ export default function ModalConsultarStock({ open, onClose, API_URL }) {
                   type="button"
                   onClick={gotoPrev}
                   disabled={!canPrev || loading}
-                  className={`px-3 py-2 rounded-xl text-xs font-extrabold ring-1 transition ${
+                  className={`rounded-xl px-3 py-2 text-xs font-extrabold transition ${
                     !canPrev || loading
-                      ? 'bg-white/5 text-white/30 ring-white/10 cursor-not-allowed'
-                      : 'bg-white/8 hover:bg-white/12 text-white/80 ring-white/10'
+                      ? 'cursor-not-allowed border border-slate-200 bg-white text-slate-300'
+                      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   Anterior
@@ -759,10 +735,10 @@ export default function ModalConsultarStock({ open, onClose, API_URL }) {
                   type="button"
                   onClick={gotoNext}
                   disabled={!canNext || loading}
-                  className={`px-3 py-2 rounded-xl text-xs font-extrabold ring-1 transition ${
+                  className={`rounded-xl px-3 py-2 text-xs font-extrabold transition ${
                     !canNext || loading
-                      ? 'bg-white/5 text-white/30 ring-white/10 cursor-not-allowed'
-                      : 'bg-white/8 hover:bg-white/12 text-white/80 ring-white/10'
+                      ? 'cursor-not-allowed border border-slate-200 bg-white text-slate-300'
+                      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   Siguiente
@@ -770,23 +746,23 @@ export default function ModalConsultarStock({ open, onClose, API_URL }) {
               </div>
             </div>
 
-            {/* Body (scroll real, iOS-friendly) */}
+            {/* Body */}
             <div
-              className="flex-1 min-h-0 px-5 sm:px-6 py-5 overflow-y-auto overscroll-contain touch-pan-y"
+              className="flex-1 min-h-0 overflow-y-auto bg-slate-50 px-5 py-5 sm:px-6"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {errorMsg && (
-                <div className="mb-4 rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-red-200">
+                <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {errorMsg}
                 </div>
               )}
 
               {loading ? (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-white/70">
-                  Consultando stock…
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 text-slate-600 shadow-sm">
+                  Consultando stock...
                 </div>
               ) : rows.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-white/70">
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 text-slate-600 shadow-sm">
                   No se encontraron registros.
                 </div>
               ) : (
@@ -811,105 +787,164 @@ export default function ModalConsultarStock({ open, onClose, API_URL }) {
                     const cantidad = Number(r?.cantidad ?? 0);
                     const enExhibicion = Boolean(r?.en_exhibicion);
                     const sku = r?.codigo_sku || '';
+                    const precioLista = toNum(prod?.precio);
+                    const precioEfectivo = toNum(
+                      prod?.precio_con_descuento ?? prod?.precio
+                    );
+                    const precioTarjeta = toNum(
+                      prod?.precio_tarjeta ?? prod?.precio
+                    );
+                    const descuentoPct = toNum(prod?.descuento_porcentaje);
+                    const recargoTarjetaPct = toNum(prod?.recargo_tarjeta_pct);
 
                     return (
                       <div
                         key={id}
-                        className={[
-                          'group relative overflow-hidden rounded-3xl',
-                          'border border-white/10 hover:border-emerald-500/25',
-                          'bg-gradient-to-br from-white/6 via-white/5 to-emerald-500/5',
-                          'p-4 sm:p-5 transition'
-                        ].join(' ')}
+                        className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_12px_35px_rgba(15,23,42,0.08)] transition hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)]"
                       >
-                        {/* Header */}
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="inline-flex items-center gap-2 text-[12px] font-extrabold px-3 py-1 rounded-full bg-emerald-500/12 text-emerald-200 ring-1 ring-emerald-500/20">
-                                <FaBoxOpen className="opacity-90" />
-                                {prodNombre}
-                              </span>
-
-                              {enExhibicion && (
-                                <span className="text-[12px] font-extrabold px-3 py-1 rounded-full bg-teal-500/12 text-teal-200 ring-1 ring-teal-500/20">
-                                  En exhibición
+                        <div className="border-b border-slate-100 bg-gradient-to-r from-white to-emerald-50/60 px-4 py-4 sm:px-5">
+                          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-[12px] font-extrabold text-emerald-700 ring-1 ring-emerald-200">
+                                  <FaBoxOpen className="opacity-90" />
+                                  {prodNombre}
                                 </span>
-                              )}
 
-                              <span className="text-[12px] font-extrabold px-3 py-1 rounded-full bg-white/8 text-white/80 ring-1 ring-white/10">
-                                ID #{id}
-                              </span>
+                                {enExhibicion && (
+                                  <span className="rounded-full bg-sky-100 px-3 py-1 text-[12px] font-extrabold text-sky-700 ring-1 ring-sky-200">
+                                    En exhibición
+                                  </span>
+                                )}
+
+                                <span className="rounded-full bg-slate-100 px-3 py-1 text-[12px] font-extrabold text-slate-600 ring-1 ring-slate-200">
+                                  ID #{id}
+                                </span>
+                              </div>
+
+                              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+                                <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                                    <FaStore className="opacity-70" />
+                                    Local
+                                  </div>
+                                  <div className="mt-1 text-sm font-semibold text-slate-800 truncate">
+                                    {localNombre}
+                                  </div>
+                                </div>
+
+                                <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                                    <FaMapMarkerAlt className="opacity-70" />
+                                    Lugar
+                                  </div>
+                                  <div className="mt-1 text-sm font-semibold text-slate-800 truncate">
+                                    {lugarNombre}
+                                  </div>
+                                </div>
+
+                                <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                                    <FaTag className="opacity-70" />
+                                    Estado
+                                  </div>
+                                  <div className="mt-1 text-sm font-semibold text-slate-800 truncate">
+                                    {estadoNombre}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="mt-4 flex flex-wrap gap-2">
+                                <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-700">
+                                  Precio lista: {formatARS(precioLista)}
+                                </span>
+
+                                {descuentoPct > 0 && (
+                                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700">
+                                    Desc. efectivo: {descuentoPct}%
+                                  </span>
+                                )}
+
+                                {recargoTarjetaPct > 0 && (
+                                  <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[11px] font-bold text-violet-700">
+                                    Recargo tarjeta: {recargoTarjetaPct}%
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
-                            <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
-                              <div className="rounded-2xl bg-white/6 ring-1 ring-white/10 px-3 py-2">
-                                <div className="text-[11px] uppercase tracking-widest text-white/45 flex items-center gap-2">
-                                  <FaStore className="opacity-70" />
-                                  Local
-                                </div>
-                                <div className="mt-0.5 text-sm text-white/85 truncate">
-                                  {localNombre}
-                                </div>
-                              </div>
+                            {/* Panel derecho */}
+                            <div className="w-full shrink-0 xl:w-[360px]">
+                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                                <div className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4 text-center">
+                                  <div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                                    Cantidad disponible
+                                  </div>
 
-                              <div className="rounded-2xl bg-white/6 ring-1 ring-white/10 px-3 py-2">
-                                <div className="text-[11px] uppercase tracking-widest text-white/45 flex items-center gap-2">
-                                  <FaMapMarkerAlt className="opacity-70" />
-                                  Lugar
-                                </div>
-                                <div className="mt-0.5 text-sm text-white/85 truncate">
-                                  {lugarNombre}
-                                </div>
-                              </div>
+                                  <div
+                                    className={[
+                                      'mt-1 text-3xl font-extrabold tabular-nums',
+                                      cantidad <= 0
+                                        ? 'text-red-500'
+                                        : cantidad <= 5
+                                          ? 'text-amber-500'
+                                          : 'text-emerald-600'
+                                    ].join(' ')}
+                                  >
+                                    {Number.isFinite(cantidad) ? cantidad : 0}
+                                  </div>
 
-                              <div className="rounded-2xl bg-white/6 ring-1 ring-white/10 px-3 py-2">
-                                <div className="text-[11px] uppercase tracking-widest text-white/45 flex items-center gap-2">
-                                  <FaTag className="opacity-70" />
-                                  Estado
+                                  <div className="mt-1 text-[11px] text-slate-500">
+                                    saldo actual
+                                  </div>
                                 </div>
-                                <div className="mt-0.5 text-sm text-white/85 truncate">
-                                  {estadoNombre}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
 
-                          {/* Cantidad */}
-                          <div className="shrink-0">
-                            <div className="rounded-3xl bg-white/6 ring-1 ring-white/10 px-5 py-4 text-center">
-                              <div className="text-[11px] uppercase tracking-widest text-white/45">
-                                Cantidad
-                              </div>
-                              <div
-                                className={[
-                                  'mt-1 text-3xl font-extrabold tabular-nums',
-                                  cantidad <= 0
-                                    ? 'text-red-300'
-                                    : cantidad <= 5
-                                      ? 'text-amber-200'
-                                      : 'text-emerald-200'
-                                ].join(' ')}
-                              >
-                                {Number.isFinite(cantidad) ? cantidad : 0}
-                              </div>
-                              <div className="mt-1 text-[11px] text-white/45">
-                                saldo actual
+                                <div className="rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-4">
+                                  <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-700">
+                                    Efectivo
+                                  </div>
+
+                                  <div className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900">
+                                    {formatARS(precioEfectivo)}
+                                  </div>
+
+                                  <div className="mt-1 text-[11px] text-slate-500">
+                                    {descuentoPct > 0
+                                      ? `${descuentoPct}% de descuento aplicado`
+                                      : 'Precio vigente en efectivo'}
+                                  </div>
+                                </div>
+
+                                <div className="rounded-3xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white px-4 py-4">
+                                  <div className="text-[11px] font-bold uppercase tracking-widest text-violet-700">
+                                    Tarjeta
+                                  </div>
+
+                                  <div className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900">
+                                    {formatARS(precioTarjeta)}
+                                  </div>
+
+                                  <div className="mt-1 text-[11px] text-slate-500">
+                                    {recargoTarjetaPct > 0
+                                      ? `${recargoTarjetaPct}% de recargo incluido`
+                                      : 'Precio vigente con tarjeta'}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
 
                         {/* SKU + copy */}
-                        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3">
-                          <div className="rounded-2xl bg-white/6 ring-1 ring-white/10 p-4">
-                            <div className="text-[11px] uppercase tracking-widest text-emerald-200/70">
+                        <div className="grid grid-cols-1 gap-3 px-4 py-4 sm:grid-cols-2 sm:px-5">
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
                               Código SKU (stock)
                             </div>
 
                             <div className="mt-2 flex items-center justify-between gap-2">
                               <div className="min-w-0">
-                                <div className="font-mono text-sm sm:text-[15px] text-white break-all">
+                                <div className="break-all font-mono text-sm text-slate-800 sm:text-[15px]">
                                   {sku || '—'}
                                 </div>
                               </div>
@@ -918,14 +953,13 @@ export default function ModalConsultarStock({ open, onClose, API_URL }) {
                                 type="button"
                                 onClick={() => handleCopy(sku, `sku-${id}`)}
                                 disabled={!sku}
-                                className={`shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-xl font-extrabold text-xs ring-1 transition
-                                  ${
-                                    !sku
-                                      ? 'bg-white/5 text-white/30 ring-white/10 cursor-not-allowed'
-                                      : copiedKey === `sku-${id}`
-                                        ? 'bg-emerald-400 text-slate-950 ring-emerald-300/50'
-                                        : 'bg-emerald-500/14 text-emerald-100 ring-emerald-500/25 hover:bg-emerald-500/20'
-                                  }`}
+                                className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-extrabold transition ${
+                                  !sku
+                                    ? 'cursor-not-allowed border border-slate-200 bg-white text-slate-300'
+                                    : copiedKey === `sku-${id}`
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                }`}
                                 title="Copiar SKU"
                               >
                                 <FaCopy />
@@ -936,14 +970,14 @@ export default function ModalConsultarStock({ open, onClose, API_URL }) {
                             </div>
                           </div>
 
-                          <div className="rounded-2xl bg-white/6 ring-1 ring-white/10 p-4">
-                            <div className="text-[11px] uppercase tracking-widest text-emerald-200/70">
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
                               ID registro stock
                             </div>
 
                             <div className="mt-2 flex items-center justify-between gap-2">
                               <div className="min-w-0">
-                                <div className="font-mono text-sm sm:text-[15px] text-white break-all">
+                                <div className="break-all font-mono text-sm text-slate-800 sm:text-[15px]">
                                   {id ?? '—'}
                                 </div>
                               </div>
@@ -954,14 +988,13 @@ export default function ModalConsultarStock({ open, onClose, API_URL }) {
                                   handleCopy(String(id ?? ''), `id-${id}`)
                                 }
                                 disabled={id === undefined || id === null}
-                                className={`shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-xl font-extrabold text-xs ring-1 transition
-                                  ${
-                                    id === undefined || id === null
-                                      ? 'bg-white/5 text-white/30 ring-white/10 cursor-not-allowed'
-                                      : copiedKey === `id-${id}`
-                                        ? 'bg-emerald-400 text-slate-950 ring-emerald-300/50'
-                                        : 'bg-emerald-500/14 text-emerald-100 ring-emerald-500/25 hover:bg-emerald-500/20'
-                                  }`}
+                                className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-extrabold transition ${
+                                  id === undefined || id === null
+                                    ? 'cursor-not-allowed border border-slate-200 bg-white text-slate-300'
+                                    : copiedKey === `id-${id}`
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                }`}
                                 title="Copiar ID"
                               >
                                 <FaCopy />
@@ -972,37 +1005,33 @@ export default function ModalConsultarStock({ open, onClose, API_URL }) {
                             </div>
                           </div>
                         </div>
-
-                        {/* glow sutil */}
-                        <div className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-emerald-500/10 blur-2xl opacity-0 group-hover:opacity-100 transition" />
                       </div>
                     );
                   })}
                 </div>
               )}
 
-              {/* Hint visual (iOS oculta scrollbar) */}
-              <div className="pointer-events-none sticky bottom-0 h-8 bg-gradient-to-t from-slate-950/90 to-transparent" />
+              <div className="pointer-events-none sticky bottom-0 h-8 bg-gradient-to-t from-slate-50 to-transparent" />
             </div>
 
             {/* Footer */}
-            <div className="px-5 sm:px-6 py-4 border-t border-white/10 bg-black/25 flex items-center justify-between gap-2">
-              <div className="text-xs text-white/45">
+            <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-4 sm:px-6">
+              <div className="text-xs text-slate-500">
                 {meta ? (
                   <>
                     Total:{' '}
-                    <span className="text-white/70 font-bold">
+                    <span className="font-bold text-slate-800">
                       {meta.total}
                     </span>{' '}
                     • Página:{' '}
-                    <span className="text-white/70 font-bold">
+                    <span className="font-bold text-slate-800">
                       {meta.page}/{meta.totalPages}
                     </span>
                   </>
                 ) : (
                   <>
                     Mostrando:{' '}
-                    <span className="text-white/70 font-bold">
+                    <span className="font-bold text-slate-800">
                       {rows.length}
                     </span>
                   </>
@@ -1012,7 +1041,7 @@ export default function ModalConsultarStock({ open, onClose, API_URL }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-2xl bg-white/8 hover:bg-white/12 ring-1 ring-white/10 text-white/85 font-extrabold transition"
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 font-extrabold text-slate-700 transition hover:bg-slate-100"
               >
                 Cerrar
               </button>

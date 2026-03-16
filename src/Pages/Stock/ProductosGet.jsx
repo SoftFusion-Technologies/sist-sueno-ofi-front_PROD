@@ -1263,10 +1263,7 @@ const ProductosGet = () => {
 
           <div className="relative z-50">
             {/* Filtros */}
-            <div
-              // Benjamin Orellana - 2026-02-19 - Panel filtros en glass (light/dark) para consistencia visual.
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 rounded-2xl p-4 sm:p-5 border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur-xl ring-1 ring-black/5 dark:ring-white/15"
-            >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 rounded-2xl p-4 sm:p-5 border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur-xl ring-1 ring-black/5 dark:ring-white/15">
               {/* Estado */}
               <select
                 value={estadoFiltro}
@@ -1285,13 +1282,14 @@ const ProductosGet = () => {
                 onChange={setCategoriaFiltro}
               />
 
-              {/* Benjamin Orellana - 19-01-2026 - Proveedor (Dropdown) */}
-              {/* Descripción: filtra por proveedor seleccionado. Si no hay proveedor, muestra todos. */}
-              <DropdownProveedoresConFiltro
-                proveedores={proveedores}
-                selected={proveedorFiltro ? Number(proveedorFiltro) : null}
-                onChange={(id) => setProveedorFiltro(id ? String(id) : '')}
-              />
+              {/* Benjamin Orellana - 14-03-2026 - Filtro de proveedor oculto para vendedor */}
+              <RoleGate allow={['socio', 'administrativo']}>
+                <DropdownProveedoresConFiltro
+                  proveedores={proveedores}
+                  selected={proveedorFiltro ? Number(proveedorFiltro) : null}
+                  onChange={(id) => setProveedorFiltro(id ? String(id) : '')}
+                />
+              </RoleGate>
 
               {/* Orden */}
               <select
@@ -1322,7 +1320,6 @@ const ProductosGet = () => {
               />
             </div>
           </div>
-
           {/* Info + paginación */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <div className="text-slate-700 dark:text-white/80 text-xs sm:text-sm">
@@ -1562,26 +1559,28 @@ const ProductosGet = () => {
                             : null);
 
                         return (
-                          <div className="flex items-start gap-2">
-                            <span className="shrink-0 text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
-                              Proveedor:
-                            </span>
-                            <div className="min-w-0 truncate">
-                              {provName ? (
-                                <span
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[0.7rem]
+                          <RoleGate allow={['socio', 'administrativo']}>
+                            <div className="flex items-start gap-2">
+                              <span className="shrink-0 text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                                Proveedor:
+                              </span>
+                              <div className="min-w-0 truncate">
+                                {provName ? (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[0.7rem]
                 bg-emerald-50 text-emerald-700 border-emerald-200
                 dark:bg-white/10 dark:text-emerald-300 dark:border-emerald-900/40"
-                                >
-                                  {provName}
-                                </span>
-                              ) : (
-                                <span className="text-slate-400 dark:text-gray-400">
-                                  —
-                                </span>
-                              )}
+                                  >
+                                    {provName}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 dark:text-gray-400">
+                                    —
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
+                          </RoleGate>
                         );
                       })()}
 
@@ -1676,7 +1675,9 @@ const ProductosGet = () => {
                         {/* =========================
                             PRECIOS DE COSTO (ARRIBA)
                            ========================= */}
-                        <RoleGate allow={['socio', 'administrativo']}>
+                        <RoleGate
+                          allow={['socio', 'administrativo', 'contador']}
+                        >
                           <div className="rounded-xl border border-black/10 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 p-3">
                             <div className="flex items-start justify-between gap-2">
                               <div className="text-[0.68rem] uppercase tracking-wide text-black font-bold dark:text-gray-400">
@@ -1801,14 +1802,18 @@ const ProductosGet = () => {
 
                           <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {/* Precio base */}
-                            <div className="rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2">
-                              <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
-                                Precio base
+                            <RoleGate
+                              allow={['socio', 'administrativo', 'contador  ']}
+                            >
+                              <div className="rounded-lg border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2">
+                                <div className="text-[0.65rem] uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                                  Precio base
+                                </div>
+                                <div className="mt-0.5 text-sm font-bold text-slate-900 dark:text-gray-100">
+                                  {fmtARS(precioBase)}
+                                </div>
                               </div>
-                              <div className="mt-0.5 text-sm font-bold text-slate-900 dark:text-gray-100">
-                                {fmtARS(precioBase)}
-                              </div>
-                            </div>
+                            </RoleGate>
 
                             {/* Precio tarjeta */}
                             <div className="rounded-lg border border-indigo-200/80 dark:border-indigo-400/30 bg-indigo-50/60 dark:bg-indigo-500/10 px-3 py-2">
@@ -1855,34 +1860,37 @@ const ProductosGet = () => {
                               )}
                             </div>
                           </div>
-
-                          <div className="mt-2 rounded-lg border border-dashed border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/5 px-3 py-2">
-                            <div className="text-[0.65rem] text-slate-600 dark:text-gray-300/90 leading-5">
-                              <span className="font-semibold text-slate-700 dark:text-gray-200">
-                                Flujo:
-                              </span>{' '}
-                              {fmtARS(precioBase)}{' '}
-                              <span className="text-slate-500 dark:text-gray-400">
-                                + recargo {recargoTarjetaPct.toFixed(2)}%
-                              </span>{' '}
-                              ={' '}
-                              <span className="font-semibold text-indigo-700 dark:text-indigo-300">
-                                {fmtARS(precioTarjeta)}
-                              </span>
-                              {descuentoPct > 0 && (
-                                <>
-                                  {' '}
-                                  <span className="text-slate-500 dark:text-gray-400">
-                                    - descuento {descuentoPct.toFixed(2)}%
-                                  </span>{' '}
-                                  ={' '}
-                                  <span className="font-semibold text-emerald-700 dark:text-emerald-300">
-                                    {fmtARS(precioFinalVenta)}
-                                  </span>
-                                </>
-                              )}
+                          <RoleGate
+                            allow={['socio', 'administrativo', 'contador  ']}
+                          >
+                            <div className="mt-2 rounded-lg border border-dashed border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/5 px-3 py-2">
+                              <div className="text-[0.65rem] text-slate-600 dark:text-gray-300/90 leading-5">
+                                <span className="font-semibold text-slate-700 dark:text-gray-200">
+                                  Flujo:
+                                </span>{' '}
+                                {fmtARS(precioBase)}{' '}
+                                <span className="text-slate-500 dark:text-gray-400">
+                                  + recargo {recargoTarjetaPct.toFixed(2)}%
+                                </span>{' '}
+                                ={' '}
+                                <span className="font-semibold text-indigo-700 dark:text-indigo-300">
+                                  {fmtARS(precioTarjeta)}
+                                </span>
+                                {descuentoPct > 0 && (
+                                  <>
+                                    {' '}
+                                    <span className="text-slate-500 dark:text-gray-400">
+                                      - descuento {descuentoPct.toFixed(2)}%
+                                    </span>{' '}
+                                    ={' '}
+                                    <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                                      {fmtARS(precioFinalVenta)}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
                             </div>
-                          </div>
+                          </RoleGate>
                         </div>
                       </div>
                     );

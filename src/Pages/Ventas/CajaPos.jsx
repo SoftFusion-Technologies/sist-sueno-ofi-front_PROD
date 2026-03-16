@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../AuthContext';
 import {
@@ -125,12 +125,36 @@ const esVenta = (m) => m.descripcion?.toLowerCase().includes('venta #');
 
 const copiar = (txt) => navigator.clipboard.writeText(String(txt ?? ''));
 
+// Benjamin Orellana - 14 / 03 / 2026 - Estado inicial reutilizable del resumen de caja para evitar duplicaciones al resetear la UI.
+const buildSaldoInfoInitial = () => ({
+  saldo_inicial: 0,
+  total_ingresos: 0,
+  total_egresos: 0,
+  saldo_actual: 0,
+  meta: { include_c2: false, canal: 'C1' }
+});
+
+// Benjamin Orellana - 14 / 03 / 2026 - Estado inicial reutilizable de la apertura sugerida según el último cierre del local.
+const buildAperturaSugeridaInitial = () => ({
+  loading: false,
+  saldo_sugerido_apertura: 0,
+  caja_anterior_id: null,
+  caja_anterior: null,
+  tiene_caja_abierta: false,
+  caja_abierta_id: null
+});
+
 export default function CajaPOS() {
   const { userId, userLocalId, userLevel } = useAuth();
 
   const [cajaActual, setCajaActual] = useState(null);
   const [movimientos, setMovimientos] = useState([]);
   const [saldoInicial, setSaldoInicial] = useState('');
+
+  // Benjamin Orellana - 14 / 03 / 2026 - Guarda la sugerencia de apertura obtenida desde backend según el último cierre del local.
+  const [aperturaSugerida, setAperturaSugerida] = useState(
+    buildAperturaSugeridaInitial()
+  );
   const [cargando, setCargando] = useState(true);
   // Benjamin Orellana - 23/01/2026 - Se incorporan rubro_id/cuenta_id al movimiento manual y estados para catálogos de Caja.
   const [nuevoMovimiento, setNuevoMovimiento] = useState({
@@ -176,13 +200,7 @@ export default function CajaPOS() {
   const [includeC2, setIncludeC2] = useState(false); // false = C1 (default), true = C1+C2 (auditoría)
 
   // Resumen de saldo calculado por backend (NO depender de la lista paginada)
-  const [saldoInfo, setSaldoInfo] = useState({
-    saldo_inicial: 0,
-    total_ingresos: 0,
-    total_egresos: 0,
-    saldo_actual: 0,
-    meta: { include_c2: false, canal: 'C1' }
-  });
+  const [saldoInfo, setSaldoInfo] = useState(buildSaldoInfoInitial());
 
   const [openCatalogos, setOpenCatalogos] = useState(false);
   const [openMovManual, setOpenMovManual] = useState(false);
@@ -205,6 +223,53 @@ export default function CajaPOS() {
     else params.set('canal', 'C1');
 
     return params;
+  };
+
+  // Benjamin Orellana - 14 / 03 / 2026 - Consulta la apertura sugerida del local y opcionalmente precarga el input de saldo inicial.
+  const fetchAperturaSugerida = async ({ prefill = false } = {}) => {
+    if (!userLocalId) {
+      setAperturaSugerida(buildAperturaSugeridaInitial());
+      if (prefill) setSaldoInicial('');
+      return null;
+    }
+
+    setAperturaSugerida((prev) => ({ ...prev, loading: true }));
+
+    try {
+      const { data } = await axios.get(
+        `${BASE_URL}/caja/local/${userLocalId}/apertura-sugerida`,
+        {
+          headers: { 'X-User-Id': String(userId ?? '') }
+        }
+      );
+
+      const nextState = {
+        loading: false,
+        saldo_sugerido_apertura: Number(data?.saldo_sugerido_apertura || 0),
+        caja_anterior_id: data?.caja_anterior_id || null,
+        caja_anterior: data?.caja_anterior || null,
+        tiene_caja_abierta: Boolean(data?.tiene_caja_abierta),
+        caja_abierta_id: data?.caja_abierta_id || null
+      };
+
+      setAperturaSugerida(nextState);
+
+      if (prefill) {
+        setSaldoInicial(String(nextState.saldo_sugerido_apertura));
+      }
+
+      return data;
+    } catch (err) {
+      setAperturaSugerida(buildAperturaSugeridaInitial());
+
+      if (prefill) setSaldoInicial('');
+
+      console.warn(
+        '[CajaPOS] fetchAperturaSugerida no crítico:',
+        err?.response?.data?.mensajeError || err?.message
+      );
+      return null;
+    }
   };
 
   async function verMovimientosDeCaja(cajaId) {
@@ -246,13 +311,16 @@ export default function CajaPOS() {
   // ===============================
   // Verificación “caja sigue abierta” (se ejecuta en clicks críticos)
   // ===============================
+  // Benjamin Orellana - 14 / 03 / 2026 - Consulta solo cajas abiertas del local actual para evitar traer datos innecesarios.
   const getCajaAbiertaLocal = async () => {
-    const res = await axios.get(`${BASE_URL}/caja`);
-    const abierta = (res.data || []).find(
-      (c) =>
-        String(c.local_id) === String(userLocalId) && c.fecha_cierre === null
+    const { data } = await axios.get(
+      `${BASE_URL}/caja?local_id=${userLocalId}&abiertas=1`,
+      {
+        headers: { 'X-User-Id': String(userId ?? '') }
+      }
     );
-    return abierta || null;
+
+    return Array.isArray(data) && data.length > 0 ? data[0] : null;
   };
 
   const refreshMovimientosCaja = async (cajaId, opts = {}) => {
@@ -277,13 +345,7 @@ export default function CajaPOS() {
 
   const refreshSaldoCaja = async (cajaId, opts = {}) => {
     if (!cajaId) {
-      setSaldoInfo({
-        saldo_inicial: 0,
-        total_ingresos: 0,
-        total_egresos: 0,
-        saldo_actual: 0,
-        meta: { include_c2: false, canal: 'C1' }
-      });
+      setSaldoInfo(buildSaldoInfoInitial());
       return null;
     }
 
@@ -401,30 +463,46 @@ export default function CajaPOS() {
   useEffect(() => {
     const fetchCaja = async () => {
       setCargando(true);
+
       try {
-        const res = await axios.get(`https://api.rioromano.com.ar/caja`);
-        const abierta = res.data.find(
-          (c) =>
-            // c.usuario_id == userId && misma caja
-            c.local_id == userLocalId && c.fecha_cierre === null
+        const { data } = await axios.get(
+          `${BASE_URL}/caja?local_id=${userLocalId}&abiertas=1`,
+          {
+            headers: { 'X-User-Id': String(userId ?? '') }
+          }
         );
+
+        const abierta = Array.isArray(data) && data.length > 0 ? data[0] : null;
+
         setCajaActual(abierta || null);
 
         if (abierta) {
           await refreshCajaUI(abierta.id);
+        } else {
+          setMovimientos([]);
+          setSaldoInfo(buildSaldoInfoInitial());
+          await fetchAperturaSugerida({ prefill: true });
         }
-      } catch {
+      } catch (err) {
         setCajaActual(null);
+        setMovimientos([]);
+        setSaldoInfo(buildSaldoInfoInitial());
+        await fetchAperturaSugerida({ prefill: true });
+      } finally {
+        setCargando(false);
       }
-      setCargando(false);
     };
-    fetchCaja();
+
+    if (userLocalId) {
+      fetchCaja();
+    }
   }, [userLocalId]);
+
   // Cargar historial
   const cargarHistorial = async () => {
-    const res = await axios.get(
-      `https://api.rioromano.com.ar/caja?local_id=${userLocalId}`
-    );
+    const res = await axios.get(`${BASE_URL}/caja?local_id=${userLocalId}`, {
+      headers: { 'X-User-Id': String(userId ?? '') }
+    });
     setHistorial(res.data.filter((c) => c.fecha_cierre !== null));
     setShowHistorial(true);
   };
@@ -566,12 +644,15 @@ export default function CajaPOS() {
     return cajaCuentasById?.[id]?.nombre ?? `#${id}`;
   };
 
+  // Benjamin Orellana - 14 / 03 / 2026 - Abre caja tomando el saldo inicial ingresado y luego refresca la UI completa con la caja recién creada.
   const abrirCaja = async () => {
+    const montoInicial = Number(saldoInicial);
+
     if (
       saldoInicial === '' ||
       saldoInicial === null ||
-      isNaN(parseFloat(saldoInicial)) ||
-      parseFloat(saldoInicial) < 0
+      !Number.isFinite(montoInicial) ||
+      montoInicial < 0
     ) {
       await swalError('Saldo inválido', 'Ingresá un saldo inicial válido.');
       return;
@@ -579,23 +660,41 @@ export default function CajaPOS() {
 
     try {
       swalLoading('Abriendo caja...');
-      const res = await axios.post(`https://api.rioromano.com.ar/caja`, {
-        usuario_id: userId,
-        local_id: userLocalId,
-        saldo_inicial: parseFloat(saldoInicial)
-      });
 
-      setCajaActual(res.data.caja || res.data);
-      setMovimientos([]);
+      const { data } = await axios.post(
+        `${BASE_URL}/caja`,
+        {
+          usuario_id: userId,
+          local_id: userLocalId,
+          saldo_inicial: montoInicial
+        },
+        {
+          headers: { 'X-User-Id': String(userId ?? '') }
+        }
+      );
+
+      const cajaCreada = data?.caja ?? data;
+
+      setCajaActual(cajaCreada);
+      setAperturaSugerida(buildAperturaSugeridaInitial());
       setSaldoInicial('');
+
+      await refreshCajaUI(cajaCreada?.id);
 
       Swal.close();
       toast.fire({ icon: 'success', title: 'Caja abierta correctamente' });
     } catch (err) {
       Swal.close();
+
+      // Benjamin Orellana - 14 / 03 / 2026 - Si la apertura falla por conflicto, resincroniza la caja abierta real del local.
+      if (Number(err?.response?.status) === 409) {
+        await ensureCajaAbierta({ notify: false, refreshMovs: true });
+        await fetchAperturaSugerida({ prefill: true });
+      }
+
       await swalError(
         'No se pudo abrir la caja',
-        err.response?.data?.mensajeError || 'Error al abrir caja'
+        err?.response?.data?.mensajeError || 'Error al abrir caja'
       );
     }
   };
@@ -687,6 +786,8 @@ export default function CajaPOS() {
 
       setCajaActual(null);
       setMovimientos([]);
+      setSaldoInfo(buildSaldoInfoInitial());
+      await fetchAperturaSugerida({ prefill: true });
 
       Swal.close();
 
@@ -836,9 +937,8 @@ export default function CajaPOS() {
   const mostrarDetalleVenta = async (idVenta) => {
     try {
       swalLoading('Cargando detalle de venta...');
-      const res = await fetch(
-        `https://api.rioromano.com.ar/ventas/${idVenta}/detalle`
-      );
+      const res = await fetch(`${BASE_URL}/ventas/${idVenta}/detalle`);
+
       if (!res.ok) throw new Error('No se pudo obtener el detalle');
 
       const data = await res.json();
@@ -1358,25 +1458,75 @@ export default function CajaPOS() {
           ) : (
             // No hay caja abierta
             <div>
-              <h3 className="text-xl font-semibold mb-2 text-white">
-                Abrir caja
-              </h3>
+              {/* Benjamin Orellana - 14 / 03 / 2026 - Panel visual que muestra el último cierre del local y precarga la sugerencia de apertura. */}
+              <div className="mb-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
+                <div className="text-sm font-semibold text-emerald-200">
+                  Apertura sugerida por último cierre
+                </div>
+
+                {aperturaSugerida.loading ? (
+                  <div className="mt-2 text-sm text-gray-300">
+                    Consultando último cierre...
+                  </div>
+                ) : (
+                  <>
+                    <div className="mt-2 text-3xl font-black tracking-tight text-white">
+                      {formatearPeso(
+                        aperturaSugerida.saldo_sugerido_apertura || 0
+                      )}
+                    </div>
+
+                    {aperturaSugerida.caja_anterior ? (
+                      <div className="mt-2 text-xs text-gray-300">
+                        Última caja cerrada #{aperturaSugerida.caja_anterior.id}{' '}
+                        · cierre:{' '}
+                        {new Date(
+                          aperturaSugerida.caja_anterior.fecha_cierre
+                        ).toLocaleString()}
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-xs text-gray-400">
+                        No hay cierres previos para este local. Se sugerirá
+                        $0,00.
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
               <div className="flex flex-col sm:flex-row gap-2 items-center mb-6">
                 <input
                   type="number"
                   min={0}
+                  step="0.01"
                   value={saldoInicial}
                   onChange={(e) => setSaldoInicial(e.target.value)}
                   placeholder="Saldo inicial"
                   className="rounded-lg p-3 bg-[#232323] text-white border border-emerald-500 focus:ring-emerald-500 flex-1"
                 />
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSaldoInicial(
+                      String(
+                        Number(aperturaSugerida?.saldo_sugerido_apertura || 0)
+                      )
+                    )
+                  }
+                  className="w-full sm:w-auto px-4 py-3 rounded-lg border border-white/10 text-sm font-semibold text-gray-200 bg-white/5 hover:bg-white/10 transition"
+                >
+                  Usar sugerido
+                </button>
+
                 <button
                   onClick={abrirCaja}
-                  className="bg-gradient-to-r from-emerald-600 to-green-700 px-6 py-2 rounded-lg hover:from-emerald-700 hover:to-green-800 font-bold text-white text-lg shadow-lg"
+                  className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-green-700 px-6 py-3 rounded-lg hover:from-emerald-700 hover:to-green-800 font-bold text-white text-lg shadow-lg inline-flex items-center justify-center gap-2"
                 >
                   <FaPlay /> Abrir caja
                 </button>
               </div>
+
               <button
                 className="text-emerald-400 hover:underline mt-2 text-sm flex items-center"
                 onClick={cargarHistorial}
@@ -2248,7 +2398,7 @@ export default function CajaPOS() {
       <CajaReciboQuickModal
         open={reciboFlow.open}
         userId={userId}
-        baseUrl={BASE_URL}  
+        baseUrl={BASE_URL}
         movimientoBase={{
           tipo: reciboFlow.movPayload?.tipo,
           monto: reciboFlow.movPayload?.monto,

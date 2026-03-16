@@ -45,7 +45,11 @@ export default function ModalMediosPago({
     activo: 1,
     ajuste_porcentual: 0,
     // Benjamin Orellana - 2026-03-10 - Se agrega el nuevo flag al estado del formulario para permitir configurar desde el front si el medio exige autorización POS.
-    requiere_autorizacion_pos: 0
+    requiere_autorizacion_pos: 0,
+
+    // Benjamin Orellana - 14 / 03 / 2026 - Se agregan flags operativos para definir desde el CRUD si el medio impacta caja y/o tesorería.
+    impacta_caja: 0,
+    impacta_teso_flujo: 1
   });
   const [loading, setLoading] = useState(false);
   const [mostrarModalCuotas, setMostrarModalCuotas] = useState(false);
@@ -76,7 +80,11 @@ export default function ModalMediosPago({
       activo: 1,
       ajuste_porcentual: 0,
       // Benjamin Orellana - 2026-03-10 - Resetea también el nuevo flag POS para evitar que una edición anterior contamine un alta nueva.
-      requiere_autorizacion_pos: 0
+      requiere_autorizacion_pos: 0,
+
+      // Benjamin Orellana - 14 / 03 / 2026 - Resetea los flags de impacto operativo del medio para evitar arrastrar valores de una edición anterior.
+      impacta_caja: 0,
+      impacta_teso_flujo: 1
     });
 
   if (!show) return null;
@@ -99,7 +107,13 @@ export default function ModalMediosPago({
       ajuste_porcentual: Number.isFinite(Number(nuevo.ajuste_porcentual))
         ? Number(nuevo.ajuste_porcentual)
         : 0,
-      requiere_autorizacion_pos: Number(nuevo.requiere_autorizacion_pos ? 1 : 0)
+      requiere_autorizacion_pos: Number(
+        nuevo.requiere_autorizacion_pos ? 1 : 0
+      ),
+
+      // Benjamin Orellana - 14 / 03 / 2026 - Normaliza flags de impacto para que el backend reciba 0/1 consistentes.
+      impacta_caja: Number(nuevo.impacta_caja ? 1 : 0),
+      impacta_teso_flujo: Number(nuevo.impacta_teso_flujo ? 1 : 0)
     };
 
     setLoading(true);
@@ -236,7 +250,11 @@ export default function ModalMediosPago({
       activo: m.activo ?? 1,
       ajuste_porcentual: m.ajuste_porcentual || 0,
       // Benjamin Orellana - 2026-03-10 - Levanta el nuevo flag desde el registro seleccionado para que el CRUD permita editar la exigencia de autorización POS.
-      requiere_autorizacion_pos: Number(m.requiere_autorizacion_pos || 0)
+      requiere_autorizacion_pos: Number(m.requiere_autorizacion_pos || 0),
+
+      // Benjamin Orellana - 14 / 03 / 2026 - Levanta desde el registro los flags operativos de impacto en caja y tesorería.
+      impacta_caja: Number(m.impacta_caja || 0),
+      impacta_teso_flujo: Number(m.impacta_teso_flujo ?? 1)
     });
   };
 
@@ -466,6 +484,20 @@ export default function ModalMediosPago({
                               Requiere Número de Autorización
                             </span>
                           )}
+                          {/* Benjamin Orellana - 14 / 03 / 2026 - Badges visuales para identificar rápidamente si el medio impacta caja y/o tesorería. */}
+                          {(m.impacta_caja === 1 ||
+                            m.impacta_caja === true) && (
+                            <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                              Impacta Caja
+                            </span>
+                          )}
+
+                          {(m.impacta_teso_flujo === 1 ||
+                            m.impacta_teso_flujo === true) && (
+                            <span className="inline-flex items-center rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold text-sky-300">
+                              Impacta Tesorería
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -577,7 +609,7 @@ export default function ModalMediosPago({
                       </div>
 
                       {/* TOGGLES */}
-                      <div className="w-full xl:w-[320px] grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-2">
+                      <div className="w-full xl:w-[320px] grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 gap-2">
                         <button
                           type="button"
                           className="inline-flex items-center justify-start gap-2 rounded-2xl px-3 py-3 text-sm border border-zinc-700 bg-zinc-900/80 text-zinc-200 hover:border-emerald-500/60 hover:bg-zinc-900 transition"
@@ -639,6 +671,84 @@ export default function ModalMediosPago({
                               {nuevo.requiere_autorizacion_pos
                                 ? 'Se pedirá número de autorización al finalizar'
                                 : 'No exige captura de autorización'}
+                            </span>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          className={`inline-flex items-center justify-start gap-2 rounded-2xl px-3 py-3 text-sm border transition ${
+                            nuevo.impacta_caja
+                              ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-200'
+                              : 'border-zinc-700 bg-zinc-900/80 text-zinc-200 hover:border-emerald-500/40 hover:bg-zinc-900'
+                          }`}
+                          title={
+                            nuevo.impacta_caja
+                              ? 'Impacta caja'
+                              : 'No impacta caja'
+                          }
+                          onClick={() =>
+                            setNuevo({
+                              ...nuevo,
+                              // Benjamin Orellana - 14 / 03 / 2026 - Toggle para definir desde el CRUD si la venta con este medio debe generar movimiento en caja.
+                              impacta_caja: nuevo.impacta_caja ? 0 : 1
+                            })
+                          }
+                        >
+                          {nuevo.impacta_caja ? (
+                            <FaToggleOn className="text-emerald-300 text-xl" />
+                          ) : (
+                            <FaToggleOff className="text-zinc-500 text-xl" />
+                          )}
+
+                          <div className="flex flex-col items-start min-w-0">
+                            <span className="text-xs uppercase tracking-[0.14em]">
+                              Caja
+                            </span>
+                            <span className="text-[11px] normal-case tracking-normal text-zinc-400">
+                              {nuevo.impacta_caja
+                                ? 'La venta con este medio impactará caja'
+                                : 'La venta con este medio no impactará caja'}
+                            </span>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          className={`inline-flex items-center justify-start gap-2 rounded-2xl px-3 py-3 text-sm border transition ${
+                            nuevo.impacta_teso_flujo
+                              ? 'border-sky-500/60 bg-sky-500/10 text-sky-200'
+                              : 'border-zinc-700 bg-zinc-900/80 text-zinc-200 hover:border-sky-500/40 hover:bg-zinc-900'
+                          }`}
+                          title={
+                            nuevo.impacta_teso_flujo
+                              ? 'Impacta tesorería'
+                              : 'No impacta tesorería'
+                          }
+                          onClick={() =>
+                            setNuevo({
+                              ...nuevo,
+                              // Benjamin Orellana - 14 / 03 / 2026 - Toggle para definir desde el CRUD si la venta con este medio debe registrar flujo en tesorería.
+                              impacta_teso_flujo: nuevo.impacta_teso_flujo
+                                ? 0
+                                : 1
+                            })
+                          }
+                        >
+                          {nuevo.impacta_teso_flujo ? (
+                            <FaToggleOn className="text-sky-300 text-xl" />
+                          ) : (
+                            <FaToggleOff className="text-zinc-500 text-xl" />
+                          )}
+
+                          <div className="flex flex-col items-start min-w-0">
+                            <span className="text-xs uppercase tracking-[0.14em]">
+                              Tesorería
+                            </span>
+                            <span className="text-[11px] normal-case tracking-normal text-zinc-400">
+                              {nuevo.impacta_teso_flujo
+                                ? 'La venta con este medio impactará tesorería'
+                                : 'La venta con este medio no impactará tesorería'}
                             </span>
                           </div>
                         </button>
