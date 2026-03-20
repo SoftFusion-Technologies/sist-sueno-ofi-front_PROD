@@ -146,7 +146,7 @@ function TotalConOpciones({
     <>
       {/* Selector aplicar descuento */}
       {/* Benjamin Orellana - 2026-02-17 - Ajusta contraste y superficies del selector de descuento para light/dark sin cambiar lógica */}
-      <div className="flex justify-end items-center gap-6 mb-2 select-none text-sm text-slate-800 dark:text-white">
+      {/* <div className="flex justify-end items-center gap-6 mb-2 select-none text-sm text-slate-800 dark:text-white">
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="radio"
@@ -188,7 +188,7 @@ function TotalConOpciones({
                      dark:bg-white/10 dark:text-white dark:border-white/15 dark:focus:ring-emerald-400/40"
           />
         )}
-      </div>
+      </div> */}
 
       {/* Panel sugerencias */}
       {suggestions.length > 0 && (
