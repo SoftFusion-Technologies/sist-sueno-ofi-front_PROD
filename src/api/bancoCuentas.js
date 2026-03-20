@@ -29,3 +29,15 @@ export const deleteBancoCuenta = async (id, opts = {}) => {
   });
   return data;
 };
+
+export const listBancoCuentasActivas = async (params = {}) => {
+  const rows = await listBancoCuentas(params);
+
+  return rows
+    .filter((item) => item?.activo === true || Number(item?.activo) === 1)
+    .sort((a, b) => {
+      const bancoA = String(a?.banco?.nombre || '');
+      const bancoB = String(b?.banco?.nombre || '');
+      return bancoA.localeCompare(bancoB);
+    });
+};

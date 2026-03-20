@@ -62,3 +62,35 @@ export const compensarCheque = (id, payload = {}) =>
   transition(id, 'compensar', payload);
 export const anularCheque = (id, payload = {}) =>
   transition(id, 'anular', payload);
+
+const normalizeList = (payload) => {
+  const root = payload?.data || payload || {};
+
+  if (Array.isArray(root)) return root;
+
+  return root?.rows || root?.items || root?.results || root?.data || [];
+};
+
+/*
+ * Benjamin Orellana - 17/03/2026
+ * Cheques utilizables como medio de cobranza CxC:
+ * - tipo recibido
+ * - estados operables (registrado / en_cartera)
+ */
+export const listChequesDisponiblesParaCobranza = async (params = {}) => {
+  const data = await listCheques(params);
+  const rows = normalizeList(data);
+
+  return rows
+    .filter((item) => String(item?.tipo || '').toLowerCase() === 'recibido')
+    .filter((item) =>
+      ['registrado', 'en_cartera'].includes(
+        String(item?.estado || '').toLowerCase()
+      )
+    )
+    .sort((a, b) => {
+      const fa = new Date(a?.fecha_vencimiento || a?.created_at || 0).getTime();
+      const fb = new Date(b?.fecha_vencimiento || b?.created_at || 0).getTime();
+      return fb - fa;
+    });
+};

@@ -2,12 +2,19 @@
  * Programador: Benjamin Orellana
  * Refactor/UI: SoftFusion (actualización fiscal + UX)
  * Fecha: 12 / 12 / 2025
- * Versión: 2.0
+ * Versión: 2.1
  *
  * Descripción:
  * Gestión de Clientes (CRUD) con datos fiscales ARCA/AFIP:
  * - razon_social, tipo_persona, cuit_cuil, condicion_iva
  * Incluye filtros avanzados, KPIs, modal con tabs y detalle con historial de compras.
+ *
+ * Actualización 17 / 03 / 2026:
+ * - Soporte visual y funcional para configuración comercial de cuenta corriente:
+ *   habilita_cta_cte, bloqueado_cta_cte, sin_limite_credito, limite_credito,
+ *   observaciones_cta_cte.
+ * - Visualización de saldo_cta_cte_cache y saldo_favor_cache en cards y detalle.
+ * - Filtros server/client para flags de cuenta corriente.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -72,13 +79,35 @@ const TIPO_PERSONA_OPTIONS = [
   { value: 'JURIDICA', label: 'Jurídica' }
 ];
 
+const BOOLEAN_FILTER_OPTIONS = [
+  { value: '', label: 'Todos' },
+  { value: 'true', label: 'Sí' },
+  { value: 'false', label: 'No' }
+];
+
 const safe = (v, fallback = '—') => (v && String(v).trim() ? v : fallback);
 
 const onlyDigits = (v = '') => String(v).replace(/[^\d]/g, '');
+
 const normalizeNullable = (v) => {
   const s = String(v ?? '').trim();
   return s.length ? s : null;
 };
+
+// Benjamin Orellana - 17-03-2026 - Normaliza input decimal para límite de crédito.
+const normalizeDecimalNullable = (v) => {
+  const s = String(v ?? '').trim();
+  if (!s) return null;
+
+  const normalized = Number(s.replace(',', '.'));
+  if (!Number.isFinite(normalized)) return null;
+
+  return Number(normalized.toFixed(2));
+};
+
+// Benjamin Orellana - 17-03-2026 - Obtiene nombre visible del cliente priorizando nombre y luego razón social.
+const getClienteDisplayName = (cliente = {}) =>
+  safe(cliente?.nombre || cliente?.razon_social, '—');
 
 const initials = (name = '') =>
   String(name)
@@ -101,7 +130,6 @@ const mapsLink = (addr = '') =>
     : '#';
 
 const toWhatsAppNumberAR = (raw = '') => {
-  // Normaliza a AR: 54 + 9 + número sin 0/15 (aprox. estándar WA)
   let n = onlyDigits(raw);
   n = n.replace(/^0+/, '').replace(/^15/, '');
   if (!n.startsWith('54')) n = `54${n}`;
@@ -112,7 +140,6 @@ const toWhatsAppNumberAR = (raw = '') => {
 const displayPhone = (raw = '') => {
   const n = onlyDigits(raw);
   if (!n) return '';
-  // Formato simple “XXXX-XXXXXXX” (sin romper si cambia longitud)
   if (n.length >= 10) return `${n.slice(0, n.length - 7)}-${n.slice(-7)}`;
   return n;
 };
@@ -123,10 +150,32 @@ const getCondIvaLabel = (val) =>
 const getTipoPersonaLabel = (val) =>
   TIPO_PERSONA_OPTIONS.find((x) => x.value === val)?.label || val || '—';
 
+// Benjamin Orellana - 17-03-2026 - Formatea importes de cuenta corriente y saldos.
+const formatCurrencyAR = (value) => {
+  const n = Number(value ?? 0);
+  if (!Number.isFinite(n)) return '$0,00';
+
+  return n.toLocaleString('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+
+// Benjamin Orellana - 17-03-2026 - Construye el payload seguro del cliente, incluyendo configuración de cuenta corriente.
 const sanitizeClientePayload = (fd) => {
-  // Importante: evitar "" en campos opcionales (email UNIQUE)
+  const habilitaCtaCte = !!fd.habilita_cta_cte;
+  const sinLimiteCredito = habilitaCtaCte ? !!fd.sin_limite_credito : true;
+  const bloqueadoCtaCte = habilitaCtaCte ? !!fd.bloqueado_cta_cte : false;
+  const limiteCredito = habilitaCtaCte
+    ? sinLimiteCredito
+      ? null
+      : normalizeDecimalNullable(fd.limite_credito)
+    : null;
+
   return {
-    nombre: normalizeNullable(fd.nombre) || '', // requerido
+    nombre: normalizeNullable(fd.nombre),
     razon_social: normalizeNullable(fd.razon_social),
     tipo_persona: fd.tipo_persona || 'FISICA',
     telefono: normalizeNullable(fd.telefono),
@@ -134,9 +183,36 @@ const sanitizeClientePayload = (fd) => {
     direccion: normalizeNullable(fd.direccion),
     dni: normalizeNullable(onlyDigits(fd.dni || '')),
     cuit_cuil: normalizeNullable(onlyDigits(fd.cuit_cuil || '')),
-    condicion_iva: fd.condicion_iva || 'CONSUMIDOR_FINAL'
+    condicion_iva: fd.condicion_iva || 'CONSUMIDOR_FINAL',
+
+    habilita_cta_cte: habilitaCtaCte,
+    bloqueado_cta_cte: bloqueadoCtaCte,
+    sin_limite_credito: sinLimiteCredito,
+    limite_credito: limiteCredito,
+    observaciones_cta_cte: habilitaCtaCte
+      ? normalizeNullable(fd.observaciones_cta_cte)
+      : null
   };
 };
+
+// Benjamin Orellana - 17-03-2026 - Estado inicial del formulario incluyendo cuenta corriente.
+const getEmptyFormData = () => ({
+  nombre: '',
+  razon_social: '',
+  tipo_persona: 'FISICA',
+  telefono: '',
+  email: '',
+  direccion: '',
+  dni: '',
+  cuit_cuil: '',
+  condicion_iva: 'CONSUMIDOR_FINAL',
+
+  habilita_cta_cte: false,
+  bloqueado_cta_cte: false,
+  sin_limite_credito: true,
+  limite_credito: '',
+  observaciones_cta_cte: ''
+});
 
 export default function ClientesGet() {
   const { userId } = useAuth();
@@ -150,24 +226,20 @@ export default function ClientesGet() {
   const [tipoPersonaFiltro, setTipoPersonaFiltro] = useState('');
   const [condIvaFiltro, setCondIvaFiltro] = useState('');
   const [soloConCuit, setSoloConCuit] = useState(false);
+
+  // Benjamin Orellana - 17-03-2026 - Nuevos filtros de cuenta corriente.
+  const [habilitaCtaCteFiltro, setHabilitaCtaCteFiltro] = useState('');
+  const [bloqueadoCtaCteFiltro, setBloqueadoCtaCteFiltro] = useState('');
+  const [sinLimiteCreditoFiltro, setSinLimiteCreditoFiltro] = useState('');
+
   const [sortBy, setSortBy] = useState('NOMBRE_ASC'); // NOMBRE_ASC | ULT_COMPRA_DESC | FECHA_ALTA_DESC
 
   // modal alta/edición
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalTab, setModalTab] = useState('DATOS'); // DATOS | FISCAL
+  const [modalTab, setModalTab] = useState('DATOS'); // DATOS | FISCAL | CTA_CTE
   const [editId, setEditId] = useState(null);
 
-  const [formData, setFormData] = useState({
-    nombre: '',
-    razon_social: '',
-    tipo_persona: 'FISICA',
-    telefono: '',
-    email: '',
-    direccion: '',
-    dni: '',
-    cuit_cuil: '',
-    condicion_iva: 'CONSUMIDOR_FINAL'
-  });
+  const [formData, setFormData] = useState(getEmptyFormData());
 
   // feedback
   const [modalFeedbackOpen, setModalFeedbackOpen] = useState(false);
@@ -190,7 +262,7 @@ export default function ClientesGet() {
 
   const [remitosQ, setRemitosQ] = useState('');
   const [remitosQDebounced, setRemitosQDebounced] = useState('');
-  const [remitosEstado, setRemitosEstado] = useState(''); // '', 'EMITIDO', etc (según tu enum)
+  const [remitosEstado, setRemitosEstado] = useState('');
   const [remitosDesde, setRemitosDesde] = useState('');
   const [remitosHasta, setRemitosHasta] = useState('');
 
@@ -281,7 +353,13 @@ export default function ClientesGet() {
   const reqSeqRef = useRef(0);
 
   // Benjamin Orellana - 25 / 01 / 2026 - Para resetear a página 1 cuando cambia búsqueda o tamaño de página (sin doble fetch).
-  const prevQueryRef = useRef({ q: '', limit: 20 });
+  const prevQueryRef = useRef({
+    q: '',
+    limit: 20,
+    habilita_cta_cte: '',
+    bloqueado_cta_cte: '',
+    sin_limite_credito: ''
+  });
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -310,10 +388,17 @@ export default function ClientesGet() {
   };
 
   // Benjamin Orellana - 25 / 01 / 2026 - Fetch paginado (server-side) con q/limit/page.
+  // Benjamin Orellana - 17-03-2026 - Se agregan filtros de flags de cuenta corriente al fetch server-side.
   const fetchClientes = async (opts = {}) => {
     const pageToUse = Number(opts.page ?? page) || 1;
     const limitToUse = Number(opts.limit ?? limit) || 20;
     const qToUse = String(opts.q ?? debouncedSearch ?? '').trim();
+
+    const habilitaToUse = opts.habilita_cta_cte ?? habilitaCtaCteFiltro ?? '';
+    const bloqueadoToUse =
+      opts.bloqueado_cta_cte ?? bloqueadoCtaCteFiltro ?? '';
+    const sinLimiteToUse =
+      opts.sin_limite_credito ?? sinLimiteCreditoFiltro ?? '';
 
     const mySeq = ++reqSeqRef.current;
     setLoading(true);
@@ -326,7 +411,10 @@ export default function ClientesGet() {
           params: {
             page: pageToUse,
             limit: limitToUse,
-            q: qToUse || undefined
+            q: qToUse || undefined,
+            habilita_cta_cte: habilitaToUse || undefined,
+            bloqueado_cta_cte: bloqueadoToUse || undefined,
+            sin_limite_credito: sinLimiteToUse || undefined
           }
         });
 
@@ -335,11 +423,9 @@ export default function ClientesGet() {
           meta: res.data?.meta || null
         };
       } catch (e) {
-        // Si falla el paginado (por ejemplo 404 en otro entorno), hacemos fallback sin romper.
         payload = await fetchClientesLegacyAll();
       }
 
-      // Si entró otra request después, ignoramos esta respuesta
       if (mySeq !== reqSeqRef.current) return;
 
       const data = Array.isArray(payload?.data) ? payload.data : [];
@@ -388,22 +474,55 @@ export default function ClientesGet() {
     const prev = prevQueryRef.current;
     const q = debouncedSearch;
     const lim = limit;
+    const habilita = habilitaCtaCteFiltro;
+    const bloqueado = bloqueadoCtaCteFiltro;
+    const sinLimite = sinLimiteCreditoFiltro;
 
-    const queryChanged = prev.q !== q || prev.limit !== lim;
+    const queryChanged =
+      prev.q !== q ||
+      prev.limit !== lim ||
+      prev.habilita_cta_cte !== habilita ||
+      prev.bloqueado_cta_cte !== bloqueado ||
+      prev.sin_limite_credito !== sinLimite;
 
-    // Si cambió búsqueda o tamaño de página y no estamos en página 1, primero reseteamos a 1 (evita doble fetch)
     if (queryChanged && page !== 1) {
-      prevQueryRef.current = { q, limit: lim };
+      prevQueryRef.current = {
+        q,
+        limit: lim,
+        habilita_cta_cte: habilita,
+        bloqueado_cta_cte: bloqueado,
+        sin_limite_credito: sinLimite
+      };
       setPage(1);
       return;
     }
 
-    prevQueryRef.current = { q, limit: lim };
-    fetchClientes({ page, limit: lim, q });
-  }, [page, limit, debouncedSearch]);
+    prevQueryRef.current = {
+      q,
+      limit: lim,
+      habilita_cta_cte: habilita,
+      bloqueado_cta_cte: bloqueado,
+      sin_limite_credito: sinLimite
+    };
+
+    fetchClientes({
+      page,
+      limit: lim,
+      q,
+      habilita_cta_cte: habilita,
+      bloqueado_cta_cte: bloqueado,
+      sin_limite_credito: sinLimite
+    });
+  }, [
+    page,
+    limit,
+    debouncedSearch,
+    habilitaCtaCteFiltro,
+    bloqueadoCtaCteFiltro,
+    sinLimiteCreditoFiltro
+  ]);
 
   useEffect(() => {
-    // catálogos para el detalle de venta
     Promise.all([fetchLocales(), fetchUsuarios()])
       .then(([localesData, usuariosData]) => {
         setLocales(localesData || []);
@@ -415,6 +534,7 @@ export default function ClientesGet() {
       });
   }, []);
 
+  // Benjamin Orellana - 17-03-2026 - Abre modal contemplando nuevos campos de cuenta corriente.
   const openModal = (cliente = null) => {
     setModalTab('DATOS');
 
@@ -429,42 +549,65 @@ export default function ClientesGet() {
         direccion: cliente.direccion || '',
         dni: cliente.dni || '',
         cuit_cuil: cliente.cuit_cuil || '',
-        condicion_iva: cliente.condicion_iva || 'CONSUMIDOR_FINAL'
+        condicion_iva: cliente.condicion_iva || 'CONSUMIDOR_FINAL',
+
+        habilita_cta_cte: !!cliente.habilita_cta_cte,
+        bloqueado_cta_cte: !!cliente.bloqueado_cta_cte,
+        sin_limite_credito:
+          cliente.sin_limite_credito === undefined ||
+          cliente.sin_limite_credito === null
+            ? true
+            : !!cliente.sin_limite_credito,
+        limite_credito:
+          cliente.limite_credito !== null &&
+          cliente.limite_credito !== undefined
+            ? String(cliente.limite_credito)
+            : '',
+        observaciones_cta_cte: cliente.observaciones_cta_cte || ''
       });
     } else {
       setEditId(null);
-      setFormData({
-        nombre: '',
-        razon_social: '',
-        tipo_persona: 'FISICA',
-        telefono: '',
-        email: '',
-        direccion: '',
-        dni: '',
-        cuit_cuil: '',
-        condicion_iva: 'CONSUMIDOR_FINAL'
-      });
+      setFormData(getEmptyFormData());
     }
 
     setModalOpen(true);
   };
 
+  // Benjamin Orellana - 17-03-2026 - Valida nombre/razón social, CUIT y reglas comerciales de cuenta corriente.
   const validateBeforeSubmit = () => {
-    const nombreOk = String(formData.nombre || '').trim().length >= 2;
-    if (!nombreOk) return 'El nombre es obligatorio (mínimo 2 caracteres).';
+    const nombre = String(formData.nombre || '').trim();
+    const razonSocial = String(formData.razon_social || '').trim();
+
+    if (!nombre && !razonSocial) {
+      return 'Debés completar nombre o razón social.';
+    }
+
+    if (nombre && nombre.length < 2) {
+      return 'El nombre es inválido (mínimo 2 caracteres).';
+    }
+
+    if (razonSocial && razonSocial.length < 2) {
+      return 'La razón social es inválida (mínimo 2 caracteres).';
+    }
 
     const dni = onlyDigits(formData.dni || '');
     if (dni && dni.length < 7) return 'DNI inválido (muy corto).';
 
     const cuit = onlyDigits(formData.cuit_cuil || '');
-    if (cuit && cuit.length !== 11)
+    if (cuit && cuit.length !== 11) {
       return 'CUIT/CUIL debe tener exactamente 11 dígitos.';
+    }
 
-    // Si es jurídica, sugerimos (no bloqueante) razón social
     if (formData.tipo_persona === 'JURIDICA') {
-      const rs = String(formData.razon_social || '').trim();
-      if (rs.length < 2) return 'Para persona jurídica, completá Razón Social.';
+      if (!razonSocial) return 'Para persona jurídica, completá Razón Social.';
       if (!cuit) return 'Para persona jurídica, completá CUIT (11 dígitos).';
+    }
+
+    if (formData.habilita_cta_cte && !formData.sin_limite_credito) {
+      const limite = normalizeDecimalNullable(formData.limite_credito);
+      if (limite === null || limite < 0) {
+        return 'Debés indicar un límite de crédito válido cuando el cliente no tenga límite libre.';
+      }
     }
 
     return null;
@@ -502,8 +645,14 @@ export default function ClientesGet() {
 
       setModalOpen(false);
       setModalFeedbackOpen(true);
-      // Benjamin Orellana - 25 / 01 / 2026 - Refresca listado paginado luego de alta/edición.
-      fetchClientes({ page, limit, q: debouncedSearch });
+      fetchClientes({
+        page,
+        limit,
+        q: debouncedSearch,
+        habilita_cta_cte: habilitaCtaCteFiltro,
+        bloqueado_cta_cte: bloqueadoCtaCteFiltro,
+        sin_limite_credito: sinLimiteCreditoFiltro
+      });
     } catch (err) {
       const msg =
         err?.response?.data?.mensajeError || 'Error al guardar cliente';
@@ -522,8 +671,8 @@ export default function ClientesGet() {
       showCancelButton: true,
       confirmButtonText: 'Sí, eliminar',
       cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#dc2626', // rojo
-      cancelButtonColor: '#64748b', // gris
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
       reverseButtons: true
     });
 
@@ -537,8 +686,15 @@ export default function ClientesGet() {
       setModalFeedbackMsg('Cliente eliminado correctamente');
       setModalFeedbackType('success');
       setModalFeedbackOpen(true);
-      // Benjamin Orellana - 25 / 01 / 2026 - Refresca listado paginado luego de eliminar.
-      fetchClientes({ page, limit, q: debouncedSearch });
+
+      fetchClientes({
+        page,
+        limit,
+        q: debouncedSearch,
+        habilita_cta_cte: habilitaCtaCteFiltro,
+        bloqueado_cta_cte: bloqueadoCtaCteFiltro,
+        sin_limite_credito: sinLimiteCreditoFiltro
+      });
     } catch (err) {
       const msg =
         err?.response?.data?.mensajeError || 'Error al eliminar cliente';
@@ -621,7 +777,6 @@ export default function ClientesGet() {
     }
   };
 
-  // Benjamin Orellana - 25-01-2026 - Efecto de fetch con paginación/filtros (server-side).
   useEffect(() => {
     fetchRemitosCliente();
   }, [
@@ -640,16 +795,10 @@ export default function ClientesGet() {
     if (!ventaId) return;
 
     try {
-      // Benjamin Orellana - 25-01-2026 - Forzamos la vista "remito" cuando el flujo viene desde Remitos del cliente.
       setPrintView('remito');
-
-      // (Opcional defensivo) Cerramos antes si estaba abierto con otra vista/venta.
-      // Benjamin Orellana - 25-01-2026 - Reset para evitar que quede cacheada una vista previa en aperturas consecutivas.
       setPrintOpen(false);
       setVentaImprimir(null);
 
-      // Recomendado: usar el OBR completo (suele traer remito + comprobanteFiscal)
-      // Benjamin Orellana - 25-01-2026 - Cargamos la venta completa para asegurar remito embebido y datos consistentes.
       const res = await fetch(`${BASE_URL}/ventas/${ventaId}`);
       const data = await res.json();
 
@@ -719,10 +868,8 @@ export default function ClientesGet() {
     }
   };
 
-  // Benjamin Orellana - 25-01-2026 - Efecto de fetch con paginación/filtros (server-side).
   useEffect(() => {
     fetchFacturasCliente();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     facturasOpen,
     facturasCliente?.id,
@@ -765,7 +912,11 @@ export default function ClientesGet() {
         c.dni,
         c.cuit_cuil,
         c.condicion_iva,
-        c.tipo_persona
+        c.tipo_persona,
+        c.observaciones_cta_cte,
+        c.habilita_cta_cte ? 'cta cte habilitada' : 'sin cuenta corriente',
+        c.bloqueado_cta_cte ? 'bloqueado' : 'activo',
+        c.sin_limite_credito ? 'sin limite' : 'con limite'
       ]
         .filter(Boolean)
         .join(' ')
@@ -787,12 +938,37 @@ export default function ClientesGet() {
 
       const matchCuit = soloConCuit ? !!String(c.cuit_cuil || '').trim() : true;
 
-      return matchText && matchFecha && matchTipo && matchCond && matchCuit;
+      // Benjamin Orellana - 17-03-2026 - Filtros client-side para soportar también el fallback legacy.
+      const matchHabilita =
+        habilitaCtaCteFiltro === ''
+          ? true
+          : String(!!c.habilita_cta_cte) === habilitaCtaCteFiltro;
+
+      const matchBloqueado =
+        bloqueadoCtaCteFiltro === ''
+          ? true
+          : String(!!c.bloqueado_cta_cte) === bloqueadoCtaCteFiltro;
+
+      const matchSinLimite =
+        sinLimiteCreditoFiltro === ''
+          ? true
+          : String(!!c.sin_limite_credito) === sinLimiteCreditoFiltro;
+
+      return (
+        matchText &&
+        matchFecha &&
+        matchTipo &&
+        matchCond &&
+        matchCuit &&
+        matchHabilita &&
+        matchBloqueado &&
+        matchSinLimite
+      );
     });
 
     if (sortBy === 'NOMBRE_ASC') {
       arr.sort((a, b) =>
-        String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es')
+        getClienteDisplayName(a).localeCompare(getClienteDisplayName(b), 'es')
       );
     } else if (sortBy === 'ULT_COMPRA_DESC') {
       arr.sort((a, b) =>
@@ -814,11 +990,13 @@ export default function ClientesGet() {
     tipoPersonaFiltro,
     condIvaFiltro,
     soloConCuit,
-    sortBy
+    sortBy,
+    habilitaCtaCteFiltro,
+    bloqueadoCtaCteFiltro,
+    sinLimiteCreditoFiltro
   ]);
 
   const kpis = useMemo(() => {
-    // Benjamin Orellana - 25 / 01 / 2026 - Total global desde meta; resto se calcula sobre la página actual (performance).
     const total = Number(meta?.total ?? clientes?.length ?? 0);
 
     const pageArr = clientes || [];
@@ -828,11 +1006,24 @@ export default function ClientesGet() {
     const juridicas = pageArr.filter(
       (c) => c.tipo_persona === 'JURIDICA'
     ).length;
-    const cf = pageArr.filter(
-      (c) => c.condicion_iva === 'CONSUMIDOR_FINAL'
+    const habilitadosCtaCte = pageArr.filter(
+      (c) => !!c.habilita_cta_cte
+    ).length;
+    const bloqueadosCtaCte = pageArr.filter(
+      (c) => !!c.bloqueado_cta_cte
+    ).length;
+    const conLimite = pageArr.filter(
+      (c) => !!c.habilita_cta_cte && !c.sin_limite_credito
     ).length;
 
-    return { total, conCuit, juridicas, cf };
+    return {
+      total,
+      conCuit,
+      juridicas,
+      habilitadosCtaCte,
+      bloqueadosCtaCte,
+      conLimite
+    };
   }, [clientes, meta]);
 
   const copy = async (text) => {
@@ -846,12 +1037,36 @@ export default function ClientesGet() {
     }
   };
 
+  // Benjamin Orellana - 17-03-2026 - Toggle centralizado para switches del tab de cuenta corriente.
+  const handleToggleCtaCteField = (field) => {
+    setFormData((prev) => {
+      const nextValue = !prev[field];
+      const next = {
+        ...prev,
+        [field]: nextValue
+      };
+
+      if (field === 'habilita_cta_cte' && !nextValue) {
+        next.bloqueado_cta_cte = false;
+        next.sin_limite_credito = true;
+        next.limite_credito = '';
+        next.observaciones_cta_cte = '';
+      }
+
+      if (field === 'sin_limite_credito' && nextValue) {
+        next.limite_credito = '';
+      }
+
+      return next;
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-950 via-emerald-800 to-emerald-900 py-10 px-3 md:px-6 relative font-sans">
       <ParticlesBackground />
       <ButtonBack />
 
-      <div className="max-w-6xl mx-auto flex flex-col gap-5">
+      <div className="max-w-7xl mx-auto flex flex-col gap-5">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
           <motion.h1
@@ -875,12 +1090,14 @@ export default function ClientesGet() {
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
           {[
             { label: 'Total', value: kpis.total },
             { label: 'Con CUIT', value: kpis.conCuit },
             { label: 'Jurídicas', value: kpis.juridicas },
-            { label: 'Consum. Final', value: kpis.cf }
+            { label: 'Cta. cte. habilitada', value: kpis.habilitadosCtaCte },
+            { label: 'Cta. cte. bloqueada', value: kpis.bloqueadosCtaCte },
+            { label: 'Con límite', value: kpis.conLimite }
           ].map((k) => (
             <div
               key={k.label}
@@ -974,7 +1191,7 @@ export default function ClientesGet() {
               </label>
               <input
                 type="text"
-                placeholder="Nombre, Razón Social, DNI, CUIT, Email, Teléfono…"
+                placeholder="Nombre, Razón Social, DNI, CUIT, Email, Teléfono, observaciones…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full px-4 py-2 rounded-2xl bg-emerald-950 text-white border border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/80"
@@ -1029,7 +1246,59 @@ export default function ClientesGet() {
               </select>
             </div>
 
-            <div className="md:col-span-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mt-1">
+            {/* Benjamin Orellana - 17-03-2026 - Filtros adicionales para cuenta corriente */}
+            <div>
+              <label className="block text-sm text-emerald-200 mb-1">
+                Cta. cte. habilitada
+              </label>
+              <select
+                value={habilitaCtaCteFiltro}
+                onChange={(e) => setHabilitaCtaCteFiltro(e.target.value)}
+                className="w-full px-4 py-2 rounded-2xl bg-emerald-950 text-white border border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/80"
+              >
+                {BOOLEAN_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value || 'all'} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm text-emerald-200 mb-1">
+                Cta. cte. bloqueada
+              </label>
+              <select
+                value={bloqueadoCtaCteFiltro}
+                onChange={(e) => setBloqueadoCtaCteFiltro(e.target.value)}
+                className="w-full px-4 py-2 rounded-2xl bg-emerald-950 text-white border border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/80"
+              >
+                {BOOLEAN_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value || 'all'} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm text-emerald-200 mb-1">
+                Sin límite crédito
+              </label>
+              <select
+                value={sinLimiteCreditoFiltro}
+                onChange={(e) => setSinLimiteCreditoFiltro(e.target.value)}
+                className="w-full px-4 py-2 rounded-2xl bg-emerald-950 text-white border border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/80"
+              >
+                {BOOLEAN_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value || 'all'} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="md:col-span-2 flex items-end">
               <label className="inline-flex items-center gap-2 text-sm text-emerald-100">
                 <input
                   type="checkbox"
@@ -1039,6 +1308,13 @@ export default function ClientesGet() {
                 />
                 Solo con CUIT/CUIL
               </label>
+            </div>
+
+            <div className="md:col-span-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mt-1">
+              <div className="text-xs text-emerald-200/80">
+                Podés combinar filtros fiscales y comerciales de cuenta
+                corriente.
+              </div>
 
               <div className="flex items-center gap-2 w-full md:w-auto">
                 <span className="text-sm text-emerald-200">Orden:</span>
@@ -1069,216 +1345,285 @@ export default function ClientesGet() {
               No hay clientes para mostrar.
             </div>
           ) : (
-            filtered.map((c) => (
-              <motion.div
-                key={c.id}
-                className="flex flex-col md:flex-row w-full rounded-3xl overflow-hidden bg-white/85 shadow-xl border border-emerald-100 hover:shadow-emerald-200/60 transition-all"
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.18 }}
-              >
-                {/* Identidad */}
-                <div className="flex flex-col justify-center items-start gap-3 p-6 md:w-80 bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-900 text-white">
-                  <div className="flex items-center gap-3 w-full">
-                    <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center font-extrabold shadow-inner">
-                      {initials(c.nombre)}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-lg font-extrabold leading-tight truncate">
-                        {c.nombre || '—'}
+            filtered.map((c) => {
+              const displayName = getClienteDisplayName(c);
+
+              return (
+                <motion.div
+                  key={c.id}
+                  className="flex flex-col md:flex-row w-full rounded-3xl overflow-hidden bg-white/85 shadow-xl border border-emerald-100 hover:shadow-emerald-200/60 transition-all"
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  {/* Identidad */}
+                  <div className="flex flex-col justify-center items-start gap-3 p-6 md:w-[22rem] bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-900 text-white">
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center font-extrabold shadow-inner">
+                        {initials(displayName)}
                       </div>
-                      <div className="opacity-90 text-sm truncate">
-                        {c.email || 'sin email'}
+                      <div className="min-w-0">
+                        <div className="text-lg font-extrabold leading-tight truncate">
+                          {displayName}
+                        </div>
+                        <div className="opacity-90 text-sm truncate">
+                          {c.email || 'sin email'}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <span className="px-2 py-1 rounded-xl bg-white/15">
-                      {getTipoPersonaLabel(c.tipo_persona)}
-                    </span>
-                    <span className="px-2 py-1 rounded-xl bg-white/15">
-                      {getCondIvaLabel(c.condicion_iva)}
-                    </span>
-                  </div>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className="px-2 py-1 rounded-xl bg-white/15">
+                        {getTipoPersonaLabel(c.tipo_persona)}
+                      </span>
+                      <span className="px-2 py-1 rounded-xl bg-white/15">
+                        {getCondIvaLabel(c.condicion_iva)}
+                      </span>
 
-                  <div className="text-sm flex items-center gap-2">
-                    <button
-                      className="px-2 py-1 rounded-xl bg-white/15 hover:bg-white/25 transition text-white/95"
-                      title="Llamar"
-                      onClick={() =>
-                        c.telefono
-                          ? (window.location.href = `tel:${c.telefono}`)
-                          : null
-                      }
-                    >
-                      {c.telefono ? displayPhone(c.telefono) : 'sin teléfono'}
-                    </button>
-
-                    {c.telefono && (
-                      <button
-                        onClick={() =>
-                          window.open(
-                            `https://wa.me/${toWhatsAppNumberAR(c.telefono)}`,
-                            '_blank'
-                          )
-                        }
-                        className="px-2 py-1 rounded-xl bg-white/15 hover:bg-white/25 transition"
-                        title="WhatsApp"
+                      <span
+                        className={`px-2 py-1 rounded-xl ${
+                          c.habilita_cta_cte
+                            ? 'bg-emerald-300/20 text-emerald-100'
+                            : 'bg-white/10 text-white/80'
+                        }`}
                       >
-                        WA
-                      </button>
-                    )}
+                        {c.habilita_cta_cte
+                          ? 'Cta. cte. habilitada'
+                          : 'Sin cta. cte.'}
+                      </span>
 
-                    {c.telefono && (
-                      <button
-                        onClick={() => copy(c.telefono)}
-                        className="px-2 py-1 rounded-xl bg-black/20 hover:bg-black/30 transition flex items-center gap-2"
-                        title="Copiar teléfono"
-                      >
-                        <FaRegCopy />
-                      </button>
-                    )}
-                  </div>
+                      {c.habilita_cta_cte && c.bloqueado_cta_cte && (
+                        <span className="px-2 py-1 rounded-xl bg-rose-300/20 text-rose-100">
+                          Bloqueada
+                        </span>
+                      )}
 
-                  <div className="text-xs text-emerald-200 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="opacity-80">DNI:</span>
-                      <button
-                        className="underline decoration-dotted underline-offset-4 hover:text-white transition"
-                        onClick={() => c.dni && copy(c.dni)}
-                        title="Copiar DNI"
-                      >
-                        {c.dni || '—'}
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="opacity-80">CUIT:</span>
-                      <button
-                        className="underline decoration-dotted underline-offset-4 hover:text-white transition"
-                        onClick={() => c.cuit_cuil && copy(c.cuit_cuil)}
-                        title="Copiar CUIT/CUIL"
-                      >
-                        {c.cuit_cuil || '—'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Datos */}
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-5 px-7 py-6 bg-white/80 backdrop-blur-lg text-gray-800 items-start text-sm">
-                  <div>
-                    <div className="text-xs text-gray-500 font-semibold">
-                      Dirección
-                    </div>
-                    <div className="text-base">
-                      {c.direccion ? (
-                        <a
-                          href={mapsLink(c.direccion)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline"
-                        >
-                          {abreviar(c.direccion, 64)}
-                        </a>
-                      ) : (
-                        '—'
+                      {c.habilita_cta_cte && !c.sin_limite_credito && (
+                        <span className="px-2 py-1 rounded-xl bg-amber-300/20 text-amber-100">
+                          Con límite
+                        </span>
                       )}
                     </div>
-                  </div>
 
-                  <div>
-                    <div className="text-xs text-gray-500 font-semibold">
-                      Fecha Alta
-                    </div>
-                    <div className="text-base">
-                      {formatearFechaARG(c.fecha_alta)}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-xs text-gray-500 font-semibold">
-                      Última Compra
-                    </div>
-                    <div className="text-base">
-                      {formatearFechaARG(c.fecha_ultima_compra)}
-                    </div>
-                  </div>
-
-                  <div className="md:col-span-3">
-                    <div className="text-xs text-gray-500 font-semibold flex items-center gap-2">
-                      <FaBuilding className="text-emerald-600" />
-                      Razón Social
-                    </div>
-                    <div className="text-base">{safe(c.razon_social)}</div>
-                  </div>
-                </div>
-
-                {/* Acciones */}
-                <div className="px-4 sm:px-6 py-3 sm:py-4 bg-white/70 backdrop-blur-xl border-t border-black/5">
-                  <div className="flex flex-col gap-2">
-                    {/* Acciones principales */}
-                    <div className="grid grid-cols-2 sm:flex sm:flex-col gap-2 sm:gap-2">
+                    <div className="text-sm flex items-center gap-2 flex-wrap">
                       <button
-                        type="button"
-                        onClick={() => openDetalleCliente(c)}
-                        title="Ver detalle del cliente"
-                        className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2
-                   text-emerald-900 font-semibold text-[13px]
-                   bg-emerald-100/80 hover:bg-emerald-200/80
-                   border border-emerald-200/60
-                   transition active:scale-[0.99]"
+                        className="px-2 py-1 rounded-xl bg-white/15 hover:bg-white/25 transition text-white/95"
+                        title="Llamar"
+                        onClick={() =>
+                          c.telefono
+                            ? (window.location.href = `tel:${c.telefono}`)
+                            : null
+                        }
                       >
-                        <span className="hidden xs:inline">Ver detalle</span>
-                        <span className="xs:hidden">Detalle</span>
+                        {c.telefono ? displayPhone(c.telefono) : 'sin teléfono'}
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => openRemitosCliente(c)}
-                        title="Ver remitos del cliente"
-                        className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2
-                   text-emerald-900 font-semibold text-[13px]
-                   bg-emerald-100/80 hover:bg-emerald-200/80
-                   border border-emerald-200/60
-                   transition active:scale-[0.99]"
-                      >
-                        <FaFileAlt className="text-[14px]" />
-                        <span className="hidden xs:inline">Ver remitos</span>
-                        <span className="xs:hidden">Remitos</span>
-                      </button>
+                      {c.telefono && (
+                        <button
+                          onClick={() =>
+                            window.open(
+                              `https://wa.me/${toWhatsAppNumberAR(c.telefono)}`,
+                              '_blank'
+                            )
+                          }
+                          className="px-2 py-1 rounded-xl bg-white/15 hover:bg-white/25 transition"
+                          title="WhatsApp"
+                        >
+                          WA
+                        </button>
+                      )}
 
-                      <button
-                        type="button"
-                        onClick={() => openFacturasCliente(c)}
-                        title="Ver facturas del cliente"
-                        className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2
-                   text-emerald-900 font-semibold text-[13px]
-                   bg-emerald-100/80 hover:bg-emerald-200/80
-                   border border-emerald-200/60
-                   transition active:scale-[0.99]"
-                      >
-                        <FaFileAlt className="text-[14px]" />
-                        <span className="hidden xs:inline">Ver facturas</span>
-                        <span className="xs:hidden">Facturas</span>
-                      </button>
+                      {c.telefono && (
+                        <button
+                          onClick={() => copy(c.telefono)}
+                          className="px-2 py-1 rounded-xl bg-black/20 hover:bg-black/30 transition flex items-center gap-2"
+                          title="Copiar teléfono"
+                        >
+                          <FaRegCopy />
+                        </button>
+                      )}
                     </div>
 
-                    {/* Acciones admin (editar/eliminar) */}
-                    <div className="flex items-center justify-end pt-1">
+                    <div className="text-xs text-emerald-200 space-y-1">
                       <div className="flex items-center gap-2">
-                        <div className="h-7 w-px bg-black/10" />
-                        <AdminActions
-                          onEdit={() => openModal(c)}
-                          onDelete={() => handleDelete(c.id)}
-                        />
+                        <span className="opacity-80">DNI:</span>
+                        <button
+                          className="underline decoration-dotted underline-offset-4 hover:text-white transition"
+                          onClick={() => c.dni && copy(c.dni)}
+                          title="Copiar DNI"
+                        >
+                          {c.dni || '—'}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="opacity-80">CUIT:</span>
+                        <button
+                          className="underline decoration-dotted underline-offset-4 hover:text-white transition"
+                          onClick={() => c.cuit_cuil && copy(c.cuit_cuil)}
+                          title="Copiar CUIT/CUIL"
+                        >
+                          {c.cuit_cuil || '—'}
+                        </button>
                       </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))
+
+                  {/* Datos */}
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-5 px-7 py-6 bg-white/80 backdrop-blur-lg text-gray-800 items-start text-sm">
+                    <div>
+                      <div className="text-xs text-gray-500 font-semibold">
+                        Dirección
+                      </div>
+                      <div className="text-base">
+                        {c.direccion ? (
+                          <a
+                            href={mapsLink(c.direccion)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline"
+                          >
+                            {abreviar(c.direccion, 64)}
+                          </a>
+                        ) : (
+                          '—'
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-gray-500 font-semibold">
+                        Fecha Alta
+                      </div>
+                      <div className="text-base">
+                        {formatearFechaARG(c.fecha_alta)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-gray-500 font-semibold">
+                        Última Compra
+                      </div>
+                      <div className="text-base">
+                        {formatearFechaARG(c.fecha_ultima_compra)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-gray-500 font-semibold">
+                        Razón Social
+                      </div>
+                      <div className="text-base">{safe(c.razon_social)}</div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-gray-500 font-semibold">
+                        Límite de crédito
+                      </div>
+                      <div className="text-base">
+                        {!c.habilita_cta_cte
+                          ? 'No aplica'
+                          : c.sin_limite_credito
+                            ? 'Sin límite'
+                            : formatCurrencyAR(c.limite_credito)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-gray-500 font-semibold">
+                        Estado comercial
+                      </div>
+                      <div className="text-base">
+                        {!c.habilita_cta_cte
+                          ? 'Cuenta corriente no habilitada'
+                          : c.bloqueado_cta_cte
+                            ? 'Bloqueado para nuevas ventas'
+                            : 'Operativo'}
+                      </div>
+                    </div>
+
+                    {/* Benjamin Orellana - 17-03-2026 - Visualización de saldos cacheados y observaciones de cuenta corriente */}
+                    <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                          Deuda vigente
+                        </div>
+                        <div className="text-lg font-black text-emerald-900">
+                          {formatCurrencyAR(c.saldo_cta_cte_cache)}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-sky-700">
+                          Saldo a favor
+                        </div>
+                        <div className="text-lg font-black text-sky-900">
+                          {formatCurrencyAR(c.saldo_favor_cache)}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                          Observaciones Cta. Cte.
+                        </div>
+                        <div className="text-sm font-semibold text-amber-900">
+                          {safe(c.observaciones_cta_cte)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Acciones */}
+                  <div className="px-4 sm:px-6 py-3 sm:py-4 bg-white/70 backdrop-blur-xl border-t border-black/5">
+                    <div className="flex flex-col gap-2">
+                      <div className="grid grid-cols-2 sm:flex sm:flex-col gap-2 sm:gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openDetalleCliente(c)}
+                          title="Ver detalle del cliente"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-emerald-900 font-semibold text-[13px] bg-emerald-100/80 hover:bg-emerald-200/80 border border-emerald-200/60 transition active:scale-[0.99]"
+                        >
+                          <span className="hidden xs:inline">Ver detalle</span>
+                          <span className="xs:hidden">Detalle</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openRemitosCliente(c)}
+                          title="Ver remitos del cliente"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-emerald-900 font-semibold text-[13px] bg-emerald-100/80 hover:bg-emerald-200/80 border border-emerald-200/60 transition active:scale-[0.99]"
+                        >
+                          <FaFileAlt className="text-[14px]" />
+                          <span className="hidden xs:inline">Ver remitos</span>
+                          <span className="xs:hidden">Remitos</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openFacturasCliente(c)}
+                          title="Ver facturas del cliente"
+                          className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-emerald-900 font-semibold text-[13px] bg-emerald-100/80 hover:bg-emerald-200/80 border border-emerald-200/60 transition active:scale-[0.99]"
+                        >
+                          <FaFileAlt className="text-[14px]" />
+                          <span className="hidden xs:inline">Ver facturas</span>
+                          <span className="xs:hidden">Facturas</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-end pt-1">
+                        <div className="flex items-center gap-2">
+                          <div className="h-7 w-px bg-black/10" />
+                          <AdminActions
+                            onEdit={() => openModal(c)}
+                            onDelete={() => handleDelete(c.id)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })
           )}
         </div>
       </div>
@@ -1290,7 +1635,7 @@ export default function ClientesGet() {
             isOpen={modalOpen}
             onRequestClose={() => setModalOpen(false)}
             overlayClassName="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-3"
-            className="bg-white rounded-3xl p-0 max-w-2xl w-full shadow-2xl overflow-hidden border border-emerald-100"
+            className="bg-white rounded-3xl p-0 max-w-3xl w-full shadow-2xl overflow-hidden border border-emerald-100"
             closeTimeoutMS={200}
           >
             <motion.div
@@ -1307,7 +1652,7 @@ export default function ClientesGet() {
                     {editId ? 'Editar Cliente' : 'Nuevo Cliente'}
                   </div>
                   <div className="text-xs text-white/80">
-                    Datos generales y fiscales (ARCA/AFIP)
+                    Datos generales, fiscales y comerciales de cuenta corriente
                   </div>
                 </div>
                 <button
@@ -1321,7 +1666,7 @@ export default function ClientesGet() {
 
               {/* Tabs */}
               <div className="px-6 pt-5">
-                <div className="inline-flex bg-emerald-50 rounded-2xl p-1 border border-emerald-100">
+                <div className="inline-flex flex-wrap gap-1 bg-emerald-50 rounded-2xl p-1 border border-emerald-100">
                   <button
                     type="button"
                     onClick={() => setModalTab('DATOS')}
@@ -1344,6 +1689,17 @@ export default function ClientesGet() {
                   >
                     Fiscal
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('CTA_CTE')}
+                    className={`px-4 py-2 rounded-2xl text-sm font-bold transition ${
+                      modalTab === 'CTA_CTE'
+                        ? 'bg-white shadow text-emerald-800'
+                        : 'text-emerald-700 hover:text-emerald-900'
+                    }`}
+                  >
+                    Cta. Cte.
+                  </button>
                 </div>
               </div>
 
@@ -1355,7 +1711,7 @@ export default function ClientesGet() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
                       <label className="text-sm font-semibold text-gray-700">
-                        Nombre *
+                        Nombre / Nombre comercial
                       </label>
                       <input
                         type="text"
@@ -1363,7 +1719,6 @@ export default function ClientesGet() {
                         onChange={(e) =>
                           setFormData({ ...formData, nombre: e.target.value })
                         }
-                        required
                         className="w-full mt-1 px-4 py-2.5 rounded-2xl border border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                         placeholder="Nombre y apellido / Nombre comercial"
                       />
@@ -1438,12 +1793,12 @@ export default function ClientesGet() {
                     <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 flex items-center gap-3">
                       <FaCheckCircle className="text-emerald-600" />
                       <div className="text-sm text-emerald-900">
-                        Tip: si el cliente es empresa, completá la pestaña{' '}
-                        <b>Fiscal</b>.
+                        Tip: podés registrar clientes solo con <b>nombre</b>,
+                        solo con <b>razón social</b> o con ambos.
                       </div>
                     </div>
                   </div>
-                ) : (
+                ) : modalTab === 'FISCAL' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
@@ -1529,6 +1884,181 @@ export default function ClientesGet() {
                       </div>
                     </div>
                   </div>
+                ) : (
+                  <div className="space-y-5">
+                    {/* Benjamin Orellana - 17-03-2026 - Tab completo para configuración comercial de cuenta corriente */}
+                    <div className="rounded-3xl border border-emerald-100 bg-emerald-50/70 p-5">
+                      <div className="text-lg font-black text-emerald-900">
+                        Configuración de Cuenta Corriente
+                      </div>
+                      <div className="text-sm text-emerald-700 mt-1">
+                        Definí si el cliente puede operar a cuenta corriente, si
+                        está bloqueado y cómo se administrará su crédito.
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+                        <label className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-white px-4 py-3 cursor-pointer">
+                          <div className="pr-4">
+                            <div className="font-semibold text-gray-800">
+                              Habilita cuenta corriente
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              Permite registrar ventas en condición CTA_CTE.
+                            </div>
+                          </div>
+
+                          <input
+                            type="checkbox"
+                            checked={!!formData.habilita_cta_cte}
+                            onChange={() =>
+                              handleToggleCtaCteField('habilita_cta_cte')
+                            }
+                            className="h-5 w-5 accent-emerald-600"
+                          />
+                        </label>
+
+                        <label
+                          className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${
+                            formData.habilita_cta_cte
+                              ? 'border-emerald-200 bg-white cursor-pointer'
+                              : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-70'
+                          }`}
+                        >
+                          <div className="pr-4">
+                            <div className="font-semibold text-gray-800">
+                              Bloqueado para nuevas ventas
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              Restringe nuevas operaciones a cuenta corriente.
+                            </div>
+                          </div>
+
+                          <input
+                            type="checkbox"
+                            checked={!!formData.bloqueado_cta_cte}
+                            disabled={!formData.habilita_cta_cte}
+                            onChange={() =>
+                              handleToggleCtaCteField('bloqueado_cta_cte')
+                            }
+                            className="h-5 w-5 accent-emerald-600"
+                          />
+                        </label>
+
+                        <label
+                          className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${
+                            formData.habilita_cta_cte
+                              ? 'border-emerald-200 bg-white cursor-pointer'
+                              : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-70'
+                          }`}
+                        >
+                          <div className="pr-4">
+                            <div className="font-semibold text-gray-800">
+                              Sin límite de crédito
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              Si se desactiva, será obligatorio indicar un
+                              límite.
+                            </div>
+                          </div>
+
+                          <input
+                            type="checkbox"
+                            checked={!!formData.sin_limite_credito}
+                            disabled={!formData.habilita_cta_cte}
+                            onChange={() =>
+                              handleToggleCtaCteField('sin_limite_credito')
+                            }
+                            className="h-5 w-5 accent-emerald-600"
+                          />
+                        </label>
+
+                        <div
+                          className={`rounded-2xl border px-4 py-3 ${
+                            formData.habilita_cta_cte &&
+                            !formData.sin_limite_credito
+                              ? 'border-emerald-200 bg-white'
+                              : 'border-gray-200 bg-gray-50 opacity-80'
+                          }`}
+                        >
+                          <label className="text-sm font-semibold text-gray-700">
+                            Límite de crédito
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={formData.limite_credito}
+                            disabled={
+                              !formData.habilita_cta_cte ||
+                              formData.sin_limite_credito
+                            }
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                limite_credito: e.target.value
+                              })
+                            }
+                            className="w-full mt-1 px-4 py-2.5 rounded-2xl border border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:bg-gray-100 disabled:text-gray-400"
+                            placeholder="Ej: 1500000.00"
+                          />
+                          <div className="text-xs text-gray-500 mt-1">
+                            Solo se envía si cuenta corriente está habilitada y
+                            el cliente no tiene crédito libre.
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            Observaciones de cuenta corriente
+                          </label>
+                          <textarea
+                            rows={4}
+                            value={formData.observaciones_cta_cte}
+                            disabled={!formData.habilita_cta_cte}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                observaciones_cta_cte: e.target.value
+                              })
+                            }
+                            className="w-full mt-1 px-4 py-3 rounded-2xl border border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:bg-gray-100 disabled:text-gray-400"
+                            placeholder="Notas administrativas, acuerdos comerciales, observaciones de crédito..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Importante
+                        </div>
+                        <div className="text-sm text-slate-700 mt-1">
+                          Los saldos cacheados no se editan desde esta pantalla.
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Bloqueo comercial
+                        </div>
+                        <div className="text-sm text-slate-700 mt-1">
+                          Sirve para impedir nuevas ventas CTA_CTE sin quitar la
+                          configuración previa.
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Límite
+                        </div>
+                        <div className="text-sm text-slate-700 mt-1">
+                          Cuando “Sin límite” está activo, el backend limpia
+                          automáticamente el límite.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {/* Footer modal */}
@@ -1567,7 +2097,7 @@ export default function ClientesGet() {
               initial={{ y: 30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 20, opacity: 0 }}
-              className="bg-gradient-to-br from-[#1e242f]/90 via-[#1a222c] to-[#171b24] rounded-3xl max-w-3xl w-full shadow-2xl p-7 border border-emerald-500 relative ring-emerald-500 ring-1 ring-opacity-20 max-h-[85vh] overflow-auto"
+              className="bg-gradient-to-br from-[#1e242f]/90 via-[#1a222c] to-[#171b24] rounded-3xl max-w-4xl w-full shadow-2xl p-7 border border-emerald-500 relative ring-emerald-500 ring-1 ring-opacity-20 max-h-[85vh] overflow-auto"
             >
               <button
                 className="absolute top-4 right-5 text-gray-400 hover:text-emerald-400 text-2xl transition-all"
@@ -1586,7 +2116,7 @@ export default function ClientesGet() {
                 <div className="flex-1">
                   <div className="text-xl font-black text-emerald-300 tracking-wide flex flex-wrap items-center gap-2">
                     <span className="text-white drop-shadow">
-                      {detalleCliente.nombre}
+                      {getClienteDisplayName(detalleCliente)}
                     </span>
 
                     <span className="px-2 py-1 rounded-xl bg-white/10 text-xs text-emerald-200">
@@ -1595,6 +2125,25 @@ export default function ClientesGet() {
                     <span className="px-2 py-1 rounded-xl bg-white/10 text-xs text-emerald-200">
                       {getCondIvaLabel(detalleCliente.condicion_iva)}
                     </span>
+
+                    <span
+                      className={`px-2 py-1 rounded-xl text-xs ${
+                        detalleCliente.habilita_cta_cte
+                          ? 'bg-emerald-500/20 text-emerald-200'
+                          : 'bg-white/10 text-gray-200'
+                      }`}
+                    >
+                      {detalleCliente.habilita_cta_cte
+                        ? 'Cta. cte. habilitada'
+                        : 'Sin cta. cte.'}
+                    </span>
+
+                    {detalleCliente.habilita_cta_cte &&
+                      detalleCliente.bloqueado_cta_cte && (
+                        <span className="px-2 py-1 rounded-xl bg-rose-500/20 text-xs text-rose-200">
+                          Bloqueada
+                        </span>
+                      )}
                   </div>
 
                   <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-300">
@@ -1664,6 +2213,67 @@ export default function ClientesGet() {
                             <FaRegCopy />
                           </button>
                         )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Benjamin Orellana - 17-03-2026 - Bloque visual de cuenta corriente en el detalle del cliente */}
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="bg-white/5 rounded-2xl p-3 border border-white/10">
+                      <div className="text-xs text-gray-400">
+                        Estado Cuenta Corriente
+                      </div>
+                      <div className="text-sm text-white">
+                        {!detalleCliente.habilita_cta_cte
+                          ? 'No habilitada'
+                          : detalleCliente.bloqueado_cta_cte
+                            ? 'Habilitada pero bloqueada'
+                            : 'Habilitada y operativa'}
+                      </div>
+                    </div>
+
+                    <div className="bg-white/5 rounded-2xl p-3 border border-white/10">
+                      <div className="text-xs text-gray-400">
+                        Límite de crédito
+                      </div>
+                      <div className="text-sm text-white">
+                        {!detalleCliente.habilita_cta_cte
+                          ? 'No aplica'
+                          : detalleCliente.sin_limite_credito
+                            ? 'Sin límite'
+                            : formatCurrencyAR(detalleCliente.limite_credito)}
+                      </div>
+                    </div>
+
+                    <div className="bg-white/5 rounded-2xl p-3 border border-white/10">
+                      <div className="text-xs text-gray-400">
+                        Observaciones Cta. Cte.
+                      </div>
+                      <div className="text-sm text-white">
+                        {safe(detalleCliente.observaciones_cta_cte)}
+                      </div>
+                    </div>
+
+                    <div className="bg-emerald-900/20 rounded-2xl p-3 border border-emerald-500/20">
+                      <div className="text-xs text-emerald-300">
+                        Deuda vigente
+                      </div>
+                      <div className="text-lg font-black text-emerald-200">
+                        {formatCurrencyAR(detalleCliente.saldo_cta_cte_cache)}
+                      </div>
+                    </div>
+
+                    <div className="bg-sky-900/20 rounded-2xl p-3 border border-sky-500/20">
+                      <div className="text-xs text-sky-300">Saldo a favor</div>
+                      <div className="text-lg font-black text-sky-200">
+                        {formatCurrencyAR(detalleCliente.saldo_favor_cache)}
+                      </div>
+                    </div>
+
+                    <div className="bg-white/5 rounded-2xl p-3 border border-white/10">
+                      <div className="text-xs text-gray-400">Alta</div>
+                      <div className="text-sm text-white">
+                        {formatearFechaARG(detalleCliente.fecha_alta)}
                       </div>
                     </div>
                   </div>
@@ -1866,6 +2476,7 @@ export default function ClientesGet() {
         msg={modalFeedbackMsg}
         type={modalFeedbackType}
       />
+
       {/* Modal remitos por cliente */}
       <AnimatePresence>
         {remitosOpen && (
@@ -1890,7 +2501,9 @@ export default function ClientesGet() {
                     Remitos del cliente
                   </div>
                   <div className="text-xs text-white/80">
-                    {remitosCliente?.nombre || '—'}{' '}
+                    {remitosCliente?.nombre ||
+                      remitosCliente?.razon_social ||
+                      '—'}{' '}
                     {remitosCliente?.cuit_cuil
                       ? `— CUIT ${remitosCliente.cuit_cuil}`
                       : ''}
@@ -2148,6 +2761,7 @@ export default function ClientesGet() {
           </motion.div>
         )}
       </AnimatePresence>
+
       {/* Modal facturas por cliente */}
       <AnimatePresence>
         {facturasOpen && (
@@ -2171,7 +2785,9 @@ export default function ClientesGet() {
                     Facturas del cliente
                   </div>
                   <div className="text-xs text-white/80">
-                    {facturasCliente?.nombre || '—'}{' '}
+                    {facturasCliente?.nombre ||
+                      facturasCliente?.razon_social ||
+                      '—'}{' '}
                     {facturasCliente?.cuit_cuil
                       ? `— CUIT ${facturasCliente.cuit_cuil}`
                       : ''}
@@ -2413,7 +3029,7 @@ export default function ClientesGet() {
           venta={ventaImprimir}
           logoUrl={null}
           onGoCaja={null}
-          initialView={printView} // Benjamin Orellana - 25-01-2026 - Abre directo en factura o remito.
+          initialView={printView}
         />
       )}
     </div>

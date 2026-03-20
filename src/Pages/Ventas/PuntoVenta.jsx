@@ -94,6 +94,12 @@ const toNum = (v, d = 0) => {
 
 const API_URL = 'https://api.rioromano.com.ar';
 
+// Benjamin Orellana - 16-03-2026 - Condiciones de venta soportadas por el POS sin romper el flujo histórico de contado.
+const CONDICION_VENTA = {
+  CONTADO: 'CONTADO',
+  CTA_CTE: 'CTA_CTE'
+};
+
 const authHeader = () => {
   const t = localStorage.getItem('authToken'); // o tomalo de tu AuthContext
   return t ? { Authorization: `Bearer ${t}` } : {};
@@ -138,6 +144,11 @@ export default function PuntoVenta() {
   const [nroAutorizacionPOS, setNroAutorizacionPOS] = useState('');
   const [observacionesAutorizacionPOS, setObservacionesAutorizacionPOS] =
     useState('');
+
+  // Benjamin Orellana - 16-03-2026 - Estado mínimo para soportar contado y cuenta corriente desde el mismo PuntoVenta.
+  const [condicionVenta, setCondicionVenta] = useState(CONDICION_VENTA.CONTADO);
+  const [fechaVencimientoCtaCte, setFechaVencimientoCtaCte] = useState('');
+  const [observacionesCtaCte, setObservacionesCtaCte] = useState('');
 
   // =========================
   // ARCA: Comprobante solicitado (F10 / F11) - FRONT ONLY
@@ -1106,6 +1117,61 @@ export default function PuntoVenta() {
       minimumFractionDigits: 2
     }).format(valor);
 
+  // Benjamin Orellana - 16-03-2026 - Normaliza fecha corta para feedback de cuenta corriente sin depender del formato crudo del backend.
+  const formatearFechaCtaCte = (value) => {
+    if (!value) return null;
+    const raw = String(value).slice(0, 10);
+    const [yyyy, mm, dd] = raw.split('-');
+    return yyyy && mm && dd ? `${dd}/${mm}/${yyyy}` : raw;
+  };
+
+  // Benjamin Orellana - 16-03-2026 - Construye mensaje final de venta contemplando respuesta de contado o cuenta corriente.
+  const buildMensajeVentaRegistrada = (
+    payloadVenta = {},
+    fallbackCondicionVenta = CONDICION_VENTA.CONTADO
+  ) => {
+    const condicion = String(
+      payloadVenta?.condicion_venta ||
+        fallbackCondicionVenta ||
+        CONDICION_VENTA.CONTADO
+    ).toUpperCase();
+
+    if (condicion !== CONDICION_VENTA.CTA_CTE) {
+      return 'La venta se registró correctamente.';
+    }
+
+    const saldoPendiente = Number(payloadVenta?.saldo_pendiente ?? 0) || 0;
+    const totalCobrado = Number(payloadVenta?.total_cobrado ?? 0) || 0;
+    const estadoCobro = String(payloadVenta?.estado_cobro || '')
+      .replaceAll('_', ' ')
+      .trim();
+
+    const lines = ['La venta quedó registrada en cuenta corriente.'];
+
+    if (payloadVenta?.cxc_documento_id) {
+      lines.push(`Documento CxC #${payloadVenta.cxc_documento_id}.`);
+    }
+
+    if (payloadVenta?.cxc_movimiento_id) {
+      lines.push(`Movimiento CxC #${payloadVenta.cxc_movimiento_id}.`);
+    }
+
+    const vto = formatearFechaCtaCte(payloadVenta?.fecha_vencimiento_cta_cte);
+    if (vto) {
+      lines.push(`Vencimiento: ${vto}.`);
+    }
+
+    if (estadoCobro) {
+      lines.push(`Estado de cobro: ${estadoCobro}.`);
+    }
+
+    if (saldoPendiente > 0 || totalCobrado === 0) {
+      lines.push(`Saldo pendiente: ${formatearPrecio(saldoPendiente)}.`);
+    }
+
+    return lines.join('\n');
+  };
+
   // --- Abrir modal y listar primeros 50 productos del local ---
   const abrirModalVerProductos = async () => {
     setModalVerProductosOpen(true);
@@ -1439,13 +1505,17 @@ export default function PuntoVenta() {
   function calcularTotalAjustado(precioBase, ajuste) {
     return parseFloat((precioBase * (1 + ajuste / 100)).toFixed(2));
   }
+  // Benjamin Orellana - 16-03-2026 - Flags de condición de venta para ramificar UX, cálculo y submit sin duplicar arquitectura.
+  const esVentaContado = condicionVenta === CONDICION_VENTA.CONTADO;
+  const esVentaCtaCte = condicionVenta === CONDICION_VENTA.CTA_CTE;
 
   const medioSeleccionado =
     mediosPago.find((m) => Number(m.id) === Number(medioPago)) || null;
-  const ajuste = medioSeleccionado?.ajuste_porcentual || 0;
+  const ajuste = esVentaContado ? medioSeleccionado?.ajuste_porcentual || 0 : 0;
 
-  // Benjamin Orellana - 10-03-2026 - Determina si el medio elegido exige número de autorización POS para habilitar el flujo obligatorio en el cierre de venta.
+  // Benjamin Orellana - 16-03-2026 - La autorización POS solo aplica a ventas contado.
   const requiereAutorizacionPOS =
+    esVentaContado &&
     Number(medioSeleccionado?.requiere_autorizacion_pos || 0) === 1;
 
   useEffect(() => {
@@ -1466,8 +1536,24 @@ export default function PuntoVenta() {
   const [cuotasSeleccionadas, setCuotasSeleccionadas] = useState(1);
   const [totalCalculado, setTotalCalculado] = useState(null);
 
+  // Benjamin Orellana - 16-03-2026 - Al pasar a cuenta corriente se limpia toda la UI de cobro inmediato.
   useEffect(() => {
-    if (!medioPago) return;
+    if (!esVentaCtaCte) return;
+
+    setCuotasDisponibles([]);
+    setCuotasSeleccionadas(1);
+    setModalAutorizacionPOSOpen(false);
+    setNroAutorizacionPOS('');
+    setObservacionesAutorizacionPOS('');
+  }, [esVentaCtaCte]);
+
+  useEffect(() => {
+    // Benjamin Orellana - 16-03-2026 - Las cuotas solo aplican a contado; en CTA_CTE se ocultan y se resetean.
+    if (!esVentaContado || !medioPago) {
+      setCuotasDisponibles([]);
+      setCuotasSeleccionadas(1);
+      return;
+    }
 
     const cargarCuotas = async () => {
       try {
@@ -1475,18 +1561,65 @@ export default function PuntoVenta() {
           `https://api.rioromano.com.ar/cuotas-medios-pago/${medioPago}`
         );
         setCuotasDisponibles(res.data);
-        setCuotasSeleccionadas(1); // reset por defecto
+        setCuotasSeleccionadas(1);
       } catch (err) {
         setCuotasDisponibles([]);
       }
     };
 
     cargarCuotas();
-  }, [medioPago]);
+  }, [medioPago, esVentaContado]);
 
   useEffect(() => {
     const calcularTotal = async () => {
-      if (!medioPago || carrito.length === 0) return;
+      if (carrito.length === 0) {
+        setTotalCalculado(null);
+        return;
+      }
+
+      // Benjamin Orellana - 16-03-2026 - Para CTA_CTE el front calcula localmente base y descuento manual sin depender de medio de pago.
+      if (esVentaCtaCte) {
+        const precioBase = carrito.reduce(
+          (acc, item) =>
+            acc +
+            (Number(item?.precio ?? item?.producto?.precio ?? 0) || 0) *
+              (Number(item?.cantidad ?? 0) || 0),
+          0
+        );
+
+        const descuentoManual = parseFloat(
+          String(descuentoPersonalizado ?? '0').replace(',', '.')
+        );
+
+        const descuentoPorcentual =
+          aplicarDescuento && Number.isFinite(descuentoManual)
+            ? Math.max(0, Math.min(100, descuentoManual))
+            : 0;
+
+        const total = parseFloat(
+          (precioBase * (1 - descuentoPorcentual / 100)).toFixed(2)
+        );
+
+        setTotalCalculado({
+          precio_base: parseFloat(precioBase.toFixed(2)),
+          total,
+          descuento_porcentual: descuentoPorcentual,
+          ajuste_porcentual: 0,
+          ajuste_porcentual_aplicado: 0,
+          cuotas: 1,
+          monto_por_cuota: total,
+          porcentaje_recargo_cuotas: 0,
+          diferencia_redondeo: 0,
+          recargo_monto_cuotas: 0
+        });
+
+        return;
+      }
+
+      if (!medioPago) {
+        setTotalCalculado(null);
+        return;
+      }
 
       // Benjamin Orellana - 2026-03-09 - Normaliza el carrito priorizando precio_tarjeta para que el backend calcule desde el valor comercial exacto del producto y no desde un precio ya descontado.
       const carritoNormalizado = carrito.map((item) => {
@@ -1522,14 +1655,12 @@ export default function PuntoVenta() {
         };
       });
 
-      // Armar el payload con descuento personalizado si corresponde
       let payload = {
         carrito: carritoNormalizado,
         medio_pago_id: medioPago,
         cuotas: cuotasSeleccionadas
       };
 
-      // Si hay descuento personalizado y se está aplicando, incluilo
       if (
         aplicarDescuento &&
         descuentoPersonalizado !== '' &&
@@ -1633,7 +1764,8 @@ export default function PuntoVenta() {
     aplicarDescuento,
     descuentoPersonalizado,
     mediosPago,
-    combosSeleccionados // Benjamin Orellana - 2026-02-02 - Recalcula totales cuando cambia el combo.
+    combosSeleccionados,
+    esVentaCtaCte
   ]);
 
   const cuotasUnicas = Array.from(
@@ -1714,15 +1846,39 @@ export default function PuntoVenta() {
       await Swal.fire('Carrito vacío', 'Agregá productos al carrito.');
       return;
     }
-    if (!medioPago) {
+
+    // Benjamin Orellana - 16-03-2026 - Medio de pago obligatorio solo para contado.
+    if (esVentaContado && !medioPago) {
       await Swal.fire('Medio de pago', 'Seleccioná un medio de pago.');
+      return;
+    }
+
+    // Benjamin Orellana - 16-03-2026 - Cliente obligatorio para cuenta corriente.
+    if (esVentaCtaCte && !clienteSeleccionado) {
+      await Swal.fire(
+        'Cliente requerido',
+        'Para registrar una venta en cuenta corriente debés seleccionar un cliente.'
+      );
+      return;
+    }
+
+    // Benjamin Orellana - 16-03-2026 - Se valida que exista un total consolidado antes de cerrar la venta.
+    if (!totalCalculado || Number(totalCalculado?.total ?? -1) < 0) {
+      await Swal.fire(
+        'Total no disponible',
+        'Todavía no se pudo calcular el total de la venta. Intentá nuevamente.'
+      );
       return;
     }
 
     if (!skipConfirm) {
       const confirm = await swalConfirm({
-        title: '¿Registrar la venta?',
-        text: 'Se confirmará la operación.'
+        title: esVentaCtaCte
+          ? '¿Registrar la venta en cuenta corriente?'
+          : '¿Registrar la venta?',
+        text: esVentaCtaCte
+          ? 'La operación quedará pendiente de cobro en CxC.'
+          : 'Se confirmará la operación.'
       });
       if (!confirm.isConfirmed) return;
     }
@@ -1747,7 +1903,9 @@ export default function PuntoVenta() {
       openedLoading = true;
       Swal.fire({
         title: 'Generando venta...',
-        text: 'Registrando operación y emitiendo factura si corresponde.',
+        text: esVentaCtaCte
+          ? 'Registrando operación en cuenta corriente.'
+          : 'Registrando operación y emitiendo factura si corresponde.',
         allowOutsideClick: false,
         allowEscapeKey: false,
         showConfirmButton: false,
@@ -1772,13 +1930,14 @@ export default function PuntoVenta() {
         ? parseFloat(descuentoPersonalizado)
         : 0;
 
-      // Benjamin Orellana - 2026-03-10 - Usamos el ajuste realmente aplicado por el backend (no el original del medio) para evitar duplicar recargos ya absorbidos en precio_tarjeta.
-      const ajusteMedioAplicado =
-        Number(
-          totalCalculado?.ajuste_porcentual_aplicado ??
-            totalCalculado?.ajuste_porcentual ??
-            0
-        ) || 0;
+      // Benjamin Orellana - 16-03-2026 - En CTA_CTE el ajuste de medio debe ser siempre neutro.
+      const ajusteMedioAplicado = esVentaContado
+        ? Number(
+            totalCalculado?.ajuste_porcentual_aplicado ??
+              totalCalculado?.ajuste_porcentual ??
+              0
+          ) || 0
+        : 0;
 
       const descuentoBackendPct =
         Number(totalCalculado?.descuento_porcentual ?? 0) || 0;
@@ -1846,8 +2005,8 @@ export default function PuntoVenta() {
 
       // Benjamin Orellana - 2026-03-10 - En el nuevo esquema el descuento sugerido del producto es informativo; no se registra como descuento aplicado de la venta porque la base real es precio_tarjeta.
 
-      // Medio de pago: registrar solo si efectivamente aplicó descuento negativo.
-      if (ajusteMedioAplicado < 0) {
+      // Benjamin Orellana - 16-03-2026 - El origen descuento por medio de pago solo existe en contado.
+      if (esVentaContado && ajusteMedioAplicado < 0) {
         origenes_descuento.push({
           tipo: 'medio_pago',
           referencia_id: medioPago,
@@ -1882,7 +2041,7 @@ export default function PuntoVenta() {
         return;
       }
 
-      // Benjamin Orellana - 2026-03-10 - El total final de la venta siempre debe salir del cálculo consolidado del backend; no debe volver a caer a precio_base por el toggle visual del descuento.
+      // Benjamin Orellana - 2026-03-10 - El total final de la venta siempre debe salir del cálculo consolidado del backend o del cálculo local CTA_CTE.
       const totalFinalCalculado = Number(totalCalculado?.total ?? 0) || 0;
 
       const ventaRequest = {
@@ -1890,33 +2049,54 @@ export default function PuntoVenta() {
         productos: productosRequest,
         combos: combosSeleccionados,
         total: totalFinalCalculado,
-        medio_pago_id: medioPago,
+
+        // Benjamin Orellana - 16-03-2026 - La condición de venta viaja explícitamente al backend.
+        condicion_venta: condicionVenta,
+        medio_pago_id: esVentaContado ? medioPago : null,
+        fecha_vencimiento_cta_cte:
+          esVentaCtaCte && fechaVencimientoCtaCte
+            ? fechaVencimientoCtaCte
+            : null,
+        observaciones_cta_cte: esVentaCtaCte
+          ? String(observacionesCtaCte || '').trim() || null
+          : null,
+
         usuario_id: userId,
         local_id: userLocalId,
         cbte_tipo: cbteTipoSolicitado,
         descuento_porcentaje: hayDescuentoManual
           ? descuentoManualPct
-          : ajusteMedioAplicado < 0
+          : esVentaContado && ajusteMedioAplicado < 0
             ? Math.abs(ajusteMedioAplicado)
             : 0,
-        recargo_porcentaje: ajusteMedioAplicado > 0 ? ajusteMedioAplicado : 0,
+        recargo_porcentaje:
+          esVentaContado && ajusteMedioAplicado > 0 ? ajusteMedioAplicado : 0,
         aplicar_descuento: aplicarDescuento,
         origenes_descuento,
-        cuotas: totalCalculado.cuotas,
-        monto_por_cuota: totalCalculado?.monto_por_cuota ?? null,
-        porcentaje_recargo_cuotas:
-          totalCalculado?.porcentaje_recargo_cuotas ?? 0,
-        diferencia_redondeo: totalCalculado?.diferencia_redondeo ?? 0,
-        precio_base: totalCalculado.precio_base,
-        recargo_monto_cuotas: totalCalculado?.recargo_monto_cuotas ?? 0,
-
-        // Benjamin Orellana - 10-03-2026 - Se envían datos de autorización POS cuando el medio de pago lo requiere.
-        nro_autorizacion_pos: requiereAutorizacionPOS
-          ? String(nroAutorizacionPOS || '').trim()
+        cuotas: esVentaContado ? (totalCalculado?.cuotas ?? 1) : 1,
+        monto_por_cuota: esVentaContado
+          ? (totalCalculado?.monto_por_cuota ?? null)
           : null,
-        observaciones_autorizacion_pos: requiereAutorizacionPOS
-          ? String(observacionesAutorizacionPOS || '').trim() || null
-          : null
+        porcentaje_recargo_cuotas: esVentaContado
+          ? (totalCalculado?.porcentaje_recargo_cuotas ?? 0)
+          : 0,
+        diferencia_redondeo: esVentaContado
+          ? (totalCalculado?.diferencia_redondeo ?? 0)
+          : 0,
+        precio_base: totalCalculado?.precio_base ?? totalFinalCalculado,
+        recargo_monto_cuotas: esVentaContado
+          ? (totalCalculado?.recargo_monto_cuotas ?? 0)
+          : 0,
+
+        // Benjamin Orellana - 10-03-2026 - Se envían datos de autorización POS solo cuando el flujo es contado y el medio lo requiere.
+        nro_autorizacion_pos:
+          esVentaContado && requiereAutorizacionPOS
+            ? String(nroAutorizacionPOS || '').trim()
+            : null,
+        observaciones_autorizacion_pos:
+          esVentaContado && requiereAutorizacionPOS
+            ? String(observacionesAutorizacionPOS || '').trim() || null
+            : null
       };
 
       // NUEVO: helpers locales (sin dependencias)
@@ -2046,7 +2226,6 @@ export default function PuntoVenta() {
 
         const payload = await safeJson(response);
 
-        // NUEVO: caja abierta (mantenemos tu lógica)
         if (!response.ok) {
           const msg = payload.mensajeError || 'Error al registrar la venta';
 
@@ -2063,6 +2242,11 @@ export default function PuntoVenta() {
             setNroAutorizacionPOS('');
             setObservacionesAutorizacionPOS('');
             setModalAutorizacionPOSOpen(false);
+
+            // Benjamin Orellana - 16-03-2026 - Luego de una venta cerrada se vuelve al estado base del POS.
+            setCondicionVenta(CONDICION_VENTA.CONTADO);
+            setFechaVencimientoCtaCte('');
+            setObservacionesCtaCte('');
 
             const ventaCompleta = await fetch(
               `https://api.rioromano.com.ar/ventas/${ventaId}`
@@ -2096,6 +2280,22 @@ export default function PuntoVenta() {
           null;
 
         const fact = payload?.facturacion || null;
+
+        // Benjamin Orellana - 16-03-2026 - Se interpreta la condición real devuelta por backend para mostrar feedback correcto.
+        const condicionVentaRespuesta = String(
+          payload?.condicion_venta ||
+            ventaRequest.condicion_venta ||
+            CONDICION_VENTA.CONTADO
+        ).toUpperCase();
+        const esVentaCtaCteRespuesta =
+          condicionVentaRespuesta === CONDICION_VENTA.CTA_CTE;
+        const tituloVentaRegistrada = esVentaCtaCteRespuesta
+          ? 'Venta registrada en cuenta corriente'
+          : 'Venta registrada';
+        const mensajeVentaRegistrada = buildMensajeVentaRegistrada(
+          payload,
+          ventaRequest.condicion_venta
+        );
 
         const warningsRaw = Array.isArray(fact?.warnings)
           ? fact.warnings
@@ -2179,6 +2379,11 @@ export default function PuntoVenta() {
         setObservacionesAutorizacionPOS('');
         setModalAutorizacionPOSOpen(false);
 
+        // Benjamin Orellana - 16-03-2026 - Se resetea la condición de venta y campos de CxC al cerrar correctamente una operación.
+        setCondicionVenta(CONDICION_VENTA.CONTADO);
+        setFechaVencimientoCtaCte('');
+        setObservacionesCtaCte('');
+
         if (busqueda.trim() !== '') {
           const res2 = await fetch(
             `https://api.rioromano.com.ar/buscar-productos-detallado?query=${encodeURIComponent(
@@ -2199,33 +2404,33 @@ export default function PuntoVenta() {
         closeLoading();
 
         if (!fact) {
-          await swalSuccess(
-            'Venta registrada',
-            'La venta se registró correctamente.'
-          );
+          await swalSuccess(tituloVentaRegistrada, mensajeVentaRegistrada);
         } else if (estadoLower === 'aprobado') {
           if (warnings.length === 0) {
             await swalSuccess(
-              'Venta registrada',
-              'Venta registrada y comprobante emitido.'
+              tituloVentaRegistrada,
+              esVentaCtaCteRespuesta
+                ? `${mensajeVentaRegistrada}\nComprobante emitido.`
+                : 'Venta registrada y comprobante emitido.'
             );
           } else {
             await swalSuccess(
-              'Venta registrada',
-              'Venta registrada y comprobante emitido con observaciones.'
+              tituloVentaRegistrada,
+              esVentaCtaCteRespuesta
+                ? `${mensajeVentaRegistrada}\nComprobante emitido con observaciones.`
+                : 'Venta registrada y comprobante emitido con observaciones.'
             );
           }
         } else if (estadoLower === 'pendiente') {
           await Swal.fire(
-            'Venta registrada',
-            'La venta se registró. La facturación quedó pendiente y se reintentará automáticamente.'
+            tituloVentaRegistrada,
+            esVentaCtaCteRespuesta
+              ? `${mensajeVentaRegistrada}\nLa facturación quedó pendiente y se reintentará automáticamente.`
+              : 'La venta se registró. La facturación quedó pendiente y se reintentará automáticamente.'
           );
           await autoRetryFacturacion(ventaId);
         } else if (estadoLower === 'omitido') {
-          await Swal.fire(
-            'Venta registrada',
-            'La venta se registró correctamente.'
-          );
+          await Swal.fire(tituloVentaRegistrada, mensajeVentaRegistrada);
         } else if (estadoLower === 'rechazado') {
           const motivo =
             fact?.detalles ||
@@ -2238,15 +2443,21 @@ export default function PuntoVenta() {
 
           await Swal.fire({
             icon: 'error',
-            title: 'Facturación rechazada',
-            text: `${motivo}${hint}`,
+            title: esVentaCtaCteRespuesta
+              ? 'Venta registrada / facturación rechazada'
+              : 'Facturación rechazada',
+            text: esVentaCtaCteRespuesta
+              ? `${mensajeVentaRegistrada}\n\n${motivo}${hint}`
+              : `${motivo}${hint}`,
             confirmButtonText: 'Entendido',
             confirmButtonColor: '#ef4444'
           });
         } else {
           await Swal.fire(
-            'Venta registrada',
-            `La venta se registró. Estado de facturación: ${estadoLower || 'desconocido'}.`
+            tituloVentaRegistrada,
+            esVentaCtaCteRespuesta
+              ? `${mensajeVentaRegistrada}\nEstado de facturación: ${estadoLower || 'desconocido'}.`
+              : `La venta se registró. Estado de facturación: ${estadoLower || 'desconocido'}.`
           );
         }
 
@@ -2256,6 +2467,11 @@ export default function PuntoVenta() {
         setNroAutorizacionPOS('');
         setObservacionesAutorizacionPOS('');
         setModalAutorizacionPOSOpen(false);
+
+        // Benjamin Orellana - 16-03-2026 - Doble resguardo de reset para dejar el POS en estado limpio después del mensaje final.
+        setCondicionVenta(CONDICION_VENTA.CONTADO);
+        setFechaVencimientoCtaCte('');
+        setObservacionesCtaCte('');
       } catch (err) {
         closeLoading();
 
@@ -2629,6 +2845,12 @@ export default function PuntoVenta() {
                 >
                   Cambiar
                 </button>
+              </div>
+            ) : esVentaCtaCte ? (
+              // Benjamin Orellana - 16-03-2026 - En cuenta corriente el cliente deja de ser opcional y se comunica visualmente.
+              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-300">
+                <FaUserAlt />
+                <span>Cuenta corriente requiere un cliente seleccionado.</span>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-slate-500 dark:text-gray-400">
@@ -3069,10 +3291,74 @@ export default function PuntoVenta() {
               </div>
             )}
 
+            {/* Benjamin Orellana - 16-03-2026 - Selector integrado de condición de venta para alternar entre cobro inmediato y cuenta corriente. */}
+            <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 space-y-3 dark:bg-white/5 dark:ring-white/10">
+              <div>
+                <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
+                  Condición de venta
+                </div>
+                <div className="text-[11px] text-slate-500 mt-0.5 dark:text-white/55">
+                  Definí si la venta se cobra ahora o si queda registrada en
+                  cuenta corriente.
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCondicionVenta(CONDICION_VENTA.CONTADO)}
+                  className={[
+                    'rounded-2xl px-3 py-3 text-left ring-1 transition',
+                    esVentaContado
+                      ? 'bg-emerald-600 text-white ring-emerald-500/30 shadow-sm'
+                      : 'bg-slate-900/5 text-slate-800 hover:bg-slate-900/10 ring-black/10 hover:ring-black/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20'
+                  ].join(' ')}
+                >
+                  <div className="text-[12px] font-bold uppercase tracking-wide">
+                    Contado
+                  </div>
+                  <div
+                    className={`mt-1 text-[11px] leading-relaxed ${
+                      esVentaContado
+                        ? 'text-white/85'
+                        : 'text-slate-500 dark:text-white/55'
+                    }`}
+                  >
+                    Medio de pago obligatorio.
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCondicionVenta(CONDICION_VENTA.CTA_CTE)}
+                  className={[
+                    'rounded-2xl px-3 py-3 text-left ring-1 transition',
+                    esVentaCtaCte
+                      ? 'bg-sky-600 text-white ring-sky-500/30 shadow-sm'
+                      : 'bg-slate-900/5 text-slate-800 hover:bg-slate-900/10 ring-black/10 hover:ring-black/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20'
+                  ].join(' ')}
+                >
+                  <div className="text-[12px] font-bold uppercase tracking-wide">
+                    Cuenta Corriente
+                  </div>
+                  <div
+                    className={`mt-1 text-[11px] leading-relaxed ${
+                      esVentaCtaCte
+                        ? 'text-white/85'
+                        : 'text-slate-500 dark:text-white/55'
+                    }`}
+                  >
+                    Cliente obligatorio. Sin cobro inmediato ni medio de pago.
+                  </div>
+                </button>
+              </div>
+            </div>
+
             {/* Total */}
             {carrito.length > 0 &&
               totalCalculado &&
-              totalCalculado.total >= 0 && (
+              totalCalculado.total >= 0 &&
+              (esVentaContado ? (
                 <TotalConOpciones
                   totalCalculado={totalCalculado}
                   formatearPrecio={formatearPrecio}
@@ -3087,7 +3373,88 @@ export default function PuntoVenta() {
                   medioPago={medioPago}
                   userLevel={userLevel}
                 />
-              )}
+              ) : (
+                // Benjamin Orellana - 16-03-2026 - Resumen específico para CTA_CTE sin UI de cobro inmediato.
+                <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-4 space-y-4 dark:bg-white/5 dark:ring-white/10">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
+                        Resumen cuenta corriente
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5 dark:text-white/55">
+                        El importe se registra como saldo pendiente. No se cobra
+                        ahora.
+                      </div>
+                    </div>
+
+                    <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold border border-sky-600/20 bg-sky-600/10 text-sky-700 dark:border-sky-400/20 dark:bg-sky-500/10 dark:text-sky-200">
+                      CTA_CTE
+                    </span>
+                  </div>
+
+                  <label className="flex items-center justify-between gap-3 rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-[12px] text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200/80">
+                    <span className="font-semibold">
+                      Aplicar descuento manual
+                    </span>
+
+                    <input
+                      type="checkbox"
+                      checked={aplicarDescuento}
+                      onChange={(e) => setAplicarDescuento(e.target.checked)}
+                      className="h-4 w-4 accent-emerald-600 dark:accent-emerald-400"
+                    />
+                  </label>
+
+                  {aplicarDescuento && (
+                    <div className="space-y-2">
+                      <label className="block text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
+                        Descuento manual (%)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={descuentoPersonalizado}
+                        onChange={(e) =>
+                          setDescuentoPersonalizado(e.target.value)
+                        }
+                        placeholder="0.00"
+                        className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-black/20 dark:text-white"
+                      />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-black/10 bg-white/70 px-3 py-3 dark:border-white/10 dark:bg-white/5">
+                      <div className="text-[11px] uppercase tracking-widest text-slate-500 dark:text-slate-300/60">
+                        Base
+                      </div>
+                      <div className="mt-1 text-[18px] font-extrabold text-slate-900 dark:text-white">
+                        {formatearPrecio(
+                          Number(totalCalculado?.precio_base ?? 0)
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-sky-600/20 bg-sky-600/10 px-3 py-3 dark:border-sky-400/20 dark:bg-sky-500/10">
+                      <div className="text-[11px] uppercase tracking-widest text-sky-700 dark:text-sky-200/80">
+                        Saldo a registrar
+                      </div>
+                      <div className="mt-1 text-[18px] font-extrabold text-sky-800 dark:text-sky-100">
+                        {formatearPrecio(Number(totalCalculado?.total ?? 0))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {!clienteSeleccionado && (
+                    <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2.5 text-[12px] leading-relaxed text-rose-700 dark:text-rose-200">
+                      Seleccioná un cliente antes de registrar una venta en
+                      cuenta corriente.
+                    </div>
+                  )}
+                </div>
+              ))}
 
             {/* Comprobante + Medios de pago + Cuotas (layout compacto) */}
             <div className="space-y-3">
@@ -3117,139 +3484,193 @@ export default function PuntoVenta() {
               </div>
 
               {/* Medios + Cuotas */}
-              {/* Medios + Cuotas */}
-              <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 space-y-3 dark:bg-white/5 dark:ring-white/10">
-                {/* Benjamin Orellana - 2026-03-10 - Reestructura el header del bloque para que en anchos angostos no se aplasten la alerta y el selector de cuotas. */}
-                <div className="space-y-3">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
-                        Medio de pago
+              {/* Benjamin Orellana - 16-03-2026 - El bloque de cobro inmediato solo se muestra en contado; CTA_CTE usa campos propios de vencimiento y observaciones. */}
+              {esVentaContado ? (
+                <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 space-y-3 dark:bg-white/5 dark:ring-white/10">
+                  <div className="space-y-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
+                          Medio de pago
+                        </div>
+
+                        <div className="text-[11px] text-slate-500 mt-0.5 dark:text-white/55">
+                          Seleccioná cómo se va a cobrar esta venta
+                        </div>
                       </div>
 
-                      <div className="text-[11px] text-slate-500 mt-0.5 dark:text-white/55">
-                        Seleccioná cómo se va a cobrar esta venta
-                      </div>
+                      {cuotasDisponibles.length > 0 && (
+                        <div className="flex items-center justify-between sm:justify-end gap-2 rounded-xl bg-slate-900/5 ring-1 ring-black/10 px-3 py-2 dark:bg-white/5 dark:ring-white/10">
+                          <span className="text-[12px] font-medium text-slate-600 dark:text-white/80">
+                            Cuotas
+                          </span>
+
+                          <select
+                            id="cuotas"
+                            value={cuotasSeleccionadas}
+                            onChange={(e) =>
+                              setCuotasSeleccionadas(Number(e.target.value))
+                            }
+                            className="bg-white border border-black/10 text-slate-900 rounded-lg px-2.5 py-1.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:bg-black/20 dark:border-white/15 dark:text-white dark:focus:ring-emerald-400/40"
+                          >
+                            {cuotasUnicas.map((num) => (
+                              <option
+                                key={num}
+                                value={num}
+                                className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white"
+                              >
+                                {num} cuota{num > 1 ? 's' : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Benjamin Orellana - 2026-01-28 - Mueve el selector de cuotas al header del bloque de medios para evitar que quede muy abajo y mejorar la lectura. */}
-                    {cuotasDisponibles.length > 0 && (
-                      <div className="flex items-center justify-between sm:justify-end gap-2 rounded-xl bg-slate-900/5 ring-1 ring-black/10 px-3 py-2 dark:bg-white/5 dark:ring-white/10">
-                        <span className="text-[12px] font-medium text-slate-600 dark:text-white/80">
-                          Cuotas
-                        </span>
-
-                        <select
-                          id="cuotas"
-                          value={cuotasSeleccionadas}
-                          onChange={(e) =>
-                            setCuotasSeleccionadas(Number(e.target.value))
-                          }
-                          className="bg-white border border-black/10 text-slate-900 rounded-lg px-2.5 py-1.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:bg-black/20 dark:border-white/15 dark:text-white dark:focus:ring-emerald-400/40"
-                        >
-                          {cuotasUnicas.map((num) => (
-                            <option
-                              key={num}
-                              value={num}
-                              className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white"
-                            >
-                              {num} cuota{num > 1 ? 's' : ''}
-                            </option>
-                          ))}
-                        </select>
+                    {requiereAutorizacionPOS && (
+                      <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2.5 text-[12px] leading-relaxed text-amber-700 dark:text-amber-200">
+                        Este medio de pago requiere número de autorización de la
+                        tarjeta al finalizar la venta.
                       </div>
                     )}
                   </div>
 
-                  {requiereAutorizacionPOS && (
-                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2.5 text-[12px] leading-relaxed text-amber-700 dark:text-amber-200">
-                      Este medio de pago requiere número de autorización de la
-                      tarjeta al finalizar la venta.
+                  {loadingMediosPago ? (
+                    <div className="text-slate-600 text-sm dark:text-gray-300">
+                      Cargando...
+                    </div>
+                  ) : (
+                    <div
+                      className="grid gap-2"
+                      style={{
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(170px, 1fr))'
+                      }}
+                    >
+                      {mediosPago
+                        .filter((m) => m.activo)
+                        .sort((a, b) => a.orden - b.orden)
+                        .map((m) => {
+                          const selected = medioPago === m.id;
+
+                          // Benjamin Orellana - 2026-01-28 - Chip de porcentaje con color semántico (+ recargo / 0 neutro / - descuento) para lectura rápida.
+                          const p =
+                            parseFloat(
+                              String(m?.ajuste_porcentual ?? '0').replace(
+                                ',',
+                                '.'
+                              )
+                            ) || 0;
+
+                          // Benjamin Orellana - 2026-02-17 - Chip tema-aware (en light usa textos oscuros, en dark conserva el estilo actual)
+                          const chipClass = selected
+                            ? 'bg-white/15 text-white ring-white/20'
+                            : p > 0
+                              ? 'bg-orange-500/15 text-orange-700 ring-orange-600/20 dark:bg-orange-500/15 dark:text-orange-200 dark:ring-orange-400/20'
+                              : p < 0
+                                ? 'bg-emerald-600/15 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20'
+                                : 'bg-slate-900/5 text-slate-600 ring-black/10 dark:bg-white/5 dark:text-white/70 dark:ring-white/10';
+
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => setMedioPago(m.id)}
+                              className={[
+                                'w-full min-h-[68px] rounded-2xl px-3 py-3 transition ring-1 text-left',
+                                selected
+                                  ? 'bg-emerald-600 text-white ring-emerald-500/30 shadow-sm'
+                                  : 'bg-slate-900/5 text-slate-800 hover:bg-slate-900/10 ring-black/10 hover:ring-black/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20'
+                              ].join(' ')}
+                              title={m.nombre}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="text-[16px] shrink-0 mt-0.5">
+                                  {dynamicIcon(m.icono)}
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-[12px] font-semibold leading-snug whitespace-normal break-words">
+                                    {m.nombre}
+                                  </div>
+
+                                  {typeof m.ajuste_porcentual !==
+                                    'undefined' && (
+                                    <div className="mt-2">
+                                      <span
+                                        className={`inline-flex items-center text-[10px] px-2 py-1 rounded-full ring-1 whitespace-nowrap ${chipClass}`}
+                                        title={`${p > 0 ? '+' : ''}${p.toFixed(2)}%`}
+                                      >
+                                        {p > 0
+                                          ? `+${p.toFixed(2)}%`
+                                          : `${p.toFixed(2)}%`}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
                     </div>
                   )}
                 </div>
+              ) : (
+                <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 space-y-3 dark:bg-white/5 dark:ring-white/10">
+                  <div>
+                    <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
+                      Datos cuenta corriente
+                    </div>
 
-                {loadingMediosPago ? (
-                  <div className="text-slate-600 text-sm dark:text-gray-300">
-                    Cargando...
+                    <div className="text-[11px] text-slate-500 mt-0.5 dark:text-white/55">
+                      Configurá opcionalmente el vencimiento y una observación
+                      interna para esta venta.
+                    </div>
                   </div>
-                ) : (
-                  <div
-                    className="grid gap-2"
-                    style={{
-                      gridTemplateColumns:
-                        'repeat(auto-fit, minmax(170px, 1fr))'
-                    }}
-                  >
-                    {mediosPago
-                      .filter((m) => m.activo)
-                      .sort((a, b) => a.orden - b.orden)
-                      .map((m) => {
-                        const selected = medioPago === m.id;
 
-                        // Benjamin Orellana - 2026-01-28 - Chip de porcentaje con color semántico (+ recargo / 0 neutro / - descuento) para lectura rápida.
-                        const p =
-                          parseFloat(
-                            String(m?.ajuste_porcentual ?? '0').replace(
-                              ',',
-                              '.'
-                            )
-                          ) || 0;
+                  {!clienteSeleccionado && (
+                    <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2.5 text-[12px] leading-relaxed text-rose-700 dark:text-rose-200">
+                      Antes de vender en cuenta corriente debés seleccionar un
+                      cliente.
+                    </div>
+                  )}
 
-                        // Benjamin Orellana - 2026-02-17 - Chip tema-aware (en light usa textos oscuros, en dark conserva el estilo actual)
-                        const chipClass = selected
-                          ? 'bg-white/15 text-white ring-white/20'
-                          : p > 0
-                            ? 'bg-orange-500/15 text-orange-700 ring-orange-600/20 dark:bg-orange-500/15 dark:text-orange-200 dark:ring-orange-400/20'
-                            : p < 0
-                              ? 'bg-emerald-600/15 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20'
-                              : 'bg-slate-900/5 text-slate-600 ring-black/10 dark:bg-white/5 dark:text-white/70 dark:ring-white/10';
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[12px] font-semibold text-slate-600 uppercase mb-2 dark:text-white/80">
+                        Fecha de vencimiento
+                      </label>
+                      <input
+                        type="date"
+                        value={fechaVencimientoCtaCte}
+                        onChange={(e) =>
+                          setFechaVencimientoCtaCte(e.target.value)
+                        }
+                        className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-white/10 dark:bg-black/20 dark:text-white"
+                      />
+                    </div>
 
-                        return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => setMedioPago(m.id)}
-                            className={[
-                              // Benjamin Orellana - 2026-03-10 - Se rehace la tarjeta del medio para que no se rompa visualmente en sidebars angostos y mantenga altura pareja.
-                              'w-full min-h-[68px] rounded-2xl px-3 py-3 transition ring-1 text-left',
-                              selected
-                                ? 'bg-emerald-600 text-white ring-emerald-500/30 shadow-sm'
-                                : 'bg-slate-900/5 text-slate-800 hover:bg-slate-900/10 ring-black/10 hover:ring-black/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20'
-                            ].join(' ')}
-                            title={m.nombre}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="text-[16px] shrink-0 mt-0.5">
-                                {dynamicIcon(m.icono)}
-                              </div>
-
-                              <div className="min-w-0 flex-1">
-                                {/* Benjamin Orellana - 2026-01-28 - Permite el nombre completo (sin clamp) haciendo wrap; el botón crece en alto si hace falta. */}
-                                <div className="text-[12px] font-semibold leading-snug whitespace-normal break-words">
-                                  {m.nombre}
-                                </div>
-
-                                {typeof m.ajuste_porcentual !== 'undefined' && (
-                                  <div className="mt-2">
-                                    <span
-                                      className={`inline-flex items-center text-[10px] px-2 py-1 rounded-full ring-1 whitespace-nowrap ${chipClass}`}
-                                      title={`${p > 0 ? '+' : ''}${p.toFixed(2)}%`}
-                                    >
-                                      {p > 0
-                                        ? `+${p.toFixed(2)}%`
-                                        : `${p.toFixed(2)}%`}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
+                    <div>
+                      <label className="block text-[12px] font-semibold text-slate-600 uppercase mb-2 dark:text-white/80">
+                        Observaciones
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={observacionesCtaCte}
+                        onChange={(e) => setObservacionesCtaCte(e.target.value)}
+                        placeholder="Ej.: vence en 15 días, acordado con el cliente."
+                        className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-white/10 dark:bg-black/20 dark:text-white resize-none"
+                      />
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  <div className="rounded-xl border border-sky-600/20 bg-sky-600/10 px-3 py-2.5 text-[12px] leading-relaxed text-sky-700 dark:text-sky-200">
+                    No se solicitará medio de pago, cuotas ni autorización POS.
+                    Se registrará la venta y generará automáticamente el
+                    documento de CxC.
+                  </div>
+                </div>
+              )}
             </div>
 
             <button
@@ -3259,10 +3680,16 @@ export default function PuntoVenta() {
               className={`w-full py-3 rounded-xl font-bold transition ${
                 carrito.length === 0 || finalizandoVenta
                   ? 'bg-slate-300 text-slate-600 cursor-not-allowed dark:bg-gray-600 dark:text-white'
-                  : 'bg-green-500 hover:bg-green-600 text-white'
+                  : esVentaCtaCte
+                    ? 'bg-sky-600 hover:bg-sky-700 text-white'
+                    : 'bg-green-500 hover:bg-green-600 text-white'
               }`}
             >
-              {finalizandoVenta ? 'Generando...' : 'Finalizar Venta (F2)'}
+              {finalizandoVenta
+                ? 'Generando...'
+                : esVentaCtaCte
+                  ? 'Registrar en Cta. Cte. (F2)'
+                  : 'Finalizar Venta (F2)'}
             </button>
           </div>
         </div>

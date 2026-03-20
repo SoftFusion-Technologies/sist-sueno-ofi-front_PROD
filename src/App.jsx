@@ -99,6 +99,8 @@ import AdminCajaRecibos from './Pages/Caja/AdminCajaRecibos';
 import StockMovimientosPage from './Pages/StockMovimientos/StockMovimientosPage';
 
 import VentasAutorizacionesPOSGet from './Pages/Ventas/VentasAutorizacionesPOSGet';
+
+import AdminPageCxC from './Pages/CxC/AdminPageCxC';
 // -------------------------
 // MÓDULO ARCA  - 08-12-2025 Benjamin Orellana
 // -------------------------
@@ -106,6 +108,10 @@ import AdminPageArca from './Pages/ARCA/AdminPageArca';
 import EmpresasCards from './Pages/ARCA/EmpresasCards';
 import PuntosVentaCards from './Pages/ARCA/PuntosVentaCards';
 import ComprobantesFiscalesCards from './Pages/ARCA/ComprobantesFiscalesCards';
+import CxCDocumentosPage from './Pages/CxC/CxCDocumentosPage';
+import CxCRecibosPage from './Pages/CxC/CxCRecibosPage';
+import CxCMovimientosPage from './Pages/CxC/CxCMovimientosPage';
+import CxCClientesPage from './Pages/CxC/CxCClientesPage';
 
 function AppContent() {
   const { hideLayoutFooter, hideLayoutNav } = useLayoutVisibility();
@@ -746,6 +752,51 @@ function AppContent() {
             }
           />
           {/* MODULO DENTRO DE COMPRAS FINAL  BENJAMIN ORELLANA 03 11 25 */}
+          <Ruta
+            path="/dashboard/cxc"
+            element={
+              <ProtectedRoute>
+                {' '}
+                <AdminPageCxC />{' '}
+              </ProtectedRoute>
+            }
+          />
+          <Ruta
+            path="/dashboard/cxc/documentos"
+            element={
+              <ProtectedRoute>
+                {' '}
+                <CxCDocumentosPage />{' '}
+              </ProtectedRoute>
+            }
+          />
+          <Ruta
+            path="/dashboard/cxc/recibos"
+            element={
+              <ProtectedRoute>
+                {' '}
+                <CxCRecibosPage />{' '}
+              </ProtectedRoute>
+            }
+          />
+          <Ruta
+            path="/dashboard/cxc/movimientos"
+            element={
+              <ProtectedRoute>
+                {' '}
+                <CxCMovimientosPage />{' '}
+              </ProtectedRoute>
+            }
+          />
+          <Ruta
+            path="/dashboard/cxc/clientes"
+            element={
+              <ProtectedRoute>
+                {' '}
+                <CxCClientesPage />{' '}
+              </ProtectedRoute>
+            }
+          />
           {/* componentes del staff y login FINAL */}
           {/* <Ruta path="/*" element={<NotFound />} /> */}
           {/* 🔁 Ruta no encontrada */}

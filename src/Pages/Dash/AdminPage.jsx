@@ -31,7 +31,8 @@ import {
   FaPiggyBank,
   FaFileInvoiceDollar, // <-- ARCA / Facturación
   FaUserFriends,
-  FaRegMoneyBillAlt
+  FaRegMoneyBillAlt,
+  FaBook
 } from 'react-icons/fa';
 import RoleGate from '../../Components/auth/RoleGate';
 
@@ -231,6 +232,27 @@ const AdminPage = () => {
                 icon={FaCashRegister}
                 delay={0.14}
               />
+
+              {!isVendedor && (
+                <RoleGate
+                  allow={[
+                    'admin',
+                    'administrativo',
+                    'socio',
+                    'contador',
+                    'supervisor',
+                    'cajero'
+                  ]}
+                >
+                  <DashboardTile
+                    title="Cuenta Corriente"
+                    description="Documentos, cobranzas, saldo a favor y libreta del cliente."
+                    to="/dashboard/cxc"
+                    icon={FaBook}
+                    delay={0.15}
+                  />
+                </RoleGate>
+              )}
 
               {/* ARCA: se mantiene con RoleGate; además oculto para vendedor */}
               {!isVendedor && (
