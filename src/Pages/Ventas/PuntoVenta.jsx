@@ -40,6 +40,8 @@ import NavbarStaff from '../Dash/NavbarStaff';
 // Benjamin Orellana - 10-03-2026 - Modal obligatorio para capturar número de autorización POS antes de registrar ventas con medios que lo exigen.
 import ModalAutorizacionPOS from './Components/ModalAutorizacionPOS';
 
+import DragScrollX from '../../Components/ui/DragScrollX';
+
 const toast = Swal.mixin({
   toast: true,
   position: 'top-end',
@@ -3038,178 +3040,409 @@ export default function PuntoVenta() {
               </div>
             </div>
 
-            {/* Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 overflow-y-auto max-h-[60vh] pr-1">
-              {productos.length === 0 && (
-                <div className="col-span-full rounded-2xl border border-black/10 bg-white/70 p-6 dark:border-white/10 dark:bg-white/[0.04]">
-                  <p className="text-slate-500 dark:text-slate-300/70">
-                    Sin resultados…
-                  </p>
-                </div>
-              )}
+            {/* Benjamin Orellana - 21-03-2026 - Resultados de búsqueda de productos en formato tabular operativo para selección exacta en POS, con soporte completo light/dark y lectura rápida por códigos, ubicación, stock y precio. */}
+            <div className="relative">
+              <DragScrollX
+                className="max-h-[128vh]"
+                innerClassName="min-w-[1320px]"
+              >
+                <table className="w-full min-w-[1320px] border-separate border-spacing-0 text-sm text-slate-900 dark:text-slate-100">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/95">
+                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                        Producto
+                      </th>
 
-              {productos.map((producto) => {
-                const tieneDescuento =
-                  producto.descuento_porcentaje > 0 &&
-                  producto.precio_con_descuento < producto.precio;
+                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                        Códigos
+                      </th>
 
-                const usarDescuento =
-                  usarDescuentoPorProducto[producto.producto_id] ?? true; // true por defecto
+                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                        Ubicación
+                      </th>
 
-                const sinStock = !producto.cantidad_disponible;
+                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                        Stock
+                      </th>
 
-                // Visibilidad de precio: si es vendedor NO muestra precios
-                const canSeePrices = userLevel !== 'vendedor';
+                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                        Precio
+                      </th>
 
-                return (
-                  <div
-                    key={producto.stock_id}
-                    className={[
-                      'group relative overflow-hidden rounded-2xl border p-4',
-                      // Benjamin Orellana - 2026-02-17 - Card tema-aware: light (blanco + borde suave), dark (glass oscuro actual)
-                      'border-black/10 bg-white/80 backdrop-blur-xl',
-                      'shadow-[0_18px_60px_rgba(0,0,0,.12)]',
-                      'dark:border-white/10 dark:bg-white/[0.04]',
-                      'dark:shadow-[0_18px_60px_rgba(0,0,0,.35)]',
-                      'transition-transform duration-150',
-                      sinStock
-                        ? 'opacity-70'
-                        : 'hover:-translate-y-0.5 hover:shadow-[0_28px_90px_rgba(0,0,0,.16)] dark:hover:shadow-[0_28px_90px_rgba(0,0,0,.45)]'
-                    ].join(' ')}
-                  >
-                    {/* Halo */}
-                    <div className="pointer-events-none absolute -inset-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <div className="absolute inset-0 bg-[radial-gradient(600px_200px_at_30%_20%,rgba(16,185,129,.18),transparent_60%),radial-gradient(500px_240px_at_90%_10%,rgba(59,130,246,.14),transparent_55%)] blur-2xl" />
-                    </div>
+                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                        Descuento
+                      </th>
 
-                    {/* Top row */}
-                    <div className="relative flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-start gap-2">
-                          <span className="text-[15px] font-extrabold tracking-wide text-slate-900 dark:text-white line-clamp-2">
-                            {producto.nombre}
-                          </span>
-                        </div>
+                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-right text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                        Acción
+                      </th>
+                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                        Otros locales
+                      </th>
+                      <th className="sticky top-0 z-30 border-b border-slate-200 bg-slate-50 px-4 py-3 text-center text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                        Agregar rápido
+                      </th>
+                    </tr>
+                  </thead>
 
-                        {/* Chips */}
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <span
-                            className={[
-                              'inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                              'border backdrop-blur',
-                              sinStock
-                                ? 'border-rose-500/20 bg-rose-500/10 text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-200'
-                                : 'border-emerald-600/20 bg-emerald-600/10 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-200'
-                            ].join(' ')}
-                          >
-                            <span
-                              className={[
-                                'h-1.5 w-1.5 rounded-full',
-                                sinStock
-                                  ? 'bg-rose-500 dark:bg-rose-400'
-                                  : 'bg-emerald-600 dark:bg-emerald-400'
-                              ].join(' ')}
-                            />
-                            {sinStock ? 'Sin stock' : 'Disponible'}
-                          </span>
+                  <tbody>
+                    {productos.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={9}
+                          className="border-b border-slate-100 px-4 py-8 text-center text-slate-500 dark:border-white/10 dark:text-slate-400"
+                        >
+                          Sin resultados…
+                        </td>
+                      </tr>
+                    )}
 
-                          {tieneDescuento && (
-                            <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold border border-emerald-600/20 bg-emerald-600/10 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-200">
-                              -{producto.descuento_porcentaje.toFixed(2)}% OFF
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                    {productos.map((producto, idx) => {
+                      const tieneDescuento =
+                        Number(producto.descuento_porcentaje || 0) > 0 &&
+                        Number(producto.precio_con_descuento || 0) <
+                          Number(
+                            producto.precio_tarjeta || producto.precio || 0
+                          );
 
-                      {/* Action */}
-                      <button
-                        onClick={() =>
-                          manejarAgregarProducto(producto, usarDescuento)
-                        }
-                        className={[
-                          'relative z-10 inline-flex h-10 w-10 items-center justify-center rounded-2xl',
-                          'border border-emerald-600/20 bg-emerald-600/10 text-emerald-700',
-                          'shadow-[0_12px_35px_rgba(16,185,129,.12)]',
-                          'dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-200',
-                          'dark:shadow-[0_12px_35px_rgba(16,185,129,.18)]',
-                          'transition',
-                          sinStock
-                            ? 'opacity-40 cursor-not-allowed'
-                            : 'hover:bg-emerald-600/15 hover:text-emerald-900 dark:hover:bg-emerald-500/25 dark:hover:text-white'
-                        ].join(' ')}
-                        title={sinStock ? 'Sin stock' : 'Agregar al carrito'}
-                        disabled={sinStock}
-                        aria-label="Agregar al carrito"
-                      >
-                        <FaPlus />
-                      </button>
-                    </div>
+                      const usarDescuento =
+                        usarDescuentoPorProducto[producto.producto_id] ?? true;
 
-                    {/* Bottom */}
-                    <div className="relative mt-4 space-y-3">
-                      {/* Toggle descuento */}
-                      {tieneDescuento && (
-                        <label className="flex items-center justify-between gap-3 rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-[12px] text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200/80">
-                          <span className="font-semibold">
-                            Aplicar descuento
-                          </span>
+                      const canSeePrices = userLevel !== 'vendedor';
 
-                          <input
-                            type="checkbox"
-                            checked={usarDescuento}
-                            onChange={() =>
-                              toggleDescuento(producto.producto_id)
-                            }
-                            className="h-4 w-4 accent-emerald-600 dark:accent-emerald-400"
-                          />
-                        </label>
-                      )}
+                      const coincidenciaBadgeClass =
+                        producto.tipo_coincidencia === 'CB'
+                          ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-400/40 dark:bg-sky-500/15 dark:text-sky-300'
+                          : producto.tipo_coincidencia === 'CI'
+                            ? 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-300'
+                            : producto.tipo_coincidencia === 'SKU'
+                              ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300'
+                              : 'border-slate-200 bg-slate-100 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200';
 
-                      {/* Precio / oculto para vendedor */}
-                      {canSeePrices ? (
-                        <div className="rounded-xl border border-black/10 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-white/5">
-                          <div className="text-[11px] uppercase tracking-widest text-slate-500 dark:text-slate-300/60">
-                            Precio Venta Base
-                          </div>
+                      const cantidadNum =
+                        Number(producto.cantidad_disponible ?? 0) || 0;
 
-                          {/* Benjamin Orellana - 2026-03-09 - La card del producto pasa a mostrar siempre el precio comercial visible (precio_tarjeta) y deja el precio interno como referencia secundaria. */}
-                          <div className="mt-1 text-[14px] font-extrabold text-emerald-700 dark:text-emerald-200">
-                            <span>
-                              {formatearPrecio(
-                                getPrecioVentaBaseProducto(producto)
-                              )}
-                            </span>
-                          </div>
+                      const cantidadFormateada = Number.isInteger(cantidadNum)
+                        ? cantidadNum.toLocaleString('es-AR', {
+                            maximumFractionDigits: 0
+                          })
+                        : cantidadNum.toLocaleString('es-AR', {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 2
+                          });
 
-                          <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-300/70">
-                            Base interna:{' '}
-                            {formatearPrecio(
-                              Number(producto?.precio ?? 0) || 0
-                            )}
-                          </div>
+                      const sinStock = cantidadNum <= 0;
+                      const stickyRowBg =
+                        idx % 2 === 0
+                          ? 'bg-white dark:bg-slate-900/95'
+                          : 'bg-slate-50 dark:bg-slate-800/95';
+                      return (
+                        <tr
+                          key={producto.stock_id}
+                          className={[
+                            'align-top transition-colors',
+                            idx % 2 === 0
+                              ? 'bg-white dark:bg-slate-900/50'
+                              : 'bg-slate-50/60 dark:bg-slate-800/35',
+                            'hover:bg-emerald-50/50 dark:hover:bg-emerald-500/10'
+                          ].join(' ')}
+                        >
+                          {/* PRODUCTO */}
+                          <td className="min-w-[280px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                            <div className="space-y-1">
+                              <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                                {producto.nombre}
+                              </div>
 
-                          {Number(producto?.descuento_porcentaje ?? 0) > 0 && (
-                            <div className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-300">
-                              Contado sugerido: -
-                              {Number(producto.descuento_porcentaje).toFixed(2)}
-                              %
+                              <div className="flex flex-wrap gap-2">
+                                <span
+                                  className={`inline-flex rounded-full border px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-wide ${coincidenciaBadgeClass}`}
+                                >
+                                  {producto.tipo_coincidencia || 'GENERAL'}
+                                </span>
+
+                                {producto.coincidencia_label ? (
+                                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[0.68rem] text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+                                    {producto.coincidencia_label}
+                                  </span>
+                                ) : null}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="rounded-xl border border-black/10 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-white/5">
-                          {/* <div className="text-[11px] uppercase tracking-widest text-slate-300/60">
-                      Precio
-                    </div>
-                    <div className="mt-1 text-[13px] font-semibold text-slate-200/70">
-                      Oculto para vendedor
-                    </div> */}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                          </td>
+
+                          {/* CODIGOS */}
+                          <td className="min-w-[290px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                            <div className="space-y-1 text-xs">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                  Cód. Interno:
+                                </span>
+                                <span className="font-mono text-slate-900 dark:text-slate-100">
+                                  {producto.codigo_interno ?? '—'}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                  Cód. Barra:
+                                </span>
+                                <span className="font-mono text-slate-900 dark:text-slate-100 break-all">
+                                  {producto.codigo_barra || '—'}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* UBICACION */}
+                          <td className="min-w-[230px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                            <div className="space-y-1 text-xs">
+                              <div>
+                                <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                  Local:
+                                </span>{' '}
+                                <span className="text-slate-900 dark:text-slate-100">
+                                  {producto.local_nombre || '—'}
+                                </span>
+                              </div>
+
+                              <div>
+                                <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                  Lugar:
+                                </span>{' '}
+                                <span className="text-slate-900 dark:text-slate-100">
+                                  {producto.lugar_nombre || '—'}
+                                </span>
+                              </div>
+
+                              <div>
+                                <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                  Estado:
+                                </span>{' '}
+                                <span className="text-slate-900 dark:text-slate-100">
+                                  {producto.estado_nombre || '—'}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* STOCK */}
+                          <td className="min-w-[160px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                            <div className="space-y-2">
+                              <div
+                                className={
+                                  sinStock
+                                    ? 'text-sm font-bold text-red-700 dark:text-red-300'
+                                    : 'text-sm font-bold text-emerald-700 dark:text-emerald-300'
+                                }
+                              >
+                                {cantidadFormateada}{' '}
+                              </div>
+
+                              <span
+                                className={[
+                                  'inline-flex rounded-full border px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-wide',
+                                  sinStock
+                                    ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-400/40 dark:bg-red-500/15 dark:text-red-300'
+                                    : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300'
+                                ].join(' ')}
+                              >
+                                {sinStock ? 'Sin stock' : 'Disponible'}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* PRECIO */}
+                          <td className="min-w-[240px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                            {canSeePrices ? (
+                              <div className="space-y-1 text-xs">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-slate-500 dark:text-slate-400">
+                                    Tarjeta:
+                                  </span>
+                                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                                    {formatearPrecio(
+                                      getPrecioVentaBaseProducto(producto)
+                                    )}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-slate-500 dark:text-slate-400">
+                                    Contado:
+                                  </span>
+                                  <span className="font-bold text-emerald-700 dark:text-emerald-300">
+                                    {formatearPrecio(
+                                      Number(
+                                        producto?.precio_con_descuento ?? 0
+                                      ) || 0
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-400 dark:text-slate-500">
+                                Oculto para vendedor
+                              </span>
+                            )}
+                          </td>
+
+                          {/* DESCUENTO */}
+                          <td className="min-w-[180px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                            {tieneDescuento ? (
+                              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+                                <div className="min-w-0">
+                                  <div className="font-semibold">
+                                    -
+                                    {Number(
+                                      producto.descuento_porcentaje
+                                    ).toFixed(2)}
+                                    %
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Aplicar descuento
+                                  </div>
+                                </div>
+
+                                <input
+                                  type="checkbox"
+                                  checked={usarDescuento}
+                                  onChange={() =>
+                                    toggleDescuento(producto.producto_id)
+                                  }
+                                  className="h-4 w-4 accent-emerald-600 dark:accent-emerald-400"
+                                />
+                              </label>
+                            ) : (
+                              <span className="text-xs text-slate-400 dark:text-slate-500">
+                                No aplica
+                              </span>
+                            )}
+                          </td>
+
+                          {/* ACCION */}
+                          <td className="min-w-[140px] border-b border-slate-100 px-4 py-3 text-right dark:border-white/10">
+                            <button
+                              onClick={() =>
+                                manejarAgregarProducto(producto, usarDescuento)
+                              }
+                              className={[
+                                'inline-flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold',
+                                'border border-emerald-600/20 bg-emerald-600/10 text-emerald-700',
+                                'dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-200',
+                                'transition',
+                                sinStock
+                                  ? 'cursor-not-allowed opacity-40'
+                                  : 'hover:bg-emerald-600/15 hover:text-emerald-900 dark:hover:bg-emerald-500/25 dark:hover:text-white'
+                              ].join(' ')}
+                              title={
+                                sinStock ? 'Sin stock' : 'Agregar al carrito'
+                              }
+                              disabled={sinStock}
+                              aria-label="Agregar al carrito"
+                            >
+                              <FaPlus />
+                              Agregar
+                            </button>
+                          </td>
+                          {/* OTROS LOCALES */}
+                          <td className="min-w-[280px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                            {Array.isArray(producto.otros_locales_resumen) &&
+                            producto.otros_locales_resumen.length > 0 ? (
+                              <div className="space-y-2">
+                                {producto.otros_locales_resumen
+                                  .slice(0, 4)
+                                  .map((item) => (
+                                    <div
+                                      key={`${producto.stock_id}-${item.local_id}`}
+                                      className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-white/10 dark:bg-white/5"
+                                    >
+                                      <div className="flex items-center justify-between gap-3">
+                                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                                          {item.local_nombre}
+                                        </span>
+
+                                        <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[0.68rem] font-bold text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">
+                                          {Number(
+                                            item.cantidad_disponible || 0
+                                          ).toLocaleString('es-AR', {
+                                            maximumFractionDigits: 0
+                                          })}{' '}
+                                          u
+                                        </span>
+                                      </div>
+
+                                      <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                        Tarjeta:{' '}
+                                        <span className="font-semibold text-slate-700 dark:text-slate-200">
+                                          {formatearPrecio(
+                                            Number(item.precio_tarjeta || 0)
+                                          )}
+                                        </span>
+                                      </div>
+
+                                      {Number(item.precio_con_descuento || 0) >
+                                        0 && (
+                                        <div className="mt-0.5 text-[11px] text-emerald-700 dark:text-emerald-300">
+                                          Contado:{' '}
+                                          {formatearPrecio(
+                                            Number(
+                                              item.precio_con_descuento || 0
+                                            )
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+
+                                {producto.otros_locales_resumen.length > 4 && (
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                    +{producto.otros_locales_resumen.length - 4}{' '}
+                                    locales más
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-400 dark:text-slate-500">
+                                No disponible en otros locales
+                              </span>
+                            )}
+                          </td>
+                          {/* AGREGAR RAPIDO */}
+                          <td className="sticky right-0 z-10 min-w-[150px] border-b border-slate-100 bg-transparent px-3 py-3 text-center shadow-none dark:border-white/10">
+                            <div className="flex items-center justify-center">
+                              <button
+                                onClick={() =>
+                                  manejarAgregarProducto(
+                                    producto,
+                                    usarDescuento
+                                  )
+                                }
+                                className={[
+                                  'inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold',
+                                  'border border-emerald-500/40 bg-transparent text-emerald-700',
+                                  'dark:border-emerald-400/40 dark:bg-transparent dark:text-emerald-300',
+                                  'transition',
+                                  sinStock
+                                    ? 'cursor-not-allowed opacity-40'
+                                    : 'hover:scale-[1.02] hover:border-emerald-600 hover:bg-transparent hover:text-emerald-800 dark:hover:border-emerald-300 dark:hover:bg-transparent dark:hover:text-emerald-200'
+                                ].join(' ')}
+                                title={
+                                  sinStock ? 'Sin stock' : 'Agregar al carrito'
+                                }
+                                disabled={sinStock}
+                                aria-label="Agregar rápido al carrito"
+                              >
+                                <FaPlus />
+                                Agregar
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </DragScrollX>
             </div>
           </div>
 
@@ -3392,7 +3625,7 @@ export default function PuntoVenta() {
                     </span>
                   </div>
 
-                  {/* <label className="flex items-center justify-between gap-3 rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-[12px] text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200/80">
+                  <label className="flex items-center justify-between gap-3 rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-[12px] text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200/80">
                     <span className="font-semibold">
                       Aplicar descuento manual
                     </span>
@@ -3423,7 +3656,7 @@ export default function PuntoVenta() {
                         className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-black/20 dark:text-white"
                       />
                     </div>
-                  )} */}
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="rounded-xl border border-black/10 bg-white/70 px-3 py-3 dark:border-white/10 dark:bg-white/5">
