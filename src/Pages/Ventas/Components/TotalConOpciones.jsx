@@ -10,11 +10,37 @@ function TotalConOpciones({
   mediosPago = [],
   setMedioPago,
   medioPago,
-  userLevel // se agrega para ocultar el precio al vendedor Benjamin Orellana - 29-01-2026
+  userLevel, // se agrega para ocultar el precio al vendedor Benjamin Orellana - 29-01-2026
+
+  // Benjamin Orellana - 25-03-2026 - Permite al componente elegir entre cálculo por medio de pago o por descuento propio del producto.
+  pricingSource,
+  setPricingSource,
+
+  // Benjamin Orellana - 25-03-2026 - Permite aplicar redondeo comercial controlado sobre el total final sin alterar las sugerencias fijas.
+  modoRedondeoComercial,
+  setModoRedondeoComercial
 }) {
   const parsePct = (v) => {
     const n = parseFloat(String(v ?? '0').replace(',', '.'));
     return Number.isFinite(n) ? n : 0;
+  };
+
+  // Benjamin Orellana - 25-03-2026 - Helpers locales para redondeo comercial visual del total final.
+  const round2 = (n) =>
+    Math.round((Number(n || 0) + Number.EPSILON) * 100) / 100;
+
+  const resolveTotalRedondeoComercial = (total, modo = 'exacto') => {
+    const exacto = round2(total);
+
+    if (!Number.isFinite(exacto) || exacto <= 0) return 0;
+
+    const abajo100 = Math.floor(exacto / 100) * 100;
+    const arriba100 = Math.ceil(exacto / 100) * 100;
+
+    if (modo === 'abajo_100') return round2(abajo100);
+    if (modo === 'arriba_100') return round2(arriba100);
+
+    return exacto;
   };
 
   const previews = Array.isArray(totalCalculado?.previews)
@@ -36,7 +62,19 @@ function TotalConOpciones({
 
   const usaPrecioTarjeta = Boolean(totalCalculado?.carrito_usa_precio_tarjeta);
 
+  // Benjamin Orellana - 25-03-2026 - Detecta la estrategia de precio efectiva aplicada para resaltar correctamente la tarjeta activa.
+  const pricingSourceApplied = String(
+    totalCalculado?.pricing_source_applied || pricingSource || 'MEDIO_PAGO'
+  )
+    .trim()
+    .toUpperCase();
+
+  const isProductDiscountApplied =
+    pricingSourceApplied === 'DESCUENTO_PRODUCTO' ||
+    totalCalculado?.descuento_producto_aplicado === true;
+
   // Benjamin Orellana - 2026-03-09 - Enriquecemos previews con ajuste original/aplicado para poder mostrar correctamente cuándo el recargo del medio ya está absorbido en precio_tarjeta del producto.
+  // Benjamin Orellana - 25-03-2026 - También distinguimos explícitamente el preview del descuento propio del producto.
   const previewItems = previews.map((p) => {
     const pctOriginal = parsePct(
       p?.ajuste_porcentual_original ?? p?.ajuste_porcentual
@@ -47,8 +85,20 @@ function TotalConOpciones({
     const recargoIncluido =
       usaPrecioTarjeta && pctOriginal > 0 && pctAplicado === 0;
 
+    const isProductDiscountPreview =
+      String(p?.tipo_preview || '').toUpperCase() === 'DESCUENTO_PRODUCTO' ||
+      String(p?.pricing_source || '').toUpperCase() === 'DESCUENTO_PRODUCTO';
+
     let sub = 'Sin recargo';
-    if (pctAplicado > 0) sub = `+${pctAplicado}% por método`;
+    if (isProductDiscountPreview) {
+      const descPct = parsePct(
+        p?.descuento_porcentual ?? totalCalculado?.descuento_producto_pct ?? 0
+      );
+      sub =
+        descPct > 0
+          ? `${descPct}% de descuento del producto`
+          : 'Precio promocional del producto';
+    } else if (pctAplicado > 0) sub = `+${pctAplicado}% por método`;
     else if (pctAplicado < 0) sub = `${Math.abs(pctAplicado)}% de descuento`;
     else if (recargoIncluido) sub = 'Recargo ya incluido en producto';
 
@@ -58,7 +108,11 @@ function TotalConOpciones({
       pctAplicado,
       recargoIncluido,
       total: Number(p?.total ?? 0) || 0,
-      sub
+      sub,
+      ahorro: Number(p?.ahorro ?? 0) || 0,
+      previewType: isProductDiscountPreview
+        ? 'DESCUENTO_PRODUCTO'
+        : 'MEDIO_PAGO'
     };
   });
 
@@ -66,43 +120,51 @@ function TotalConOpciones({
   // - Combo: mostramos una referencia de tarjeta/base y una opción con descuento si existe.
   // - Normal: mostramos precio lista/tarjeta y una opción de descuento real si existe.
   // IMPORTANTE: ahora se confía en previews del backend para evitar duplicar recargos en front.
+  // Benjamin Orellana - 25-03-2026 - Se agrega una tercera sugerencia cuando el producto trae descuento propio.
   const suggestions = (() => {
     if (!previewItems.length) return [];
 
-    const efectivosODescuento = previewItems
+    const productDiscountRef =
+      previewItems.find((p) => p.previewType === 'DESCUENTO_PRODUCTO') || null;
+
+    const mediosPreview = previewItems.filter(
+      (p) => p.previewType !== 'DESCUENTO_PRODUCTO'
+    );
+
+    const efectivosODescuento = mediosPreview
       .filter((p) => isEfectivoLikeName(p?.nombre) || p.pctAplicado < 0)
       .sort((a, b) => a.total - b.total || a.pctAplicado - b.pctAplicado);
 
-    const tarjetasONeutros = previewItems
+    const tarjetasONeutros = mediosPreview
       .filter((p) => !isEfectivoLikeName(p?.nombre))
       .sort((a, b) => b.total - a.total || b.pctOriginal - a.pctOriginal);
 
     const tarjetaRef =
       tarjetasONeutros[0] ||
-      [...previewItems].sort((a, b) => b.total - a.total)[0] ||
+      [...mediosPreview].sort((a, b) => b.total - a.total)[0] ||
       null;
 
     const descuentoRef =
       efectivosODescuento.find(
         (p) => p.medio_pago_id !== tarjetaRef?.medio_pago_id
       ) ||
-      [...previewItems]
+      [...mediosPreview]
         .sort((a, b) => a.total - b.total)
         .find((p) => p.medio_pago_id !== tarjetaRef?.medio_pago_id) ||
       null;
 
     const items = [];
 
-    if (tarjetaRef) {
+    if (productDiscountRef) {
       items.push({
-        key: `tarjeta-${tarjetaRef.medio_pago_id}`,
-        label: isComboMode
-          ? `${tarjetaRef.nombre || 'Tarjeta'} (Precio base)`
-          : `${tarjetaRef.nombre || 'Tarjeta'}`,
-        medioId: tarjetaRef.medio_pago_id,
-        pct: tarjetaRef.pctAplicado,
-        total: tarjetaRef.total,
-        sub: tarjetaRef.sub
+        key: 'descuento-producto',
+        label: productDiscountRef.nombre || 'Descuento del producto',
+        medioId: medioPago,
+        pct: 0,
+        total: productDiscountRef.total,
+        sub: productDiscountRef.sub,
+        ahorro: productDiscountRef.ahorro,
+        previewType: 'DESCUENTO_PRODUCTO'
       });
     }
 
@@ -115,17 +177,45 @@ function TotalConOpciones({
         medioId: descuentoRef.medio_pago_id,
         pct: descuentoRef.pctAplicado,
         total: descuentoRef.total,
-        sub: descuentoRef.sub
+        sub: descuentoRef.sub,
+        previewType: 'MEDIO_PAGO'
       });
     }
 
-    return items.slice(0, 2);
+    if (tarjetaRef) {
+      items.push({
+        key: `tarjeta-${tarjetaRef.medio_pago_id}`,
+        label: isComboMode
+          ? `${tarjetaRef.nombre || 'Tarjeta'} (Precio base)`
+          : `${tarjetaRef.nombre || 'Tarjeta'}`,
+        medioId: tarjetaRef.medio_pago_id,
+        pct: tarjetaRef.pctAplicado,
+        total: tarjetaRef.total,
+        sub: tarjetaRef.sub,
+        previewType: 'MEDIO_PAGO'
+      });
+    }
+
+    const seen = new Set();
+    return items.filter((item) => {
+      if (seen.has(item.key)) return false;
+      seen.add(item.key);
+      return true;
+    });
   })();
 
   const precioBase = Number(totalCalculado?.precio_base ?? 0) || 0;
   const precioContado =
     Number(totalCalculado?.precio_contado ?? 0) || precioBase;
-  const totalFinal = Number(totalCalculado?.total ?? 0) || 0;
+
+  // Benjamin Orellana - 25-03-2026 - El backend sigue entregando el total exacto; el front aplica un redondeo comercial local de exacto / centenar inferior / centenar superior.
+  const totalFinalExacto = Number(totalCalculado?.total ?? 0) || 0;
+  const totalFinal = resolveTotalRedondeoComercial(
+    totalFinalExacto,
+    modoRedondeoComercial
+  );
+
+  const deltaRedondeoComercial = round2(totalFinal - totalFinalExacto);
 
   const ajusteAplicado = parsePct(
     totalCalculado?.ajuste_porcentual_aplicado ??
@@ -142,6 +232,21 @@ function TotalConOpciones({
   const recargoMedioIncluido =
     usaPrecioTarjeta && ajusteOriginal > 0 && ajusteAplicado === 0;
 
+  // Benjamin Orellana - 25-03-2026 - Centraliza la selección de sugerencias para no mezclar descuento manual con descuento propio del producto.
+  const handleSelectSuggestion = (suggestion) => {
+    if (!suggestion) return;
+
+    if (suggestion.previewType === 'DESCUENTO_PRODUCTO') {
+      setPricingSource?.('DESCUENTO_PRODUCTO');
+      setAplicarDescuento?.(false);
+      setDescuentoPersonalizado?.(0);
+      return;
+    }
+
+    setPricingSource?.('MEDIO_PAGO');
+    setMedioPago?.(suggestion.medioId);
+  };
+
   return (
     <>
       {/* Selector aplicar descuento */}
@@ -152,7 +257,12 @@ function TotalConOpciones({
             type="radio"
             name="aplicarDescuento"
             checked={aplicarDescuento}
-            onChange={() => setAplicarDescuento(true)}
+            onChange={() => {
+              setAplicarDescuento(true);
+
+              // Benjamin Orellana - 25-03-2026 - Si el usuario vuelve al descuento manual, se restablece el modo de cálculo por medio de pago.
+              setPricingSource?.('MEDIO_PAGO');
+            }}
             className="accent-emerald-600 dark:accent-emerald-400"
           />
           Aplicar
@@ -163,7 +273,10 @@ function TotalConOpciones({
             type="radio"
             name="aplicarDescuento"
             checked={!aplicarDescuento}
-            onChange={() => setAplicarDescuento(false)}
+            onChange={() => {
+              setAplicarDescuento(false);
+              setPricingSource?.('MEDIO_PAGO');
+            }}
             className="accent-emerald-600 dark:accent-emerald-400"
           />
           No aplicar
@@ -180,6 +293,9 @@ function TotalConOpciones({
               if (val < 0) val = 0;
               if (val > 100) val = 100;
               setDescuentoPersonalizado(val);
+
+              // Benjamin Orellana - 25-03-2026 - Cualquier edición manual de porcentaje fuerza nuevamente el cálculo tradicional por medio de pago.
+              setPricingSource?.('MEDIO_PAGO');
             }}
             placeholder="Descuento %"
             className="w-20 px-2 py-1 rounded font-bold
@@ -206,23 +322,32 @@ function TotalConOpciones({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {suggestions.map((s) => {
               const totalShow = Number(s.total || 0) || 0;
-              const selected = medioPago === s.medioId;
+
+              const selected =
+                s.previewType === 'DESCUENTO_PRODUCTO'
+                  ? pricingSourceApplied === 'DESCUENTO_PRODUCTO'
+                  : pricingSourceApplied !== 'DESCUENTO_PRODUCTO' &&
+                    medioPago === s.medioId;
 
               return (
                 <button
                   key={s.key}
                   type="button"
-                  onClick={() => setMedioPago?.(s.medioId)}
+                  onClick={() => handleSelectSuggestion(s)}
                   className={[
                     'rounded-2xl p-3 text-left transition ring-1',
                     selected
                       ? 'bg-emerald-600/15 ring-emerald-600/25 dark:bg-emerald-600/20 dark:ring-emerald-500/30'
                       : 'bg-white/70 ring-black/10 hover:ring-black/15 hover:bg-white/90 dark:bg-white/5 dark:ring-white/10 dark:hover:ring-white/20 dark:hover:bg-white/10'
                   ].join(' ')}
-                  title="Aplicar medio de pago"
+                  title={
+                    s.previewType === 'DESCUENTO_PRODUCTO'
+                      ? 'Aplicar descuento del producto'
+                      : 'Aplicar medio de pago'
+                  }
                 >
                   <div className="text-[11px] text-slate-600 truncate dark:text-white/70">
                     {s.label}
@@ -234,14 +359,106 @@ function TotalConOpciones({
 
                   <div className="mt-0.5 text-[11px] text-slate-500 dark:text-white/60">
                     {s.sub}
-                    {!isComboMode && aplicarDescuento
+                    {!isComboMode &&
+                    aplicarDescuento &&
+                    s.previewType !== 'DESCUENTO_PRODUCTO'
                       ? ' · desc. manual aplicado'
                       : ''}
                   </div>
+
+                  {s.previewType === 'DESCUENTO_PRODUCTO' &&
+                    Number(s.ahorro || 0) > 0 && (
+                      <div className="mt-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                        Ahorro: {formatearPrecio(s.ahorro)}
+                      </div>
+                    )}
                 </button>
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Redondeo comercial */}
+      {totalCalculado && totalFinalExacto > 0 && (
+        <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 mb-3 dark:bg-white/5 dark:ring-white/10">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="text-[12px] font-semibold text-slate-800 dark:text-white/85">
+              Redondeo comercial
+            </div>
+            <div className="text-[11px] text-slate-500 dark:text-white/60">
+              Tolerancia máxima: ±100
+            </div>
+          </div>
+
+          {/* Benjamin Orellana - 25-03-2026 - Se ofrecen tres estados cerrados: exacto, centenar inferior y centenar superior. */}
+          {(() => {
+            const exacto = round2(totalFinalExacto);
+            const abajo100 = round2(Math.floor(exacto / 100) * 100);
+            const arriba100 = round2(Math.ceil(exacto / 100) * 100);
+
+            const opciones = [
+              {
+                key: 'exacto',
+                label: 'Exacto',
+                total: exacto
+              },
+              {
+                key: 'abajo_100',
+                label: 'Bajar',
+                total: abajo100
+              },
+              {
+                key: 'arriba_100',
+                label: 'Subir',
+                total: arriba100
+              }
+            ];
+
+            const seen = new Set();
+            const opcionesUnicas = opciones.filter((op) => {
+              const marker = String(op.total);
+              if (seen.has(marker)) return false;
+              seen.add(marker);
+              return true;
+            });
+
+            return (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {opcionesUnicas.map((op) => {
+                  const selected = modoRedondeoComercial === op.key;
+
+                  return (
+                    <button
+                      key={op.key}
+                      type="button"
+                      onClick={() => setModoRedondeoComercial?.(op.key)}
+                      className={[
+                        'rounded-2xl p-3 text-left transition ring-1',
+                        selected
+                          ? 'bg-orange-600/15 ring-orange-600/25 dark:bg-orange-600/20 dark:ring-orange-500/30'
+                          : 'bg-white/70 ring-black/10 hover:ring-black/15 hover:bg-white/90 dark:bg-white/5 dark:ring-white/10 dark:hover:ring-white/20 dark:hover:bg-white/10'
+                      ].join(' ')}
+                    >
+                      <div className="text-[11px] text-slate-600 dark:text-white/70">
+                        {op.label}
+                      </div>
+                      <div className="mt-0.5 text-[18px] font-black text-slate-900 dark:text-white">
+                        {formatearPrecio(op.total)}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-slate-500 dark:text-white/60">
+                        {op.key === 'exacto'
+                          ? 'Sin ajuste comercial'
+                          : `Ajuste ${
+                              op.total >= exacto ? '+' : ''
+                            }${formatearPrecio(op.total - exacto)}`}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -259,7 +476,11 @@ function TotalConOpciones({
               <div className="text-right">
                 <div className="text-[12px] text-slate-500 dark:text-white/60">
                   Precio base venta
-                  {aplicarDescuento ? ' (con desc. manual)' : ''}
+                  {isProductDiscountApplied
+                    ? ' (desc. producto)'
+                    : aplicarDescuento
+                      ? ' (con desc. manual)'
+                      : ''}
                 </div>
                 <div className="text-[14px] font-semibold text-slate-800 dark:text-white/85">
                   {formatearPrecio(precioContado || precioBase)}
@@ -274,7 +495,7 @@ function TotalConOpciones({
               <div
                 className={[
                   'text-[22px] font-black',
-                  ajusteAplicado < 0
+                  ajusteAplicado < 0 || isProductDiscountApplied
                     ? 'text-emerald-700 dark:text-emerald-300'
                     : 'text-orange-700 dark:text-orange-300'
                 ].join(' ')}
@@ -284,42 +505,70 @@ function TotalConOpciones({
             </div>
           </div>
 
-          {totalCalculado.monto_por_cuota && totalCalculado.cuotas > 1 && (
-            <div className="text-xs text-slate-500 dark:text-gray-300">
-              {totalCalculado.cuotas - 1} cuotas de{' '}
-              {formatearPrecio(totalCalculado.monto_por_cuota)} y 1 cuota de{' '}
-              {formatearPrecio(
-                totalCalculado.monto_por_cuota +
-                  totalCalculado.diferencia_redondeo
-              )}
+          {Number(totalCalculado?.cuotas ?? 1) > 1 &&
+            (() => {
+              const cuotasFinal = Number(totalCalculado?.cuotas ?? 1) || 1;
+              const cuotaRedondeada =
+                Math.floor((totalFinal / cuotasFinal) * 100) / 100;
+              const totalRecalculado = round2(cuotaRedondeada * cuotasFinal);
+              const diferenciaCuotas = round2(totalFinal - totalRecalculado);
+
+              return (
+                <div className="text-xs text-slate-500 dark:text-gray-300">
+                  {cuotasFinal - 1} cuotas de {formatearPrecio(cuotaRedondeada)}{' '}
+                  y 1 cuota de{' '}
+                  {formatearPrecio(cuotaRedondeada + diferenciaCuotas)}
+                </div>
+              );
+            })()}
+
+          {deltaRedondeoComercial !== 0 && (
+            <div className="text-xs font-medium italic text-slate-600 dark:text-white/70">
+              Redondeo comercial: {deltaRedondeoComercial > 0 ? '+' : ''}
+              {formatearPrecio(deltaRedondeoComercial)}
             </div>
           )}
 
           {(ajusteAplicado !== 0 ||
             Number(totalCalculado?.porcentaje_recargo_cuotas ?? 0) !== 0 ||
-            recargoMedioIncluido) && (
+            recargoMedioIncluido ||
+            isProductDiscountApplied) && (
             <div
               className={[
                 'text-xs font-medium italic',
-                ajusteAplicado < 0
+                ajusteAplicado < 0 || isProductDiscountApplied
                   ? 'text-emerald-700 dark:text-emerald-300'
                   : 'text-orange-700 dark:text-orange-300'
               ].join(' ')}
             >
-              {recargoMedioIncluido &&
+              {isProductDiscountApplied &&
+                `${parsePct(
+                  totalCalculado?.descuento_producto_pct ??
+                    totalCalculado?.producto_descuento_preview
+                      ?.descuento_pct_max ??
+                    0
+                )}% de descuento propio del producto`}
+              {!isProductDiscountApplied &&
+                recargoMedioIncluido &&
                 'Recargo del medio ya incluido en el precio del producto'}
-              {!recargoMedioIncluido &&
+              {!isProductDiscountApplied &&
+                !recargoMedioIncluido &&
                 ajusteAplicado > 0 &&
                 `+${ajusteAplicado}% por método de pago`}
-              {!recargoMedioIncluido &&
+              {!isProductDiscountApplied &&
+                !recargoMedioIncluido &&
                 ajusteAplicado < 0 &&
                 `${Math.abs(ajusteAplicado)}% de descuento`}
               {Number(totalCalculado?.porcentaje_recargo_cuotas ?? 0) > 0 &&
-                `${recargoMedioIncluido || ajusteAplicado !== 0 ? ' + ' : ''}${
-                  totalCalculado.porcentaje_recargo_cuotas
-                }% por ${totalCalculado.cuotas} cuota${
-                  totalCalculado.cuotas > 1 ? 's' : ''
-                }`}
+                `${
+                  isProductDiscountApplied ||
+                  recargoMedioIncluido ||
+                  ajusteAplicado !== 0
+                    ? ' + '
+                    : ''
+                }${totalCalculado.porcentaje_recargo_cuotas}% por ${
+                  totalCalculado.cuotas
+                } cuota${totalCalculado.cuotas > 1 ? 's' : ''}`}
             </div>
           )}
         </div>

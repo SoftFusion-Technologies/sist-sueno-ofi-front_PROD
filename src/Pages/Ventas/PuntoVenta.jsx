@@ -235,6 +235,88 @@ export default function PuntoVenta() {
     }
   };
 
+  // Benjamin Orellana - 25-03-2026 - Guarda el modo de redondeo comercial aplicado sobre el total final, con tolerancia máxima de ±100 pesos.
+  const [modoRedondeoComercial, setModoRedondeoComercial] = useState('exacto');
+
+  // Benjamin Orellana - 25-03-2026 - Helpers locales para redondeo monetario consistente y ajuste comercial a centenares.
+  const round2 = (n) =>
+    Math.round((Number(n || 0) + Number.EPSILON) * 100) / 100;
+
+  const round6 = (n) =>
+    Math.round((Number(n || 0) + Number.EPSILON) * 1000000) / 1000000;
+
+  // Benjamin Orellana - 25-03-2026 - Resuelve el total final visible/comercial permitiendo solo exacto, centenar inferior o centenar superior.
+  const resolveTotalRedondeoComercial = (total, modo = 'exacto') => {
+    const exacto = round2(total);
+
+    if (!Number.isFinite(exacto) || exacto <= 0) return 0;
+
+    const abajo100 = Math.floor(exacto / 100) * 100;
+    const arriba100 = Math.ceil(exacto / 100) * 100;
+
+    if (modo === 'abajo_100') return round2(abajo100);
+    if (modo === 'arriba_100') return round2(arriba100);
+
+    return exacto;
+  };
+
+  // Benjamin Orellana - 25-03-2026 - Ajusta una única línea para que la suma del detalle coincida exactamente con el total final redondeado comercialmente.
+  const aplicarRedondeoComercialALineas = (lineas = [], totalObjetivo = 0) => {
+    const rows = Array.isArray(lineas) ? lineas.map((x) => ({ ...x })) : [];
+    if (!rows.length) return rows;
+
+    const totalActual = round2(
+      rows.reduce((acc, row) => {
+        const qty = Number(row?.cantidad || 0) || 0;
+        const pu = Number(row?.precio_unitario_con_descuento || 0) || 0;
+        return acc + pu * qty;
+      }, 0)
+    );
+
+    const diferencia = round2((Number(totalObjetivo || 0) || 0) - totalActual);
+
+    if (Math.abs(diferencia) < 0.000001) return rows;
+
+    // Benjamin Orellana - 25-03-2026 - Se elige una línea con cantidad válida para absorber el ajuste y evitar desvíos en el total registrado.
+    const idxLineaAjuste =
+      rows.findIndex((row) => (Number(row?.cantidad || 0) || 0) > 0) >= 0
+        ? rows.findIndex((row) => (Number(row?.cantidad || 0) || 0) > 0)
+        : rows.length - 1;
+
+    const linea = rows[idxLineaAjuste];
+    const cantidad = Number(linea?.cantidad || 0) || 1;
+    const precioUnitarioBase = Number(linea?.precio_unitario || 0) || 0;
+    const precioUnitarioFinalActual =
+      Number(linea?.precio_unitario_con_descuento || 0) || 0;
+
+    const precioUnitarioFinalAjustado = round6(
+      precioUnitarioFinalActual + diferencia / cantidad
+    );
+
+    const descuentoUnitario =
+      precioUnitarioFinalAjustado < precioUnitarioBase
+        ? round6(precioUnitarioBase - precioUnitarioFinalAjustado)
+        : 0;
+
+    const descuentoPorcentaje =
+      precioUnitarioBase > 0 && precioUnitarioFinalAjustado < precioUnitarioBase
+        ? round2(
+            ((precioUnitarioBase - precioUnitarioFinalAjustado) /
+              precioUnitarioBase) *
+              100
+          )
+        : 0;
+
+    rows[idxLineaAjuste] = {
+      ...linea,
+      precio_unitario_con_descuento: precioUnitarioFinalAjustado,
+      descuento: descuentoUnitario,
+      descuento_porcentaje: descuentoPorcentaje.toFixed(2)
+    };
+
+    return rows;
+  };
+
   const getCbteMeta = (tipo) => {
     if (tipo == null) return CBTE_META.NONE;
     return (
@@ -1538,6 +1620,9 @@ export default function PuntoVenta() {
   const [cuotasSeleccionadas, setCuotasSeleccionadas] = useState(1);
   const [totalCalculado, setTotalCalculado] = useState(null);
 
+  // Benjamin Orellana - 25-03-2026 - Guarda la estrategia de precio elegida: por medio de pago o por descuento propio del producto.
+  const [pricingSource, setPricingSource] = useState('MEDIO_PAGO');
+
   // Benjamin Orellana - 16-03-2026 - Al pasar a cuenta corriente se limpia toda la UI de cobro inmediato.
   useEffect(() => {
     if (!esVentaCtaCte) return;
@@ -1612,7 +1697,11 @@ export default function PuntoVenta() {
           monto_por_cuota: total,
           porcentaje_recargo_cuotas: 0,
           diferencia_redondeo: 0,
-          recargo_monto_cuotas: 0
+          recargo_monto_cuotas: 0,
+
+          // Benjamin Orellana - 25-03-2026 - Mantiene una forma homogénea del resultado aun cuando CTA_CTE no consulte el backend.
+          pricing_source_applied: 'MEDIO_PAGO',
+          descuento_producto_aplicado: false
         });
 
         return;
@@ -1623,9 +1712,11 @@ export default function PuntoVenta() {
         return;
       }
 
-      // Benjamin Orellana - 2026-03-09 - Normaliza el carrito priorizando precio_tarjeta para que el backend calcule desde el valor comercial exacto del producto y no desde un precio ya descontado.
+      // Benjamin Orellana - 25-03-2026 - Normaliza el carrito incluyendo el flag real usar_descuento_producto para que backend detecte correctamente el descuento propio del producto.
       const carritoNormalizado = carrito.map((item) => {
-        const precio = Number(item?.precio ?? item?.producto?.precio ?? 0) || 0;
+        const producto = item?.producto || {};
+
+        const precio = Number(item?.precio ?? producto?.precio ?? 0) || 0;
 
         // Benjamin Orellana - 2026-03-09 - Evita falsos positivos de precio_tarjeta; solo usa el valor real o lo recompone desde precio + recargo_tarjeta_pct.
         const precioTarjeta = getPrecioTarjetaReal(item);
@@ -1633,19 +1724,49 @@ export default function PuntoVenta() {
         const precioLista =
           Number(
             item?.precio_lista ??
-              item?.producto?.precio_lista ??
+              producto?.precio_lista ??
               item?.precio_original ??
-              item?.producto?.precio_original ??
+              producto?.precio_original ??
               0
           ) || 0;
 
         const precioOriginal =
           Number(
             item?.precio_original ??
-              item?.producto?.precio_original ??
+              producto?.precio_original ??
               precioLista ??
               0
           ) || precioLista;
+
+        // Benjamin Orellana - 25-03-2026 - Se toman todas las variantes posibles del descuento del producto para evitar perder datos entre listado, carrito y backend.
+        const precioConDescuento =
+          Number(
+            item?.precio_con_descuento ?? producto?.precio_con_descuento ?? 0
+          ) || 0;
+
+        const descuentoPorcentajeProducto =
+          Number(
+            item?.descuento_porcentaje ??
+              item?.descuentoPorcentaje ??
+              item?.descuento_porcentaje_producto ??
+              producto?.descuento_porcentaje ??
+              producto?.descuentoPorcentaje ??
+              producto?.descuento_porcentaje_producto ??
+              0
+          ) || 0;
+
+        const permiteDescuentoRaw =
+          item?.permite_descuento ??
+          item?.usar_descuento_producto ??
+          producto?.permite_descuento ??
+          producto?.usar_descuento_producto ??
+          false;
+
+        const permiteDescuento =
+          permiteDescuentoRaw === true ||
+          permiteDescuentoRaw === 1 ||
+          String(permiteDescuentoRaw).toLowerCase() === 'true' ||
+          String(permiteDescuentoRaw) === '1';
 
         return {
           ...item,
@@ -1653,7 +1774,14 @@ export default function PuntoVenta() {
           precio,
           precio_tarjeta: precioTarjeta,
           precio_lista: precioLista,
-          precio_original: precioOriginal
+          precio_original: precioOriginal,
+
+          // Benjamin Orellana - 25-03-2026 - Campos auxiliares del descuento propio del producto.
+          precio_con_descuento: precioConDescuento,
+          descuento_porcentual: descuentoPorcentajeProducto,
+          descuento_porcentaje: descuentoPorcentajeProducto,
+          permite_descuento: permiteDescuento,
+          usar_descuento_producto: permiteDescuento
         };
       });
 
@@ -1662,18 +1790,6 @@ export default function PuntoVenta() {
         medio_pago_id: medioPago,
         cuotas: cuotasSeleccionadas
       };
-
-      if (
-        aplicarDescuento &&
-        descuentoPersonalizado !== '' &&
-        !isNaN(Number(descuentoPersonalizado))
-      ) {
-        payload.descuento_personalizado = Number(descuentoPersonalizado);
-      }
-
-      // Benjamin Orellana - 2026-03-09 - Se deja de enviar redondeo automático porque el total final ahora debe mostrarse exacto, sin truncar ni aproximar a múltiplos.
-      payload.redondeo_step = null;
-      payload.redondeo_mode = null;
 
       const parsePct = (v) => {
         const n = parseFloat(String(v ?? '0').replace(',', '.'));
@@ -1702,6 +1818,23 @@ export default function PuntoVenta() {
           return acc + p * q;
         }, 0);
       }
+
+      // Benjamin Orellana - 25-03-2026 - Si hay combo se fuerza modo MEDIO_PAGO para no mezclar combo con descuento propio del producto.
+      const pricingSourceToSend = hasCombo ? 'MEDIO_PAGO' : pricingSource;
+      payload.pricing_source = pricingSourceToSend;
+
+      if (
+        pricingSourceToSend !== 'DESCUENTO_PRODUCTO' &&
+        aplicarDescuento &&
+        descuentoPersonalizado !== '' &&
+        !isNaN(Number(descuentoPersonalizado))
+      ) {
+        payload.descuento_personalizado = Number(descuentoPersonalizado);
+      }
+
+      // Benjamin Orellana - 2026-03-09 - Se deja de enviar redondeo automático porque el total final ahora debe mostrarse exacto, sin truncar ni aproximar a múltiplos.
+      payload.redondeo_step = null;
+      payload.redondeo_mode = null;
 
       const activos = Array.isArray(mediosPago)
         ? mediosPago.filter((m) => Number(m?.activo) === 1)
@@ -1752,7 +1885,16 @@ export default function PuntoVenta() {
           'https://api.rioromano.com.ar/calcular-total-final',
           payload
         );
+
         setTotalCalculado(res.data);
+
+        // Benjamin Orellana - 25-03-2026 - Sincroniza el state local con la estrategia de precio realmente aplicada por backend.
+        if (
+          res?.data?.pricing_source_applied &&
+          res.data.pricing_source_applied !== pricingSource
+        ) {
+          setPricingSource(res.data.pricing_source_applied);
+        }
       } catch (err) {
         console.error('Error al calcular total', err);
       }
@@ -1767,7 +1909,10 @@ export default function PuntoVenta() {
     descuentoPersonalizado,
     mediosPago,
     combosSeleccionados,
-    esVentaCtaCte
+    esVentaCtaCte,
+
+    // Benjamin Orellana - 25-03-2026 - Recalcula cuando el usuario cambia entre medio de pago y descuento del producto.
+    pricingSource
   ]);
 
   const cuotasUnicas = Array.from(
@@ -1922,6 +2067,17 @@ export default function PuntoVenta() {
     };
 
     try {
+      // Benjamin Orellana - 25-03-2026 - Detecta la estrategia de precio efectiva aplicada para poder respetar descuento propio del producto y redondeo comercial al registrar la venta.
+      const pricingSourceApplied = String(
+        totalCalculado?.pricing_source_applied || pricingSource || 'MEDIO_PAGO'
+      )
+        .trim()
+        .toUpperCase();
+
+      const isProductDiscountApplied =
+        pricingSourceApplied === 'DESCUENTO_PRODUCTO' ||
+        totalCalculado?.descuento_producto_aplicado === true;
+
       // Benjamin Orellana - 2026-03-10 - Adapta el armado de productosRequest al nuevo esquema comercial: la base de línea es precio_tarjeta y el valor final de línea se calcula con el ajuste real aplicado por el backend, sin tomar precio_con_descuento como precio vendido.
       const hayDescuentoManual =
         aplicarDescuento &&
@@ -1960,7 +2116,40 @@ export default function PuntoVenta() {
         ).toFixed(8)
       );
 
-      const productosRequest = carrito.map((item) => {
+      // Benjamin Orellana - 25-03-2026 - El total final visible/comercial puede redondearse localmente dentro de una tolerancia máxima de ±100 sin alterar las sugerencias fijas.
+      const totalFinalExacto = Number(totalCalculado?.total ?? 0) || 0;
+      const totalFinalCalculado = resolveTotalRedondeoComercial(
+        totalFinalExacto,
+        modoRedondeoComercial
+      );
+      const deltaRedondeoComercial = round2(
+        totalFinalCalculado - totalFinalExacto
+      );
+
+      // Benjamin Orellana - 25-03-2026 - Cuando hay cuotas, el breakdown debe recalcularse con el total final ya redondeado comercialmente para mantener consistencia en ticket/venta.
+      const cuotasVenta = esVentaContado
+        ? Number(totalCalculado?.cuotas ?? 1) || 1
+        : 1;
+
+      let montoPorCuotaVenta = esVentaContado
+        ? (totalCalculado?.monto_por_cuota ?? null)
+        : null;
+      let diferenciaRedondeoVenta = esVentaContado
+        ? Number(totalCalculado?.diferencia_redondeo ?? 0) || 0
+        : 0;
+
+      if (esVentaContado && cuotasVenta > 1) {
+        const cuotaRedondeada =
+          Math.floor((totalFinalCalculado / cuotasVenta) * 100) / 100;
+        const totalRecalculado = round2(cuotaRedondeada * cuotasVenta);
+        diferenciaRedondeoVenta = round2(
+          totalFinalCalculado - totalRecalculado
+        );
+        montoPorCuotaVenta = cuotaRedondeada;
+      }
+
+      // Benjamin Orellana - 25-03-2026 - Se amplía la lógica de detalle para que, cuando la estrategia activa sea descuento propio del producto, la línea parta desde precio_con_descuento y no desde precio_tarjeta.
+      let productosRequest = carrito.map((item) => {
         const isComboItem = !!item?.is_combo_item || !!item?.combo_id;
         const cantidad = Number(item?.cantidad || 0);
 
@@ -1971,11 +2160,20 @@ export default function PuntoVenta() {
           ? Number(item?.precio ?? 0)
           : Number(getPrecioVentaBaseItem(item) ?? item?.precio ?? 0);
 
+        // Benjamin Orellana - 25-03-2026 - Si está activo el descuento propio del producto, la línea debe valorar el precio sugerido del producto respetando precio_con_descuento.
+        const precioUnitarioFinalSugeridoProducto =
+          !isComboItem &&
+          isProductDiscountApplied &&
+          Number(item?.precio_con_descuento ?? 0) > 0
+            ? Number(item?.precio_con_descuento ?? 0)
+            : null;
+
         const factorLinea = isComboItem ? factorCombo : factorNormal;
 
-        const precioUnitarioFinal = parseFloat(
-          (precioUnitarioBase * factorLinea).toFixed(2)
-        );
+        const precioUnitarioFinal =
+          precioUnitarioFinalSugeridoProducto !== null
+            ? parseFloat(precioUnitarioFinalSugeridoProducto.toFixed(2))
+            : parseFloat((precioUnitarioBase * factorLinea).toFixed(2));
 
         const descuentoUnitario =
           precioUnitarioFinal < precioUnitarioBase
@@ -2003,9 +2201,37 @@ export default function PuntoVenta() {
         };
       });
 
+      // Benjamin Orellana - 25-03-2026 - El redondeo comercial solo debe ajustar la diferencia de ±100 y no absorber recargos por cuotas u otros componentes ya tratados por separado.
+      const totalLineasAntesRedondeoComercial = round2(
+        productosRequest.reduce((acc, row) => {
+          const qty = Number(row?.cantidad || 0) || 0;
+          const pu = Number(row?.precio_unitario_con_descuento || 0) || 0;
+          return acc + pu * qty;
+        }, 0)
+      );
+
+      const totalObjetivoLineas = round2(
+        totalLineasAntesRedondeoComercial + deltaRedondeoComercial
+      );
+
+      productosRequest = aplicarRedondeoComercialALineas(
+        productosRequest,
+        totalObjetivoLineas
+      );
+
       const origenes_descuento = [];
 
       // Benjamin Orellana - 2026-03-10 - En el nuevo esquema el descuento sugerido del producto es informativo; no se registra como descuento aplicado de la venta porque la base real es precio_tarjeta.
+      // Benjamin Orellana - 25-03-2026 - Excepción: cuando el vendedor elige explícitamente DESCUENTO_PRODUCTO, se registra su origen para auditoría comercial.
+      if (isProductDiscountApplied) {
+        origenes_descuento.push({
+          tipo: 'producto',
+          referencia_id: null,
+          detalle: 'Descuento propio del producto',
+          porcentaje: Number(totalCalculado?.descuento_producto_pct ?? 0) || 0,
+          monto: Number(totalCalculado?.descuento_producto_total ?? 0) || 0
+        });
+      }
 
       // Benjamin Orellana - 16-03-2026 - El origen descuento por medio de pago solo existe en contado.
       if (esVentaContado && ajusteMedioAplicado < 0) {
@@ -2031,6 +2257,20 @@ export default function PuntoVenta() {
         });
       }
 
+      // Benjamin Orellana - 25-03-2026 - El redondeo comercial se registra como ajuste manual independiente para trazabilidad del cierre final realizado por el vendedor.
+      if (deltaRedondeoComercial !== 0) {
+        origenes_descuento.push({
+          tipo: 'manual',
+          referencia_id: null,
+          detalle:
+            deltaRedondeoComercial > 0
+              ? 'Redondeo comercial al alza'
+              : 'Redondeo comercial a la baja',
+          porcentaje: 0,
+          monto: deltaRedondeoComercial
+        });
+      }
+
       // Si se solicita comprobante fiscal, pedimos cliente
       if (cbteTipoSolicitado != null && !clienteSeleccionado) {
         // Benjamin Orellana - 2026-01-28 - Cierra loader antes de mostrar alertas bloqueantes.
@@ -2044,13 +2284,23 @@ export default function PuntoVenta() {
       }
 
       // Benjamin Orellana - 2026-03-10 - El total final de la venta siempre debe salir del cálculo consolidado del backend o del cálculo local CTA_CTE.
-      const totalFinalCalculado = Number(totalCalculado?.total ?? 0) || 0;
+      // Benjamin Orellana - 25-03-2026 - En esta etapa el total ya incluye, si corresponde, el redondeo comercial local permitido por la operatoria.
+      const aplicaAjusteVenta =
+        Boolean(aplicarDescuento) ||
+        Boolean(isProductDiscountApplied) ||
+        Boolean(esVentaContado && ajusteMedioAplicado !== 0) ||
+        Boolean(deltaRedondeoComercial !== 0);
 
       const ventaRequest = {
         cliente_id: clienteSeleccionado ? clienteSeleccionado.id : null,
         productos: productosRequest,
         combos: combosSeleccionados,
         total: totalFinalCalculado,
+
+        // Benjamin Orellana - 25-03-2026 - Metadata comercial auxiliar para futuras auditorías o vistas sin romper el backend actual si aún no las persiste.
+        pricing_source: pricingSourceApplied,
+        redondeo_comercial_modo: modoRedondeoComercial,
+        redondeo_comercial_monto: deltaRedondeoComercial,
 
         // Benjamin Orellana - 16-03-2026 - La condición de venta viaja explícitamente al backend.
         condicion_venta: condicionVenta,
@@ -2068,23 +2318,21 @@ export default function PuntoVenta() {
         cbte_tipo: cbteTipoSolicitado,
         descuento_porcentaje: hayDescuentoManual
           ? descuentoManualPct
-          : esVentaContado && ajusteMedioAplicado < 0
-            ? Math.abs(ajusteMedioAplicado)
-            : 0,
+          : isProductDiscountApplied
+            ? Number(totalCalculado?.descuento_producto_pct ?? 0) || 0
+            : esVentaContado && ajusteMedioAplicado < 0
+              ? Math.abs(ajusteMedioAplicado)
+              : 0,
         recargo_porcentaje:
           esVentaContado && ajusteMedioAplicado > 0 ? ajusteMedioAplicado : 0,
-        aplicar_descuento: aplicarDescuento,
+        aplicar_descuento: aplicaAjusteVenta,
         origenes_descuento,
-        cuotas: esVentaContado ? (totalCalculado?.cuotas ?? 1) : 1,
-        monto_por_cuota: esVentaContado
-          ? (totalCalculado?.monto_por_cuota ?? null)
-          : null,
+        cuotas: esVentaContado ? cuotasVenta : 1,
+        monto_por_cuota: esVentaContado ? montoPorCuotaVenta : null,
         porcentaje_recargo_cuotas: esVentaContado
           ? (totalCalculado?.porcentaje_recargo_cuotas ?? 0)
           : 0,
-        diferencia_redondeo: esVentaContado
-          ? (totalCalculado?.diferencia_redondeo ?? 0)
-          : 0,
+        diferencia_redondeo: esVentaContado ? diferenciaRedondeoVenta : 0,
         precio_base: totalCalculado?.precio_base ?? totalFinalCalculado,
         recargo_monto_cuotas: esVentaContado
           ? (totalCalculado?.recargo_monto_cuotas ?? 0)
@@ -2250,6 +2498,10 @@ export default function PuntoVenta() {
             setFechaVencimientoCtaCte('');
             setObservacionesCtaCte('');
 
+            // Benjamin Orellana - 25-03-2026 - Se resetean la estrategia de precio y el redondeo comercial para dejar el POS en estado limpio.
+            setPricingSource?.('MEDIO_PAGO');
+            setModoRedondeoComercial?.('exacto');
+
             const ventaCompleta = await fetch(
               `https://api.rioromano.com.ar/ventas/${ventaId}`
             ).then((r) => r.json());
@@ -2386,6 +2638,10 @@ export default function PuntoVenta() {
         setFechaVencimientoCtaCte('');
         setObservacionesCtaCte('');
 
+        // Benjamin Orellana - 25-03-2026 - Se resetean la estrategia de precio y el redondeo comercial para dejar el POS en estado limpio.
+        setPricingSource?.('MEDIO_PAGO');
+        setModoRedondeoComercial?.('exacto');
+
         if (busqueda.trim() !== '') {
           const res2 = await fetch(
             `https://api.rioromano.com.ar/buscar-productos-detallado?query=${encodeURIComponent(
@@ -2474,6 +2730,10 @@ export default function PuntoVenta() {
         setCondicionVenta(CONDICION_VENTA.CONTADO);
         setFechaVencimientoCtaCte('');
         setObservacionesCtaCte('');
+
+        // Benjamin Orellana - 25-03-2026 - Doble resguardo de reset de estrategia de precio y redondeo comercial.
+        setPricingSource?.('MEDIO_PAGO');
+        setModoRedondeoComercial?.('exacto');
       } catch (err) {
         closeLoading();
 
@@ -3588,6 +3848,7 @@ export default function PuntoVenta() {
             </div>
 
             {/* Total */}
+            {/* Total */}
             {carrito.length > 0 &&
               totalCalculado &&
               totalCalculado.total >= 0 &&
@@ -3605,6 +3866,12 @@ export default function PuntoVenta() {
                   setMedioPago={setMedioPago}
                   medioPago={medioPago}
                   userLevel={userLevel}
+                  // Benjamin Orellana - 25-03-2026 - Se pasan props para seleccionar explícitamente la estrategia de precio desde las sugerencias.
+                  pricingSource={pricingSource}
+                  setPricingSource={setPricingSource}
+                  // Benjamin Orellana - 25-03-2026 - Props para manejar el redondeo comercial del total final dentro de una tolerancia máxima de ±100 pesos.
+                  modoRedondeoComercial={modoRedondeoComercial}
+                  setModoRedondeoComercial={setModoRedondeoComercial}
                 />
               ) : (
                 // Benjamin Orellana - 16-03-2026 - Resumen específico para CTA_CTE sin UI de cobro inmediato.
@@ -3808,7 +4075,12 @@ export default function PuntoVenta() {
                             <button
                               key={m.id}
                               type="button"
-                              onClick={() => setMedioPago(m.id)}
+                              onClick={() => {
+                                // Benjamin Orellana - 25-03-2026 - Si el usuario selecciona manualmente un medio de pago desde la grilla, se abandona cualquier estrategia previa de descuento propio del producto y se vuelve al cálculo normal por medio.
+                                setMedioPago(m.id);
+                                setPricingSource?.('MEDIO_PAGO');
+                                setModoRedondeoComercial?.('exacto');
+                              }}
                               className={[
                                 'w-full min-h-[68px] rounded-2xl px-3 py-3 transition ring-1 text-left',
                                 selected
