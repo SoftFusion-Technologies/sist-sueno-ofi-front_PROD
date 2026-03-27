@@ -1337,6 +1337,7 @@ export default function PuntoVenta() {
           headers: authHeader()
         }
       );
+
       if (res.status === 401) {
         await swalSessionExpired();
         return;
@@ -1348,6 +1349,7 @@ export default function PuntoVenta() {
 
       // Solo los que tienen producto asociado
       const productosDirectos = permitidos.filter((p) => p.producto);
+
       if (!productosDirectos.length) {
         await Swal.fire(
           'Combo sin ítems',
@@ -1356,16 +1358,17 @@ export default function PuntoVenta() {
         return;
       }
 
-      // 2) Precio unitario proporcional (reparto simple entre los ítems)
+      // 2) Precio unitario proporcional
       const cantItems = Number(
         combo.cantidad_items || productosDirectos.length
       );
-      const precioUnitProporcional = Number(combo.precio_fijo) / cantItems;
+      const precioUnitProporcional = Number(combo.precio_fijo || 0) / cantItems;
 
-      // 3) Buscar stock por producto en el local del usuario (en paralelo)
+      // 3) Buscar stock por producto en el local del usuario
       const consultas = productosDirectos.map(async ({ producto }) => {
         const params = new URLSearchParams({
           query: String(producto.id),
+          producto_id: String(producto.id),
           local_id: String(userLocalId || ''),
           combo_id: String(combo.id || '')
         });
@@ -1374,60 +1377,85 @@ export default function PuntoVenta() {
           `${API_URL}/buscar-productos-detallado?${params}`,
           {
             headers: authHeader()
-            // credentials: 'include',
           }
         );
 
         if (r.status === 401) {
-          // arriba ya avisamos; devolvemos null para omitir este item
           return null;
         }
-        if (!r.ok) return null;
+
+        if (!r.ok) {
+          console.warn(
+            '[COMBO] Error consultando stock',
+            producto.id,
+            producto.nombre,
+            r.status
+          );
+          return null;
+        }
 
         const payload = await r.json().catch(() => ({}));
-        const stockData = Array.isArray(payload)
+
+        const stockDataRaw = Array.isArray(payload)
           ? payload
           : Array.isArray(payload.items_local)
             ? payload.items_local
             : [];
 
-        if (stockData.length === 0) {
-          // Opcional: mostrar info si hay en otras sucursales
-          const otros = Array.isArray(payload?.otros_items)
-            ? payload.otros_items
-            : [];
-          if (otros.length > 0) {
-            console.info(
-              `No hay en tu sucursal, pero sí en: ${[
-                ...new Set(otros.map((o) => o.local_nombre || o.local_id))
-              ].join(', ')}`
-            );
-          }
+        console.log('[COMBO][RAW]', producto.id, producto.nombre, stockDataRaw);
+
+        // Benjamin Orellana - 27-03-2026 - Filtramos estrictamente por producto y local
+        // para evitar tomar filas ajenas o inconsistentes al armar combos.
+        const stockExacto = stockDataRaw.filter(
+          (row) =>
+            Number(row.producto_id) === Number(producto.id) &&
+            Number(row.local_id) === Number(userLocalId)
+        );
+
+        // Benjamin Orellana - 27-03-2026 - Priorizamos filas con stock disponible
+        // y, si existen varias, tomamos la de mayor cantidad.
+        const filaConStock = stockExacto
+          .filter((row) => Number(row.cantidad_disponible || 0) > 0)
+          .sort(
+            (a, b) =>
+              Number(b.cantidad_disponible || 0) -
+              Number(a.cantidad_disponible || 0)
+          )[0];
+
+        if (!filaConStock) {
+          console.warn('[COMBO] Producto permitido sin stock seleccionable', {
+            combo_id: combo.id,
+            producto_id: producto.id,
+            producto_nombre: producto.nombre,
+            local_id: userLocalId,
+            stockDataRaw
+          });
           return null;
         }
 
-        // Elegimos la primera fila (podrías ordenar por cantidad, etc.)
-        const s = stockData[0];
-
         return {
-          stock_id: s.stock_id,
-          producto_id: s.producto_id,
-          nombre: s.nombre,
+          stock_id: filaConStock.stock_id,
+          producto_id: filaConStock.producto_id,
+          nombre: filaConStock.nombre,
 
-          // precio visible para el armado del combo (proporcional)
+          // Precio visible para el armado del combo
           precio: Number(precioUnitProporcional),
           precio_con_descuento: Number(precioUnitProporcional),
           descuento_porcentaje: 0,
-          // Benjamin Orellana - 2026-02-02 - Precio real para extras (si el usuario aumenta cantidad)
-          precio_lista: Number(s.precio_lista ?? s.precio ?? 0),
-          // NUEVO: flags informativos (opcionales pero útiles)
+
+          // Benjamin Orellana - 2026-02-02 - Precio real para extras
+          // si el usuario aumenta cantidad fuera del combo.
+          precio_lista: Number(
+            filaConStock.precio_lista ?? filaConStock.precio ?? 0
+          ),
+
           is_combo_item: true,
           combo_id: combo.id,
 
-          cantidad_disponible: Number(s.cantidad_disponible || 0),
-          codigo_sku: s.codigo_sku,
-          categoria_id: s.categoria_id,
-          local_id: s.local_id
+          cantidad_disponible: Number(filaConStock.cantidad_disponible || 0),
+          codigo_sku: filaConStock.codigo_sku,
+          categoria_id: filaConStock.categoria_id,
+          local_id: filaConStock.local_id
         };
       });
 
@@ -1444,8 +1472,9 @@ export default function PuntoVenta() {
       // 4) Agregar cada item al carrito (usarDesc = false para combos)
       const usados = [];
       for (const it of items) {
-        if (!it.cantidad_disponible) continue;
-        agregarAlCarrito(it, false); // false = sin descuento por producto (lo maneja el combo)
+        if (Number(it.cantidad_disponible || 0) <= 0) continue;
+
+        agregarAlCarrito(it, false); // false = sin descuento por producto
         usados.push({ stock_id: it.stock_id });
       }
 
@@ -1457,12 +1486,13 @@ export default function PuntoVenta() {
         return;
       }
 
-      // 5) Registrar el combo seleccionado (para enviarlo al back al confirmar venta)
+      // 5) Registrar el combo seleccionado
       setCombosSeleccionados((prev) => [
         ...prev,
         {
           combo_id: combo.id,
-          // Benjamin Orellana - 2026-02-02 - Alias para compatibilidad: guardamos precio_fijo además de precio_combo para activar comboMode en el backend.
+          // Benjamin Orellana - 2026-02-02 - Alias para compatibilidad:
+          // guardamos precio_fijo además de precio_combo.
           precio_combo: Number(combo.precio_fijo),
           precio_fijo: Number(combo.precio_fijo),
           cantidad: 1,
@@ -1476,7 +1506,7 @@ export default function PuntoVenta() {
       await swalError('Error', 'Ocurrió un error al seleccionar el combo.');
     }
   };
-
+  
   const [modalSearch, setModalSearch] = useState('');
   const filteredProductosModal = productosModal.filter((prod) =>
     prod.nombre.toLowerCase().includes(modalSearch.toLowerCase())
@@ -2468,11 +2498,14 @@ export default function PuntoVenta() {
         // Benjamin Orellana - 2026-01-28 - Abrimos loader recién cuando ya pasaron validaciones y realmente vamos a llamar al backend.
         openLoading();
 
-        const response = await fetch('https://api.rioromano.com.ar/ventas/pos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(ventaRequest)
-        });
+        const response = await fetch(
+          'https://api.rioromano.com.ar/ventas/pos',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ventaRequest)
+          }
+        );
 
         const payload = await safeJson(response);
 
