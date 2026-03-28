@@ -1198,7 +1198,7 @@ const StockGet = () => {
                   className={[
                     // Light (sólido)
                     'bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm',
-                    'hover:shadow-md hover:-translate-y-[1px] transition-all flex flex-col justify-between',
+                    'hover:shadow-md hover:-translate-y-[1px] flex flex-col justify-between',
                     // Dark (tu look original)
                     'dark:bg-white/10 dark:shadow-xl dark:backdrop-blur-md dark:border-white/10',
                     'dark:hover:scale-[1.015] dark:hover:border-cyan-400/60'

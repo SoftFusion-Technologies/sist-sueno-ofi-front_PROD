@@ -13,7 +13,8 @@ import {
   FaBoxes,
   FaStore,
   FaFolderOpen,
-  FaGift
+  FaGift,
+  FaExchangeAlt
 } from 'react-icons/fa';
 
 // Base Links (se mantienen, pero ahora se filtran por rol)
@@ -27,6 +28,13 @@ const stockLinks = [
   },
   { to: '/dashboard/stock/productos', label: 'Productos', icon: <FaBoxes /> },
   { to: '/dashboard/stock/stock', label: 'Stock', icon: <FaStore /> },
+
+  // Benjamin Orellana - 25/03/2026 - Se adiciona el acceso al nuevo módulo de traslados internos de stock entre sucursales.
+  {
+    to: '/dashboard/stock/traslados',
+    label: 'Traslados',
+    icon: <FaExchangeAlt />
+  },
   { to: '/dashboard/stock/combos', label: 'Combos', icon: <FaGift /> }
 ];
 

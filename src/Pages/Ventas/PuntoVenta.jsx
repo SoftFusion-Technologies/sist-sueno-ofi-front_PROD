@@ -1506,7 +1506,7 @@ export default function PuntoVenta() {
       await swalError('Error', 'Ocurrió un error al seleccionar el combo.');
     }
   };
-  
+
   const [modalSearch, setModalSearch] = useState('');
   const filteredProductosModal = productosModal.filter((prod) =>
     prod.nombre.toLowerCase().includes(modalSearch.toLowerCase())
@@ -3796,14 +3796,12 @@ export default function PuntoVenta() {
                       </button>
                     </div>
 
-                    {userLevel !== 'vendedor' && (
-                      <div className="text-emerald-700 w-24 text-right shrink-0 dark:text-emerald-300">
-                        {/* Benjamin Orellana - 2026-03-09 - El carrito muestra el precio comercial base del item priorizando precio_tarjeta para evitar seguir renderizando precio o precio_con_descuento heredados. */}
-                        {formatearPrecio(
-                          getPrecioVentaBaseItem(item) * item.cantidad
-                        )}
-                      </div>
-                    )}
+                    <div className="text-emerald-700 w-24 text-right shrink-0 dark:text-emerald-300">
+                      {/* Benjamin Orellana - 2026-03-09 - El carrito muestra el precio comercial base del item priorizando precio_tarjeta para evitar seguir renderizando precio o precio_con_descuento heredados. */}
+                      {formatearPrecio(
+                        getPrecioVentaBaseItem(item) * item.cantidad
+                      )}
+                    </div>
 
                     <button
                       onClick={() => quitarProducto(item.stock_id)}

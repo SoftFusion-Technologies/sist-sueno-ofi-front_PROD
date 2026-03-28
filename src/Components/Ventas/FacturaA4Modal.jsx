@@ -1308,7 +1308,7 @@ export default function FacturaA4Modal({
                           Condiciones de Venta:
                         </span>{' '}
                         {medioPagoTexto !== '—'
-                          ? `Contado ${medioPagoTexto}`
+                          ? `${medioPagoTexto}`
                           : '—'}
                       </div>
                     </div>

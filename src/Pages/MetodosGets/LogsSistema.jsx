@@ -38,7 +38,10 @@ const LogsSistema = () => {
     'confirmar',
     'anular',
     'aplicar',
-    'desaplicar'
+    'desaplicar',
+    'emitir',
+    'recibir',
+    'cancelar'
   ];
 
   const modulos = [
@@ -62,7 +65,8 @@ const LogsSistema = () => {
     'pagos_proveedor',
     'Empresas',
     'puntos_venta',
-    'comprobantes_fiscales'
+    'comprobantes_fiscales',
+    'traslados_stock'
   ];
 
   const [paginaActual, setPaginaActual] = useState(1);

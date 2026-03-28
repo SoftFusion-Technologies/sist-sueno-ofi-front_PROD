@@ -112,6 +112,7 @@ import CxCDocumentosPage from './Pages/CxC/CxCDocumentosPage';
 import CxCRecibosPage from './Pages/CxC/CxCRecibosPage';
 import CxCMovimientosPage from './Pages/CxC/CxCMovimientosPage';
 import CxCClientesPage from './Pages/CxC/CxCClientesPage';
+import StockTrasladosGet from './Pages/Stock/StockTrasladosGet';
 
 function AppContent() {
   const { hideLayoutFooter, hideLayoutNav } = useLayoutVisibility();
@@ -204,6 +205,15 @@ function AppContent() {
               <ProtectedRoute>
                 {' '}
                 <StockGet />{' '}
+              </ProtectedRoute>
+            }
+          />
+          <Ruta
+            path="/dashboard/stock/traslados"
+            element={
+              <ProtectedRoute>
+                {' '}
+                <StockTrasladosGet />{' '}
               </ProtectedRoute>
             }
           />
