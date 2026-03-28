@@ -13,6 +13,7 @@ import {
 import FacturaA4Modal from '../../Components/Ventas/FacturaA4Modal.jsx';
 import NavbarStaff from '../Dash/NavbarStaff.jsx';
 import ButtonBack from '../../Components/ButtonBack.jsx';
+import { useAuth } from '../../AuthContext.jsx';
 // Benjamin Orellana - 25-01-2026 - Vista moderna para listado paginado de Remitos.
 // Consume GET /ventas/remitos (data+meta). Imprime abriendo FacturaA4Modal en vista "remito",
 // cargando la venta por venta_id (GET /ventas/:id/detalle).
@@ -68,11 +69,12 @@ export default function VentasRemitosGet() {
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
   const [localId, setLocalId] = useState(''); // opcional
+  const [locales, setLocales] = useState([]);
   const [limit, setLimit] = useState(20);
   const [page, setPage] = useState(1);
 
   // UX
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const reqSeqRef = useRef(0);
 
   // Benjamin Orellana - 25-01-2026 - Rediseño UX: modo oscuro por defecto + switch interno a modo claro y layout adaptativo (panel de filtros en sheet mobile) para Remitos.
@@ -90,6 +92,7 @@ export default function VentasRemitosGet() {
   const [printOpen, setPrintOpen] = useState(false);
   const [ventaImprimir, setVentaImprimir] = useState(null);
   const [printView, setPrintView] = useState('remito');
+  const { userLevel, userLocalId } = useAuth();
 
   const totalPages = useMemo(() => {
     const t = Number(meta.total || 0);
@@ -108,20 +111,6 @@ export default function VentasRemitosGet() {
     const avg = count ? sum / count : 0;
     return { count, sum, avg };
   }, [rows]);
-
-  const activeFilters = useMemo(() => {
-    const a = [
-      q?.trim() ? 'q' : null,
-      estado || null,
-      desde || null,
-      hasta || null,
-      localId || null
-    ].filter(Boolean);
-    return {
-      count: a.length,
-      hasAny: a.length > 0
-    };
-  }, [q, estado, desde, hasta, localId]);
 
   // Persist theme per component (best-effort)
   useEffect(() => {
@@ -168,6 +157,63 @@ export default function VentasRemitosGet() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [filtersOpen]);
 
+  const normalizedUserLevel = String(userLevel || '')
+    .trim()
+    .toLowerCase();
+
+  const canFilterAllLocales = ['socio', 'administrativo'].includes(
+    normalizedUserLevel
+  );
+
+  const effectiveLocalId = canFilterAllLocales
+    ? localId
+    : userLocalId
+      ? String(userLocalId)
+      : '';
+
+  const visibleLocales = canFilterAllLocales
+    ? locales
+    : locales.filter((loc) => String(loc.id) === String(userLocalId || ''));
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchLocales = async () => {
+      try {
+        const res = await axios.get(`${BASE_URL}/locales`);
+        if (!isMounted) return;
+
+        const data = Array.isArray(res.data) ? res.data : [];
+
+        setLocales(
+          data
+            .filter(
+              (loc) => String(loc?.estado || '').toLowerCase() === 'activo'
+            )
+            .sort((a, b) =>
+              String(a?.nombre || '').localeCompare(String(b?.nombre || ''))
+            )
+        );
+      } catch (error) {
+        console.error('Error cargando locales:', error);
+        if (isMounted) setLocales([]);
+      }
+    };
+
+    fetchLocales();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!canFilterAllLocales && userLocalId) {
+      setLocalId(String(userLocalId));
+      setPage(1);
+    }
+  }, [canFilterAllLocales, userLocalId]);
+
   const fetchRemitos = async () => {
     const mySeq = ++reqSeqRef.current;
     setLoading(true);
@@ -179,7 +225,7 @@ export default function VentasRemitosGet() {
           estado: estado || undefined,
           desde: desde || undefined,
           hasta: hasta || undefined,
-          local_id: localId || undefined,
+          local_id: effectiveLocalId || undefined,
           limit,
           offset
         }
@@ -208,9 +254,7 @@ export default function VentasRemitosGet() {
 
   useEffect(() => {
     fetchRemitos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, limit, q, estado, desde, hasta, localId]);
-
+  }, [page, limit, q, estado, desde, hasta, effectiveLocalId]);
   // Imprime remito: carga venta por venta_id y abre A4Modal en vista "remito"
   const imprimirRemito = async (ventaId) => {
     if (!ventaId) return;
@@ -233,11 +277,10 @@ export default function VentasRemitosGet() {
     setEstado('');
     setDesde('');
     setHasta('');
-    setLocalId('');
+    setLocalId(canFilterAllLocales ? '' : String(userLocalId || ''));
     setLimit(20);
     setPage(1);
 
-    // Benjamin Orellana - 25-01-2026 - Sync inputs date (uncontrolled) al resetear filtros.
     if (desdeRef.current) desdeRef.current.value = '';
     if (hastaRef.current) hastaRef.current.value = '';
   };
@@ -326,6 +369,20 @@ export default function VentasRemitosGet() {
     if (st === 'EMITIDO' || st === 'ENTREGADO') return ui.badgeOk;
     return ui.badgeNeutral;
   };
+
+  const activeFilters = useMemo(() => {
+    const a = [
+      q?.trim() ? 'q' : null,
+      estado || null,
+      desde || null,
+      hasta || null,
+      effectiveLocalId || null
+    ].filter(Boolean);
+    return {
+      count: a.length,
+      hasAny: a.length > 0
+    };
+  }, [q, estado, desde, hasta, effectiveLocalId]);
 
   const FiltersFields = ({ dense = false }) => (
     <div
@@ -427,25 +484,43 @@ export default function VentasRemitosGet() {
           style={{ colorScheme: isDark ? 'dark' : 'light' }}
         />
       </div>
-
       <div className="md:col-span-2">
         <label className={cx('text-[12px] font-semibold', ui.muted)}>
-          Local ID
+          Local
         </label>
-        <input
-          value={localId}
+
+        <select
+          value={effectiveLocalId}
           onChange={(e) => {
+            if (!canFilterAllLocales) return;
             setPage(1);
-            setLocalId(e.target.value.replace(/[^\d]/g, ''));
+            setLocalId(e.target.value);
           }}
-          placeholder="(opcional)"
+          disabled={!canFilterAllLocales}
           className={cx(
             'mt-1 w-full rounded-xl border px-3 py-2 text-sm',
-            ui.input
+            ui.select,
+            !canFilterAllLocales && 'cursor-not-allowed opacity-70'
           )}
-        />
-      </div>
+          style={{ colorScheme: isDark ? 'dark' : 'light' }}
+        >
+          {canFilterAllLocales && (
+            <option className={optionCls} value="">
+              Todos
+            </option>
+          )}
 
+          {visibleLocales.map((local) => (
+            <option
+              key={local.id}
+              className={optionCls}
+              value={String(local.id)}
+            >
+              {local.nombre}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="md:col-span-2">
         <label className={cx('text-[12px] font-semibold', ui.muted)}>
           Por página
@@ -550,7 +625,7 @@ export default function VentasRemitosGet() {
         )}
       />
 
-      <div className="relative mx-auto w-full max-w-7xl px-3 sm:px-6 py-5 sm:py-8">
+      <div className="relative mx-auto w-full max-w-8xl px-3 sm:px-6 py-5 sm:py-8">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>

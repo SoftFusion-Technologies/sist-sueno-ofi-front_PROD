@@ -508,7 +508,8 @@ function TrasladoCard({
   onReceive,
   onCancel,
   onPrint,
-  busyKey
+  busyKey,
+  userLevel
 }) {
   const originLabel = item?.localOrigen?.nombre || 'Origen no definido';
   const destLabel = item?.localDestino?.nombre || 'Destino no definido';
@@ -672,13 +673,15 @@ function TrasladoCard({
             disabled={!canEdit(item) || busyKey === `edit-${item.id}`}
           />
 
-          <ActionButton
-            onClick={() => onDelete(item.id)}
-            icon={<FaTrash />}
-            label="Eliminar"
-            disabled={!canDelete(item) || busyKey === `delete-${item.id}`}
-            variant="danger"
-          />
+          {(userLevel === 'socio' || userLevel === 'administrativo') && (
+            <ActionButton
+              onClick={() => onDelete(item.id)}
+              icon={<FaTrash />}
+              label="Eliminar"
+              disabled={!canDelete(item) || busyKey === `delete-${item.id}`}
+              variant="danger"
+            />
+          )}
 
           <ActionButton
             onClick={() => onEmit(item.id)}
@@ -742,8 +745,7 @@ const StockTrasladosGet = () => {
   const [estados, setEstados] = useState([]);
   const [productos, setProductos] = useState([]);
 
-  const { userId } = useAuth();
-
+  const { userId, userLevel } = useAuth();
   const localesMap = useMemo(() => {
     const m = new Map();
     locales.forEach((l) =>
@@ -1480,6 +1482,7 @@ const StockTrasladosGet = () => {
                       onReceive={handleReceive}
                       onCancel={handleCancel}
                       onPrint={handlePrint}
+                      userLevel={userLevel}
                     />
                   ))}
                 </motion.div>

@@ -56,6 +56,12 @@ const cajaLinks = [
     label: 'Recibos de Caja',
     icon: <FaReceipt />,
     desc: 'Histórico de recibos emitidos y anulados'
+  },
+  {
+    to: '/dashboard/caja/historial-caja',
+    label: 'Historial de Cajas por Local',
+    icon: <FaFileInvoiceDollar />,
+    desc: 'Ver todas las cajas y sus movimientos'
   }
 ];
 

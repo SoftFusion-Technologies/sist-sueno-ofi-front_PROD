@@ -135,7 +135,7 @@ const AdminPage = () => {
   // Benjamin Orellana - 23/01/2026 - Ajuste de visibilidad por rol en Dashboard: el vendedor puede ingresar al panel,
   // pero solo visualiza accesos a Stock y Ventas; el resto de módulos queda oculto para ese rol. Además, para "Ventas"
   // el vendedor va directo al POS (/dashboard/ventas/pos), mientras que otros roles mantienen /dashboard/ventas.
-  const ventasTo = isVendedor ? '/dashboard/ventas/pos' : '/dashboard/ventas';
+  const ventasTo = isVendedor ? '/dashboard/ventas' : '/dashboard/ventas';
 
   return (
     <>

@@ -4,6 +4,7 @@ import { FaCashRegister, FaStore, FaUser, FaCalendarAlt } from 'react-icons/fa';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Swal from 'sweetalert2';
+import { useNavigate } from 'react-router-dom';
 
 import ParticlesBackground from '../../Components/ParticlesBackground';
 import ButtonBack from '../../Components/ButtonBack';
@@ -96,6 +97,38 @@ export default function AdminCajasAbiertas() {
     if (wantIncludeC2) p.set('include_c2', '1');
     else p.set('canal', 'C1');
     return p.toString();
+  };
+
+  const navigate = useNavigate();
+
+  const normalizedUserLevel = String(userLevel || '')
+    .trim()
+    .toLowerCase();
+  const canViewAnyCaja = ['socio', 'administrativo'].includes(
+    normalizedUserLevel
+  );
+
+  const openCajaPos = (caja) => {
+    const targetLocalId =
+      caja?.local_id ??
+      caja?.local?.id ??
+      caja?.Local?.id ??
+      caja?.locale?.id ??
+      null;
+
+    if (!targetLocalId) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Local no disponible',
+        text: 'No se pudo determinar el local de esta caja.'
+      });
+      return;
+    }
+
+    // Ajustá esta ruta a la ruta real donde montás CajaPOS
+    navigate(
+      `/dashboard/caja/caja?local_id=${targetLocalId}&caja_id=${caja.id}`
+    );
   };
 
   const fetchCajasAbiertas = async () => {
@@ -553,12 +586,23 @@ export default function AdminCajasAbiertas() {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => cerrarCajaAdmin(caja)}
-                      className="rounded-2xl px-4 py-2 bg-rose-500/15 ring-1 ring-rose-400/25 hover:bg-rose-500/20 text-rose-200 transition font-semibold"
-                    >
-                      Cerrar caja
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {canViewAnyCaja && (
+                        <button
+                          onClick={() => openCajaPos(caja)}
+                          className="rounded-2xl px-4 py-2 bg-sky-500/15 ring-1 ring-sky-400/25 hover:bg-sky-500/20 text-sky-200 transition font-semibold"
+                        >
+                          Ver
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => cerrarCajaAdmin(caja)}
+                        className="rounded-2xl px-4 py-2 bg-rose-500/15 ring-1 ring-rose-400/25 hover:bg-rose-500/20 text-rose-200 transition font-semibold"
+                      >
+                        Cerrar caja
+                      </button>
+                    </div>
                   </div>
 
                   <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">

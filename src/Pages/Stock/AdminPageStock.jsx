@@ -52,7 +52,8 @@ const AdminPageStock = () => {
       return stockLinks.filter(
         (l) =>
           l.to === '/dashboard/stock/productos' ||
-          l.to === '/dashboard/stock/stock'
+          l.to === '/dashboard/stock/stock' ||
+          l.to === '/dashboard/stock/traslados'
       );
     }
     return stockLinks;
@@ -84,7 +85,7 @@ const AdminPageStock = () => {
                 transition={{ duration: 0.5, delay: 0.15 }}
                 className="text-sm sm:text-base text-slate-600 dark:text-slate-300"
               >
-                Acceso habilitado únicamente a Productos y Stock
+                Acceso habilitado únicamente a Productos, Stock y Traslados
               </motion.p>
             )}
           </div>

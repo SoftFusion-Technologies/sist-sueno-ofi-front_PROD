@@ -13,6 +13,7 @@ import {
 import FacturaA4Modal from '../../Components/Ventas/FacturaA4Modal.jsx';
 import NavbarStaff from '../Dash/NavbarStaff.jsx';
 import ButtonBack from '../../Components/ButtonBack.jsx';
+import { useAuth } from '../../AuthContext.jsx';
 // Benjamin Orellana - 25-01-2026 - Vista moderna para listado paginado de Facturas (comprobantes fiscales).
 // Consume GET /ventas/facturas (data+meta) y permite imprimir cargando el OBR por venta_id (GET /ventas/:id/detalle).
 
@@ -73,11 +74,13 @@ export default function VentasFacturasGet() {
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
   const [localId, setLocalId] = useState(''); // opcional
+  const [locales, setLocales] = useState([]);
   const [limit, setLimit] = useState(20);
   const [page, setPage] = useState(1);
+  const { userLevel, userLocalId } = useAuth();
 
   // UX
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const reqSeqRef = useRef(0);
 
   // Benjamin Orellana - 25-01-2026 - Rediseño UX: modo oscuro por defecto + switch interno a modo claro y layout adaptativo (panel de filtros en sheet mobile).
@@ -134,6 +137,38 @@ export default function VentasFacturasGet() {
     };
   }, [q, estado, letra, tipo, desde, hasta, localId]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchLocales = async () => {
+      try {
+        const res = await axios.get(`${BASE_URL}/locales`);
+        if (!isMounted) return;
+
+        const data = Array.isArray(res.data) ? res.data : [];
+
+        setLocales(
+          data
+            .filter(
+              (loc) => String(loc?.estado || '').toLowerCase() === 'activo'
+            )
+            .sort((a, b) =>
+              String(a?.nombre || '').localeCompare(String(b?.nombre || ''))
+            )
+        );
+      } catch (error) {
+        console.error('Error cargando locales:', error);
+        if (isMounted) setLocales([]);
+      }
+    };
+
+    fetchLocales();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Persist theme per component (best-effort)
   useEffect(() => {
     try {
@@ -179,6 +214,31 @@ export default function VentasFacturasGet() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [filtersOpen]);
 
+  const normalizedUserLevel = String(userLevel || '')
+    .trim()
+    .toLowerCase();
+
+  const canFilterAllLocales = ['socio', 'administrativo'].includes(
+    normalizedUserLevel
+  );
+
+  const effectiveLocalId = canFilterAllLocales
+    ? localId
+    : userLocalId
+      ? String(userLocalId)
+      : '';
+
+  const visibleLocales = canFilterAllLocales
+    ? locales
+    : locales.filter((loc) => String(loc.id) === String(userLocalId || ''));
+
+  useEffect(() => {
+    if (!canFilterAllLocales && userLocalId) {
+      setLocalId(String(userLocalId));
+      setPage(1);
+    }
+  }, [canFilterAllLocales, userLocalId]);
+
   const fetchFacturas = async () => {
     const mySeq = ++reqSeqRef.current;
     setLoading(true);
@@ -192,7 +252,7 @@ export default function VentasFacturasGet() {
           tipo_comprobante: tipo || undefined,
           desde: desde || undefined,
           hasta: hasta || undefined,
-          local_id: localId || undefined,
+          local_id: effectiveLocalId || undefined,
           limit,
           offset
         }
@@ -221,9 +281,7 @@ export default function VentasFacturasGet() {
 
   useEffect(() => {
     fetchFacturas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, limit, q, estado, letra, tipo, desde, hasta, localId]);
-
+  }, [page, limit, q, estado, letra, tipo, desde, hasta, effectiveLocalId]);
   // Benjamin Orellana - 25-01-2026 - Imprimir factura: carga OBR de la venta y abre FacturaA4Modal en vista factura.
   const imprimirFacturaPorVentaId = async (ventaId) => {
     if (!ventaId) return;
@@ -507,20 +565,40 @@ export default function VentasFacturasGet() {
 
       <div className="md:col-span-2">
         <label className={cx('text-[12px] font-semibold', ui.muted)}>
-          Local ID
+          Local
         </label>
-        <input
-          value={localId}
+
+        <select
+          value={effectiveLocalId}
           onChange={(e) => {
+            if (!canFilterAllLocales) return;
             setPage(1);
-            setLocalId(e.target.value.replace(/[^\d]/g, ''));
+            setLocalId(e.target.value);
           }}
-          placeholder="(opcional)"
+          disabled={!canFilterAllLocales}
           className={cx(
             'mt-1 w-full rounded-xl border px-3 py-2 text-sm',
-            ui.input
+            ui.select,
+            !canFilterAllLocales && 'cursor-not-allowed opacity-70'
           )}
-        />
+          style={{ colorScheme: isDark ? 'dark' : 'light' }}
+        >
+          {canFilterAllLocales && (
+            <option className={optionCls} value="">
+              Todos
+            </option>
+          )}
+
+          {visibleLocales.map((local) => (
+            <option
+              key={local.id}
+              className={optionCls}
+              value={String(local.id)}
+            >
+              {local.nombre}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="md:col-span-2">
@@ -627,7 +705,7 @@ export default function VentasFacturasGet() {
         )}
       />
 
-      <div className="relative mx-auto w-full max-w-7xl px-3 sm:px-6 py-5 sm:py-8">
+      <div className="relative mx-auto w-full max-w-8xl px-3 sm:px-6 py-5 sm:py-8">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>

@@ -17,8 +17,7 @@ import {
   FaCashRegister,
   FaTruckMoving,
   FaRegSmileBeam,
-  FaTable,
-  FaLock
+  FaTable
 } from 'react-icons/fa';
 import { LiaCashRegisterSolid } from 'react-icons/lia';
 
@@ -47,8 +46,7 @@ const ventasLinks = [
     to: '/dashboard/ventas/pos',
     label: 'Punto de Venta',
     icon: <FaCashRegister />,
-    desc: 'Registrar ventas en mostrador',
-    disableFor: ['contador']
+    desc: 'Registrar ventas en mostrador'
   },
 
   // Benjamin Orellana - 25/01/2026 - Se agregan accesos directos a Facturas y Remitos dentro del módulo de Ventas.
@@ -112,18 +110,36 @@ const ventasLinks = [
     to: '/dashboard/ventas/configuracion',
     label: 'Configuración',
     icon: <FaCog />,
-    desc: 'Métodos de pago, impuestos, etc.',
-    disableFor: ['contador'] //
+    desc: 'Métodos de pago, impuestos, etc.'
   }
+];
+
+const VENDEDOR_ALLOWED_LINKS = [
+  '/dashboard/ventas/pos',
+  '/dashboard/ventas/facturas',
+  '/dashboard/ventas/remitos'
 ];
 
 const AdminPageVentas = () => {
   const { userLevel } = useAuth();
 
-  const roles = useMemo(
-    () => (Array.isArray(userLevel) ? userLevel : [userLevel]),
-    [userLevel]
-  );
+  const roles = useMemo(() => {
+    const rawRoles = Array.isArray(userLevel) ? userLevel : [userLevel];
+    return rawRoles.filter(Boolean).map((r) => String(r).trim().toLowerCase());
+  }, [userLevel]);
+
+  const isVendedor = roles.includes('vendedor');
+
+  // Benjamin Orellana - 28/03/2026 - Si el usuario es vendedor, solo ve POS, Facturas y Remitos. El resto de roles ve todos los accesos del módulo.
+  const visibleLinks = useMemo(() => {
+    if (isVendedor) {
+      return ventasLinks.filter((item) =>
+        VENDEDOR_ALLOWED_LINKS.includes(item.to)
+      );
+    }
+
+    return ventasLinks;
+  }, [isVendedor]);
 
   return (
     <>
@@ -149,61 +165,24 @@ const AdminPageVentas = () => {
 
           {/* Cuadrícula de accesos rápidos */}
           <div className="xl:px-0 sm:px-10 px-6 max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 py-14">
-            {ventasLinks.map(({ to, label, icon, desc, disableFor }, index) => {
-              const isDisabled =
-                Array.isArray(disableFor) &&
-                disableFor.some((r) => roles.includes(r));
-
-              const Card = (
+            {visibleLinks.map(({ to, label, icon, desc }, index) => (
+              <Link to={to} key={label} title={desc}>
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5, delay: index * 0.08 }}
-                  className={[
-                    // Benjamin Orellana - 17-02-2026 - Se agregan variantes dark: manteniendo el diseño en light (bg blanco) y asegurando contraste/glass en dark.
-                    'relative bg-white dark:bg-white/10 dark:backdrop-blur-xl shadow-lg border rounded-2xl flex flex-col justify-center items-center h-36 gap-2 font-semibold text-base lg:text-lg text-gray-800 dark:text-white transition-all duration-300',
-                    isDisabled
-                      ? 'opacity-55 cursor-not-allowed border-black/10 dark:border-white/10'
-                      : 'cursor-pointer border-black/10 dark:border-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.12)] hover:border-emerald-400 hover:scale-[1.04]'
-                  ].join(' ')}
-                  title={isDisabled ? 'Acceso restringido para Contador' : desc}
-                  aria-disabled={isDisabled}
+                  className="relative bg-white dark:bg-white/10 dark:backdrop-blur-xl shadow-lg border rounded-2xl flex flex-col justify-center items-center h-36 gap-2 font-semibold text-base lg:text-lg text-gray-800 dark:text-white transition-all duration-300 cursor-pointer border-black/10 dark:border-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.12)] hover:border-emerald-400 hover:scale-[1.04]"
                 >
-                  <span
-                    className={[
-                      'text-3xl',
-                      isDisabled
-                        ? 'text-gray-400 dark:text-white/35'
-                        : 'text-emerald-500 dark:text-emerald-300'
-                    ].join(' ')}
-                  >
+                  <span className="text-3xl text-emerald-500 dark:text-emerald-300">
                     {icon}
                   </span>
 
                   <span className="text-center px-2 leading-tight">
                     {label}
                   </span>
-
-                  {isDisabled && (
-                    // Benjamin Orellana - 17-02-2026 - Chip de bloqueado legible en dark sin cambiar su apariencia en light.
-                    <div className="absolute top-3 right-3 inline-flex items-center gap-2 rounded-full bg-black/10 dark:bg-white/10 px-3 py-1 text-xs font-bold text-gray-700 dark:text-white/75">
-                      <FaLock />
-                      Bloqueado
-                    </div>
-                  )}
                 </motion.div>
-              );
-
-              // Si está deshabilitado, NO navegamos: wrapper <div>
-              if (isDisabled) return <div key={label}>{Card}</div>;
-
-              // Si está habilitado, navegamos normalmente
-              return (
-                <Link to={to} key={label} title={desc}>
-                  {Card}
-                </Link>
-              );
-            })}
+              </Link>
+            ))}
           </div>
         </div>
       </section>

@@ -398,6 +398,15 @@ function AppContent() {
             }
           />
           <Ruta
+            path="/dashboard/caja/historial-caja"
+            element={
+              <ProtectedRoute>
+                {' '}
+                <HistorialCajasPorLocal />{' '}
+              </ProtectedRoute>
+            }
+          />
+          <Ruta
             path="/dashboard/ventas/historico-movimientos/caja/:id"
             element={
               <ProtectedRoute>
