@@ -1995,6 +1995,38 @@ export default function PuntoVenta() {
     };
   };
 
+  const buildEmailFacturaMessage = (emailFactura) => {
+    const estado = String(emailFactura?.estado || '').toLowerCase();
+
+    if (!estado) return '';
+
+    if (estado === 'enviado') {
+      return `\nFactura enviada por email a ${emailFactura?.email || 'cliente'}.`;
+    }
+
+    if (estado === 'ya_enviado') {
+      return `\nLa factura ya había sido enviada por email a ${emailFactura?.email || 'cliente'}.`;
+    }
+
+    if (estado === 'sin_email') {
+      return '\nNo se envió la factura por email porque el cliente no tiene un email válido.';
+    }
+
+    if (estado === 'facturacion_pendiente') {
+      return '\nLa factura todavía no se envió por email porque la facturación quedó pendiente.';
+    }
+
+    if (estado === 'sin_comprobante_fiscal') {
+      return '\nNo se envió la factura por email porque la venta no generó comprobante fiscal.';
+    }
+
+    if (estado === 'error') {
+      return '\nLa venta se registró, pero falló el envío automático de la factura por email.';
+    }
+
+    return '';
+  };
+
   // Benjamin Orellana - 10-03-2026 - Confirma el modal de autorización POS y continúa con el cierre real de la venta sin volver a pedir el número.
   const confirmarAutorizacionPOS = async () => {
     const nro = String(nroAutorizacionPOS || '').trim();
@@ -2498,14 +2530,11 @@ export default function PuntoVenta() {
         // Benjamin Orellana - 2026-01-28 - Abrimos loader recién cuando ya pasaron validaciones y realmente vamos a llamar al backend.
         openLoading();
 
-        const response = await fetch(
-          'https://api.rioromano.com.ar/ventas/pos',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(ventaRequest)
-          }
-        );
+        const response = await fetch('https://api.rioromano.com.ar/ventas/pos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ventaRequest)
+        });
 
         const payload = await safeJson(response);
 
@@ -2557,6 +2586,10 @@ export default function PuntoVenta() {
           }
           return;
         }
+
+        const emailFacturaMessage = buildEmailFacturaMessage(
+          payload?.email_factura
+        );
 
         const ventaId = payload.venta_id;
         const factEstado =
@@ -2708,8 +2741,8 @@ export default function PuntoVenta() {
             await swalSuccess(
               tituloVentaRegistrada,
               esVentaCtaCteRespuesta
-                ? `${mensajeVentaRegistrada}\nComprobante emitido con observaciones.`
-                : 'Venta registrada y comprobante emitido con observaciones.'
+                ? `${mensajeVentaRegistrada}\nComprobante emitido.${emailFacturaMessage}`
+                : `Venta registrada y comprobante emitido.${emailFacturaMessage}`
             );
           }
         } else if (estadoLower === 'pendiente') {
@@ -3796,12 +3829,12 @@ export default function PuntoVenta() {
                       </button>
                     </div>
 
-                    <div className="text-emerald-700 w-24 text-right shrink-0 dark:text-emerald-300">
-                      {/* Benjamin Orellana - 2026-03-09 - El carrito muestra el precio comercial base del item priorizando precio_tarjeta para evitar seguir renderizando precio o precio_con_descuento heredados. */}
-                      {formatearPrecio(
-                        getPrecioVentaBaseItem(item) * item.cantidad
-                      )}
-                    </div>
+                      <div className="text-emerald-700 w-24 text-right shrink-0 dark:text-emerald-300">
+                        {/* Benjamin Orellana - 2026-03-09 - El carrito muestra el precio comercial base del item priorizando precio_tarjeta para evitar seguir renderizando precio o precio_con_descuento heredados. */}
+                        {formatearPrecio(
+                          getPrecioVentaBaseItem(item) * item.cantidad
+                        )}
+                      </div>
 
                     <button
                       onClick={() => quitarProducto(item.stock_id)}
@@ -3839,7 +3872,7 @@ export default function PuntoVenta() {
                   ].join(' ')}
                 >
                   <div className="text-[12px] font-bold uppercase tracking-wide">
-                    Contado
+                    Contado - Tarjeta 
                   </div>
                   <div
                     className={`mt-1 text-[11px] leading-relaxed ${
