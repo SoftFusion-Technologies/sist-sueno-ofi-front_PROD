@@ -364,11 +364,25 @@ export default function FacturaA4Modal({
   const pv = cf?.puntoVenta || null;
   const cliente = ventaData?.cliente || null;
 
+  // Benjamin Orellana - 31-03-2026 - Formateadores separados para moneda y cantidad. Cantidad entera; montos con $ + miles + decimales.
+  const toSafeNumber = (value) => {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+  };
+
   const fmtMoney = (n) => {
-    const num = Number(n || 0);
-    return num.toLocaleString('es-AR', {
+    const num = toSafeNumber(n);
+    return `$ ${num.toLocaleString('es-AR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
+    })}`;
+  };
+
+  const fmtQty = (n) => {
+    const num = toSafeNumber(n);
+    return num.toLocaleString('es-AR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     });
   };
 
@@ -1307,9 +1321,7 @@ export default function FacturaA4Modal({
                         <span className="font-semibold">
                           Condiciones de Venta:
                         </span>{' '}
-                        {medioPagoTexto !== '—'
-                          ? `${medioPagoTexto}`
-                          : '—'}
+                        {medioPagoTexto !== '—' ? `${medioPagoTexto}` : '—'}
                       </div>
                     </div>
 
@@ -1336,8 +1348,7 @@ export default function FacturaA4Modal({
 
                 {/* Tabla ítems */}
                 <div className="border border-black mt-3 flex-1 flex flex-col">
-                  <div className="grid grid-cols-[0.18fr_0.52fr_0.1fr_0.1fr_0.1fr] border-b border-black text-[14px] font-semibold px-2 py-1 a4-avoid-break">
-                    <div>Código</div>
+                  <div className="grid grid-cols-[0.56fr_0.12fr_0.16fr_0.16fr] border-b border-black text-[14px] font-semibold px-2 py-1 a4-avoid-break">
                     <div>Descripción</div>
                     <div className="text-right">Cant.</div>
                     <div className="text-right">P.Unitario</div>
@@ -1350,31 +1361,38 @@ export default function FacturaA4Modal({
                     {/* Benjamin Orellana - 25-01-2026 - Ítems: usamos ventaData para asegurar detalles completos en impresión/export (ClientesGet). */}
                     {(ventaData?.detalles || []).map((it) => {
                       const prod = it?.stock?.producto || {};
-                      const codigo =
-                        prod?.codigo_interno ??
-                        prod?.codigo_sku ??
-                        it?.stock_id ??
-                        '—';
 
                       const cant = Number(it?.cantidad || 0);
+
                       // Preferimos el precio_unitario_con_descuento si existe; si no, precio_unitario
                       const pu = Number(
                         it?.precio_unitario_con_descuento ??
                           it?.precio_unitario ??
                           0
                       );
+
                       const importe = cant * pu;
 
                       return (
                         <div
                           key={it.id}
-                          className="grid grid-cols-[0.18fr_0.52fr_0.1fr_0.1fr_0.1fr] px-2 py-1"
+                          className="grid grid-cols-[0.56fr_0.12fr_0.16fr_0.16fr] px-2 py-1 a4-row"
                         >
-                          <div className="pr-2">{codigo}</div>
-                          <div className="pr-2">{prod?.nombre || '—'}</div>
-                          <div className="text-right">{fmtMoney(cant)}</div>
-                          <div className="text-right">{fmtMoney(pu)}</div>
-                          <div className="text-right">{fmtMoney(importe)}</div>
+                          <div className="pr-3 break-words">
+                            {prod?.nombre || '—'}
+                          </div>
+
+                          <div className="text-right whitespace-nowrap tabular-nums">
+                            {fmtQty(cant)}
+                          </div>
+
+                          <div className="text-right whitespace-nowrap tabular-nums">
+                            {fmtMoney(pu)}
+                          </div>
+
+                          <div className="text-right whitespace-nowrap tabular-nums">
+                            {fmtMoney(importe)}
+                          </div>
                         </div>
                       );
                     })}
@@ -1684,8 +1702,7 @@ export default function FacturaA4Modal({
                       <div className="border border-black mt-3 flex-1 flex flex-col">
                         {/* Benjamin Orellana - 25-01-2026 - Remito: se amplía la grilla para incluir precio unitario e importe por ítem,
      usando items_json (precio_unitario/subtotal) con fallback a cantidad * precio_unitario. */}
-                        <div className="grid grid-cols-[0.18fr_0.52fr_0.10fr_0.10fr_0.10fr] border-b border-black text-[14px] font-semibold px-2 py-1">
-                          <div>Código</div>
+                        <div className="grid grid-cols-[0.56fr_0.12fr_0.16fr_0.16fr] border-b border-black text-[14px] font-semibold px-2 py-1">
                           <div>Descripción</div>
                           <div className="text-right">Cant.</div>
                           <div className="text-right">P.Unitario</div>
@@ -1697,7 +1714,6 @@ export default function FacturaA4Modal({
                             const cant = Number(it?.cantidad || 0);
                             const pu = Number(it?.precio_unitario || 0);
 
-                            // Si el backend ya manda subtotal, respetarlo; si no, calcular.
                             const importe =
                               it?.subtotal != null
                                 ? Number(it.subtotal)
@@ -1706,16 +1722,21 @@ export default function FacturaA4Modal({
                             return (
                               <div
                                 key={`${it?.stock_id || it?.producto_id || idx}`}
-                                // Benjamin Orellana - 2026-01-26 - Agregamos clase a4-row para cortes seguros entre páginas (evita cortar filas en print/PDF).
-                                className="grid grid-cols-[0.18fr_0.52fr_0.10fr_0.10fr_0.10fr] px-2 py-1 a4-row"
+                                className="grid grid-cols-[0.56fr_0.12fr_0.16fr_0.16fr] px-2 py-1 a4-row"
                               >
-                                <div className="pr-2">{it?.codigo || '—'}</div>
-                                <div className="pr-2">{it?.nombre || '—'}</div>
-                                <div className="text-right">
-                                  {fmtMoney(cant)}
+                                <div className="pr-3 break-words">
+                                  {it?.nombre || '—'}
                                 </div>
-                                <div className="text-right">{fmtMoney(pu)}</div>
-                                <div className="text-right">
+
+                                <div className="text-right whitespace-nowrap tabular-nums">
+                                  {fmtQty(cant)}
+                                </div>
+
+                                <div className="text-right whitespace-nowrap tabular-nums">
+                                  {fmtMoney(pu)}
+                                </div>
+
+                                <div className="text-right whitespace-nowrap tabular-nums">
                                   {fmtMoney(importe)}
                                 </div>
                               </div>

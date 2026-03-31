@@ -932,6 +932,19 @@ export default function PuntoVenta() {
     return Number(item?.precio ?? 0) || 0;
   };
 
+  /*
+   * Benjamin Orellana - 31 / 03 / 2026 - Genera una clave única por línea
+   * para separar correctamente productos normales de productos provenientes de combo.
+   */
+  const buildCartLineKey = (item = {}) => {
+    const stockId = Number(item?.stock_id || 0);
+    const comboId = Number(item?.combo_id || 0);
+    const comboPermId = Number(item?.combo_perm_id || 0);
+    const origenPrecio = String(item?.origen_precio || 'NORMAL').toUpperCase();
+
+    return `${stockId}-${comboId}-${comboPermId}-${origenPrecio}`;
+  };
+
   // agregarAlCarrito(item, usarDesc = true, cantidad = 1)
   const agregarAlCarrito = (item, usarDesc = true, cantidad = 1) => {
     const stockId = item?.stock_id;
@@ -942,6 +955,19 @@ export default function PuntoVenta() {
 
     // Benjamin Orellana - 2026-02-02 - Detecta ítem de combo y preserva precio_lista (precio real) para cobrar "extras" correctamente.
     const isComboItem = !!item?.is_combo_item || !!item?.combo_id;
+
+    /*
+     * Benjamin Orellana - 31 / 03 / 2026 - Metadatos de combo y pricing real
+     * para poder mostrar en carrito precio real, precio combo y descuento aplicado.
+     */
+    const comboPermId = item?.combo_perm_id ?? item?.perm_id ?? null;
+    const origenPrecio = isComboItem ? 'COMBO' : 'NORMAL';
+    const lineKey = buildCartLineKey({
+      stock_id: item?.stock_id,
+      combo_id: item?.combo_id,
+      combo_perm_id: comboPermId,
+      origen_precio: origenPrecio
+    });
 
     // Precio real/lista (NO proporcional). Para combos debe venir en item.precio_lista.
     const precioLista = toNum(
@@ -992,7 +1018,7 @@ export default function PuntoVenta() {
     const precioUnit = isComboItem ? precioComboUnit : precioBaseVentaNormal;
 
     setCarrito((prev) => {
-      const idx = prev.findIndex((i) => i.stock_id === stockId);
+      const idx = prev.findIndex((i) => i.line_key === lineKey);
 
       // Clamp de cantidad solicitada al disponible
       const delta = Math.max(1, toNum(cantidad, 1));
@@ -1048,7 +1074,51 @@ export default function PuntoVenta() {
 
           recargo_tarjeta_pct: isComboItem
             ? toNum(linea?.recargo_tarjeta_pct, 0)
-            : recargoTarjetaPct
+            : recargoTarjetaPct,
+
+          line_key: lineKey,
+          combo_perm_id: comboPermId,
+          origen_precio: origenPrecio,
+
+          precio_unitario_real:
+            toNum(linea?.precio_unitario_real, 0) || precioLista,
+
+          precio_unitario_combo: isComboItem
+            ? toNum(linea?.precio_unitario_combo, 0) || precioComboUnit
+            : null,
+
+          descuento_unitario_combo: isComboItem
+            ? Math.max(
+                0,
+                round2(
+                  (toNum(linea?.precio_unitario_real, 0) || precioLista) -
+                    (toNum(linea?.precio_unitario_combo, 0) || precioComboUnit)
+                )
+              )
+            : 0,
+
+          subtotal_real_referencia: round2(
+            (toNum(linea?.precio_unitario_real, 0) || precioLista) * nuevaCant
+          ),
+
+          subtotal_combo_referencia: isComboItem
+            ? round2(
+                (toNum(linea?.precio_unitario_combo, 0) || precioComboUnit) *
+                  nuevaCant
+              )
+            : null,
+          precio_base_referencia: toNum(
+            item?.precio_base_referencia,
+            precioLista
+          ),
+          precio_tarjeta_referencia: toNum(
+            item?.precio_tarjeta_referencia,
+            !isComboItem ? precioTarjetaCalculado : 0
+          ),
+          recargo_tarjeta_pct_referencia: toNum(
+            item?.recargo_tarjeta_pct_referencia,
+            recargoTarjetaPct
+          )
         };
 
         const copia = prev.slice();
@@ -1098,7 +1168,35 @@ export default function PuntoVenta() {
         cantidad: cantInicial,
         codigo_sku: item.codigo_sku,
         categoria_id: item.categoria_id,
-        local_id: item.local_id ?? undefined
+        local_id: item.local_id ?? undefined,
+
+        line_key: lineKey,
+        combo_perm_id: comboPermId,
+        origen_precio: origenPrecio,
+
+        precio_unitario_real: precioLista,
+        precio_unitario_combo: isComboItem ? precioComboUnit : null,
+
+        descuento_unitario_combo: isComboItem
+          ? Math.max(0, round2(precioLista - precioComboUnit))
+          : 0,
+
+        subtotal_real_referencia: round2(precioLista * cantInicial),
+        subtotal_combo_referencia: isComboItem
+          ? round2(precioComboUnit * cantInicial)
+          : null,
+        precio_base_referencia: toNum(
+          item?.precio_base_referencia,
+          precioLista
+        ),
+        precio_tarjeta_referencia: toNum(
+          item?.precio_tarjeta_referencia,
+          !isComboItem ? precioTarjetaCalculado : 0
+        ),
+        recargo_tarjeta_pct_referencia: toNum(
+          item?.recargo_tarjeta_pct_referencia,
+          recargoTarjetaPct
+        )
       };
 
       return [...prev, nuevaLinea];
@@ -1161,28 +1259,203 @@ export default function PuntoVenta() {
     );
   }, [usarDescuentoPorProducto]);
 
-  const cambiarCantidad = (stockId, delta) =>
-    setCarrito((prev) =>
-      prev
+  /*
+   * Benjamin Orellana - 31 / 03 / 2026 - Crea una línea NORMAL a partir de una
+   * línea de combo para que los excedentes se cobren fuera del combo al precio
+   * tarjeta actual, sin alterar la cantidad incluida del combo.
+   */
+  const buildNormalExtraFromComboLine = (comboLine) => {
+    const precioBaseReferencia = toNum(
+      comboLine?.precio_base_referencia,
+      comboLine?.precio_lista,
+      comboLine?.precio_original,
+      0
+    );
+
+    const recargoTarjetaPctReferencia = toNum(
+      comboLine?.recargo_tarjeta_pct_referencia,
+      comboLine?.recargo_tarjeta_pct,
+      0
+    );
+
+    const precioTarjetaReferencia = toNum(
+      comboLine?.precio_tarjeta_referencia,
+      comboLine?.precio_tarjeta,
+      precioBaseReferencia > 0
+        ? parseFloat(
+            (
+              precioBaseReferencia *
+              (1 + recargoTarjetaPctReferencia / 100)
+            ).toFixed(2)
+          )
+        : 0
+    );
+
+    return {
+      stock_id: comboLine?.stock_id,
+      producto_id: comboLine?.producto_id,
+      nombre: comboLine?.nombre,
+
+      precio_lista: precioBaseReferencia,
+      precio_original: precioBaseReferencia,
+
+      precio_tarjeta: precioTarjetaReferencia,
+      precio_base_interno: precioBaseReferencia,
+      recargo_tarjeta_pct: recargoTarjetaPctReferencia,
+
+      precio_con_descuento:
+        comboLine?.precio_con_descuento ?? precioTarjetaReferencia,
+
+      precio: precioTarjetaReferencia,
+
+      descuento_porcentaje: 0,
+      descuentoPorcentaje: 0,
+      descuento_porcentaje_producto: 0,
+      usar_descuento_producto: false,
+
+      is_combo_item: false,
+      combo_id: null,
+
+      cantidad_disponible: toNum(comboLine?.cantidad_disponible, 0),
+      cantidad: 1,
+      codigo_sku: comboLine?.codigo_sku,
+      categoria_id: comboLine?.categoria_id,
+      local_id: comboLine?.local_id ?? undefined,
+
+      line_key: buildCartLineKey({
+        stock_id: comboLine?.stock_id,
+        combo_id: null,
+        combo_perm_id: null,
+        origen_precio: 'NORMAL'
+      }),
+
+      combo_perm_id: null,
+      origen_precio: 'NORMAL',
+
+      // Para la UI de carrito, en línea normal mostramos como “real” el precio comercial efectivo
+      precio_unitario_real: precioTarjetaReferencia,
+      precio_unitario_combo: null,
+      descuento_unitario_combo: 0,
+
+      subtotal_real_referencia: round2(precioTarjetaReferencia),
+      subtotal_combo_referencia: null,
+
+      // Snapshots auxiliares por si querés auditar luego de dónde salió el extra
+      precio_base_referencia: precioBaseReferencia,
+      precio_tarjeta_referencia: precioTarjetaReferencia,
+      recargo_tarjeta_pct_referencia: recargoTarjetaPctReferencia
+    };
+  };
+
+  /*
+   * Benjamin Orellana - 31 / 03 / 2026 - Si el usuario incrementa una línea
+   * de combo, el excedente se crea o acumula como línea NORMAL al precio tarjeta,
+   * manteniendo intacta la cantidad incluida del combo.
+   */
+  const cambiarCantidad = (lineId, delta) =>
+    setCarrito((prev) => {
+      const idx = prev.findIndex(
+        (it) => (it.line_key || it.stock_id) === lineId
+      );
+
+      if (idx === -1) return prev;
+
+      const linea = prev[idx];
+      const esCombo =
+        String(linea?.origen_precio || '').toUpperCase() === 'COMBO' ||
+        !!linea?.is_combo_item ||
+        !!linea?.combo_id;
+
+      const deltaNum = toNum(delta, 0);
+
+      // Caso especial: sumar sobre línea combo => crear/incrementar línea normal
+      if (esCombo && deltaNum > 0) {
+        const normalLineKey = buildCartLineKey({
+          stock_id: linea?.stock_id,
+          combo_id: null,
+          combo_perm_id: null,
+          origen_precio: 'NORMAL'
+        });
+
+        const idxNormal = prev.findIndex(
+          (it) => (it.line_key || it.stock_id) === normalLineKey
+        );
+
+        const cantidadConsumidaPorOtrasLineas = prev.reduce(
+          (acc, it, index) => {
+            if (index === idx) return acc;
+            if (Number(it?.stock_id) !== Number(linea?.stock_id)) return acc;
+            return acc + toNum(it?.cantidad, 0);
+          },
+          0
+        );
+
+        const disponibleTotal = toNum(linea?.cantidad_disponible, 0);
+        const disponibleRestante = Math.max(
+          0,
+          disponibleTotal - cantidadConsumidaPorOtrasLineas
+        );
+
+        if (disponibleRestante <= 0) return prev;
+
+        const copia = prev.slice();
+
+        if (idxNormal !== -1) {
+          const normalLine = copia[idxNormal];
+          const nuevaCant = Math.min(
+            disponibleRestante,
+            toNum(normalLine?.cantidad, 0) + deltaNum
+          );
+
+          copia[idxNormal] = {
+            ...normalLine,
+            cantidad: nuevaCant,
+            subtotal_real_referencia: round2(
+              toNum(normalLine?.precio_unitario_real, 0) * nuevaCant
+            )
+          };
+
+          return copia.filter((it) => toNum(it?.cantidad, 0) > 0);
+        }
+
+        const nuevaLineaNormal = buildNormalExtraFromComboLine(linea);
+        nuevaLineaNormal.cantidad = Math.min(
+          disponibleRestante,
+          Math.max(1, deltaNum)
+        );
+        nuevaLineaNormal.subtotal_real_referencia = round2(
+          toNum(nuevaLineaNormal?.precio_unitario_real, 0) *
+            toNum(nuevaLineaNormal?.cantidad, 0)
+        );
+
+        return [...copia, nuevaLineaNormal].filter(
+          (it) => toNum(it?.cantidad, 0) > 0
+        );
+      }
+
+      // Flujo estándar para líneas normales o decrementos
+      return prev
         .map((it) =>
-          it.stock_id === stockId
+          (it.line_key || it.stock_id) === lineId
             ? {
                 ...it,
                 cantidad: Math.max(
                   0,
                   Math.min(
-                    toNum(it.cantidad, 0) + toNum(delta, 0),
+                    toNum(it.cantidad, 0) + deltaNum,
                     toNum(it.cantidad_disponible, 0)
                   )
                 )
               }
             : it
         )
-        .filter((it) => toNum(it.cantidad, 0) > 0)
-    );
+        .filter((it) => toNum(it.cantidad, 0) > 0);
+    });
 
-  const quitarProducto = (stockId) =>
-    setCarrito((prev) => prev.filter((i) => i.stock_id !== stockId));
+  const quitarProducto = (lineId) =>
+    setCarrito((prev) =>
+      prev.filter((i) => (i.line_key || i.stock_id) !== lineId)
+    );
 
   const total = carrito.reduce((sum, i) => sum + i.precio * i.cantidad, 0);
 
@@ -1348,7 +1621,9 @@ export default function PuntoVenta() {
       const permitidos = await res.json();
 
       // Solo los que tienen producto asociado
-      const productosDirectos = permitidos.filter((p) => p.producto);
+      const productosDirectos = Array.isArray(permitidos)
+        ? permitidos.filter((p) => p.producto)
+        : [];
 
       if (!productosDirectos.length) {
         await Swal.fire(
@@ -1358,14 +1633,15 @@ export default function PuntoVenta() {
         return;
       }
 
-      // 2) Precio unitario proporcional
-      const cantItems = Number(
-        combo.cantidad_items || productosDirectos.length
-      );
-      const precioUnitProporcional = Number(combo.precio_fijo || 0) / cantItems;
-
       // 3) Buscar stock por producto en el local del usuario
-      const consultas = productosDirectos.map(async ({ producto }) => {
+      const consultas = productosDirectos.map(async (perm) => {
+        const producto = perm.producto;
+
+        /*
+         * Benjamin Orellana - 31 / 03 / 2026 - Se recrean los parámetros
+         * de búsqueda por producto/local porque ya no usamos el prorrateo viejo
+         * y cada permitido del combo se consulta individualmente.
+         */
         const params = new URLSearchParams({
           query: String(producto.id),
           producto_id: String(producto.id),
@@ -1374,7 +1650,7 @@ export default function PuntoVenta() {
         });
 
         const r = await fetch(
-          `${API_URL}/buscar-productos-detallado?${params}`,
+          `${API_URL}/buscar-productos-detallado?${params.toString()}`,
           {
             headers: authHeader()
           }
@@ -1438,19 +1714,49 @@ export default function PuntoVenta() {
           producto_id: filaConStock.producto_id,
           nombre: filaConStock.nombre,
 
-          // Precio visible para el armado del combo
-          precio: Number(precioUnitProporcional),
-          precio_con_descuento: Number(precioUnitProporcional),
+          precio: Number(perm?.precio_unitario_combo ?? 0),
+          precio_con_descuento: Number(perm?.precio_unitario_combo ?? 0),
           descuento_porcentaje: 0,
 
-          // Benjamin Orellana - 2026-02-02 - Precio real para extras
-          // si el usuario aumenta cantidad fuera del combo.
           precio_lista: Number(
-            filaConStock.precio_lista ?? filaConStock.precio ?? 0
+            filaConStock.precio_lista ??
+              filaConStock.precio_tarjeta ??
+              filaConStock.precio ??
+              0
+          ),
+
+          /*
+           * Benjamin Orellana - 31 / 03 / 2026 - Snapshots adicionales para
+           * poder crear el excedente fuera de combo al precio tarjeta correcto.
+           */
+          precio_base_referencia: Number(
+            perm?.producto?.precio ??
+              filaConStock.precio_lista ??
+              filaConStock.precio ??
+              0
+          ),
+
+          precio_tarjeta_referencia: Number(
+            perm?.producto?.precio_tarjeta ??
+              Number(
+                perm?.producto?.precio ??
+                  filaConStock.precio_lista ??
+                  filaConStock.precio ??
+                  0
+              ) *
+                (1 + Number(perm?.producto?.recargo_tarjeta_pct ?? 40) / 100)
+          ),
+
+          recargo_tarjeta_pct_referencia: Number(
+            perm?.producto?.recargo_tarjeta_pct ?? 40
           ),
 
           is_combo_item: true,
           combo_id: combo.id,
+          combo_perm_id: perm?.id ?? null,
+          origen_precio: 'COMBO',
+
+          cantidad_inicial_combo: Number(perm?.cantidad_inicial_carrito ?? 1),
 
           cantidad_disponible: Number(filaConStock.cantidad_disponible || 0),
           codigo_sku: filaConStock.codigo_sku,
@@ -1474,8 +1780,18 @@ export default function PuntoVenta() {
       for (const it of items) {
         if (Number(it.cantidad_disponible || 0) <= 0) continue;
 
-        agregarAlCarrito(it, false); // false = sin descuento por producto
-        usados.push({ stock_id: it.stock_id });
+        agregarAlCarrito(it, false, Number(it?.cantidad_inicial_combo || 1));
+
+        usados.push({
+          stock_id: it.stock_id,
+          producto_id: it.producto_id,
+          combo_perm_id: it.combo_perm_id,
+          cantidad_combo: Number(it?.cantidad_inicial_combo || 1),
+          precio_unitario_combo: Number(it?.precio || 0),
+          subtotal_combo_item: round2(
+            Number(it?.cantidad_inicial_combo || 1) * Number(it?.precio || 0)
+          )
+        });
       }
 
       if (!usados.length) {
@@ -1491,8 +1807,6 @@ export default function PuntoVenta() {
         ...prev,
         {
           combo_id: combo.id,
-          // Benjamin Orellana - 2026-02-02 - Alias para compatibilidad:
-          // guardamos precio_fijo además de precio_combo.
           precio_combo: Number(combo.precio_fijo),
           precio_fijo: Number(combo.precio_fijo),
           cantidad: 1,
@@ -1830,15 +2144,32 @@ export default function PuntoVenta() {
       const hasCombo =
         Array.isArray(combosSeleccionados) && combosSeleccionados.length > 0;
 
+      /*
+       * Benjamin Orellana - 31 / 03 / 2026 - Se preserva el detalle real del combo
+       * al calcular el total para que backend respete cantidad_combo, precio unitario
+       * combo y subtotales por ítem sin volver a caer en el esquema viejo por stock_id.
+       */
       if (hasCombo) {
         payload.combos = combosSeleccionados.map((c) => ({
           combo_id: c?.combo_id ?? c?.id ?? null,
           precio_fijo: Number(
             c?.precio_fijo ?? c?.precio_combo ?? c?.precioCombo ?? 0
           ),
+          precio_combo: Number(
+            c?.precio_combo ?? c?.precio_fijo ?? c?.precioCombo ?? 0
+          ),
           cantidad: Number(c?.cantidad ?? 1) || 1,
+
           productos: Array.isArray(c?.productos)
-            ? c.productos.map((p) => ({ stock_id: Number(p?.stock_id) }))
+            ? c.productos.map((p) => ({
+                stock_id: Number(p?.stock_id ?? 0) || null,
+                producto_id: Number(p?.producto_id ?? 0) || null,
+                combo_perm_id: Number(p?.combo_perm_id ?? 0) || null,
+                cantidad_combo: Number(p?.cantidad_combo ?? 1) || 1,
+                precio_unitario_combo:
+                  Number(p?.precio_unitario_combo ?? 0) || 0,
+                subtotal_combo_item: Number(p?.subtotal_combo_item ?? 0) || 0
+              }))
             : []
         }));
 
@@ -1911,6 +2242,14 @@ export default function PuntoVenta() {
       }
 
       try {
+        console.log(
+          'CALC payload carrito:',
+          JSON.parse(JSON.stringify(carritoNormalizado))
+        );
+        console.log(
+          'CALC payload combos:',
+          JSON.parse(JSON.stringify(payload.combos))
+        );
         const res = await axios.post(
           'https://api.rioromano.com.ar/calcular-total-final',
           payload
@@ -3012,6 +3351,40 @@ export default function PuntoVenta() {
 
   const cbteMeta = getCbteMeta(cbteTipoSolicitado);
 
+  /*
+   * Benjamin Orellana - 31 / 03 / 2026 - Resumen visual del combo en carrito
+   * para mostrar precio real, precio combo y descuento total mientras existan líneas combo.
+   */
+  const carritoComboItems = carrito.filter(
+    (item) => String(item?.origen_precio || '').toUpperCase() === 'COMBO'
+  );
+
+  const hayComboEnCarrito = carritoComboItems.length > 0;
+
+  const resumenComboCarrito = hayComboEnCarrito
+    ? carritoComboItems.reduce(
+        (acc, item) => {
+          const qty = toNum(item?.cantidad, 0);
+          const realUnit = toNum(
+            item?.precio_unitario_real,
+            item?.precio_lista,
+            0
+          );
+          const comboUnit = toNum(item?.precio_unitario_combo, item?.precio, 0);
+
+          acc.precioRealTotal += realUnit * qty;
+          acc.precioComboTotal += comboUnit * qty;
+          acc.descuentoTotal += Math.max(0, realUnit - comboUnit) * qty;
+          return acc;
+        },
+        {
+          precioRealTotal: 0,
+          precioComboTotal: 0,
+          descuentoTotal: 0
+        }
+      )
+    : null;
+
   return (
     // Benjamin Orellana - 2026-02-17 - Fondo y color base compatibles con light/dark sin romper el estilo del POS
     <>
@@ -3789,6 +4162,48 @@ export default function PuntoVenta() {
               </button>
             </div>
 
+            {hayComboEnCarrito && resumenComboCarrito && (
+              <div className="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-50 to-orange-50 p-4 ring-1 ring-amber-200/60 dark:from-amber-500/10 dark:to-orange-500/10 dark:border-amber-400/20 dark:ring-amber-400/10">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                    Resumen del combo aplicado
+                  </h3>
+                  <span className="rounded-full px-3 py-1 text-xs font-semibold bg-amber-200/70 text-amber-900 dark:bg-amber-400/15 dark:text-amber-200">
+                    {carritoComboItems.length} líneas combo
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10">
+                    <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Precio real
+                    </p>
+                    <p className="mt-1 text-base font-extrabold text-slate-900 dark:text-white">
+                      {formatearPrecio(resumenComboCarrito.precioRealTotal)}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10">
+                    <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Precio combo
+                    </p>
+                    <p className="mt-1 text-base font-extrabold text-emerald-700 dark:text-emerald-300">
+                      {formatearPrecio(resumenComboCarrito.precioComboTotal)}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10">
+                    <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Descuento del combo
+                    </p>
+                    <p className="mt-1 text-base font-extrabold text-orange-700 dark:text-orange-300">
+                      {formatearPrecio(resumenComboCarrito.descuentoTotal)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {carrito.length === 0 ? (
               <p className="text-slate-500 dark:text-gray-400">
                 Aún no hay artículos - ítems {carrito.length}
@@ -3799,52 +4214,130 @@ export default function PuntoVenta() {
                   Ítems: {carrito.length}
                 </p>
 
-                {carrito.map((item) => (
-                  <div
-                    key={item.stock_id}
-                    className="flex justify-between items-center bg-slate-900/5 ring-1 ring-black/10 px-3 py-2 rounded-lg text-sm gap-3 dark:bg-white/5 dark:ring-white/10"
-                  >
-                    {/* Benjamin Orellana - 2026-01-28 - Permite el nombre del producto en 2 líneas (sin corte brusco) para mantener legibilidad en el carrito. */}
-                    <div className="text-slate-900 dark:text-white font-medium min-w-0 flex-1 leading-snug break-words [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden">
-                      {item.nombre}
-                    </div>
+                {carrito.map((item) => {
+                  const esCombo =
+                    String(item?.origen_precio || '').toUpperCase() === 'COMBO';
+                  const precioReferenciaCombo = toNum(
+                    item?.precio_tarjeta_referencia,
+                    item?.precio_tarjeta,
+                    item?.precio_unitario_real,
+                    item?.precio_lista,
+                    0
+                  );
 
-                    <div className="flex items-center gap-2 shrink-0 text-slate-700 dark:text-white/85">
-                      <button
-                        onClick={() => cambiarCantidad(item.stock_id, -1)}
-                        className="p-1 hover:text-slate-900 dark:hover:text-white"
-                        title="Restar"
-                      >
-                        <FaMinus />
-                      </button>
-                      <span className="min-w-[18px] text-center text-slate-800 dark:text-white">
-                        {item.cantidad}
-                      </span>
-                      <button
-                        onClick={() => cambiarCantidad(item.stock_id, 1)}
-                        className="p-1 hover:text-slate-900 dark:hover:text-white"
-                        title="Sumar"
-                      >
-                        <FaPlus />
-                      </button>
-                    </div>
+                  const precioComboUnit = toNum(
+                    item?.precio_unitario_combo,
+                    item?.precio,
+                    0
+                  );
+                  const precioVisibleUnit = esCombo
+                    ? precioComboUnit
+                    : getPrecioVentaBaseItem(item);
 
-                      <div className="text-emerald-700 w-24 text-right shrink-0 dark:text-emerald-300">
-                        {/* Benjamin Orellana - 2026-03-09 - El carrito muestra el precio comercial base del item priorizando precio_tarjeta para evitar seguir renderizando precio o precio_con_descuento heredados. */}
-                        {formatearPrecio(
-                          getPrecioVentaBaseItem(item) * item.cantidad
+                  const descuentoUnit = esCombo
+                    ? Math.max(0, precioReferenciaCombo - precioComboUnit)
+                    : Math.max(0, precioVisibleUnit - precioVisibleUnit);
+
+                  return (
+                    <div
+                      key={item.line_key || item.stock_id}
+                      className="flex justify-between items-center bg-slate-900/5 ring-1 ring-black/10 px-3 py-3 rounded-lg text-sm gap-3 dark:bg-white/5 dark:ring-white/10"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-slate-900 dark:text-white font-medium leading-snug break-words">
+                            {item.nombre}
+                          </div>
+
+                          <span
+                            className={[
+                              'inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide',
+                              esCombo
+                                ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-300/60 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20'
+                                : 'bg-slate-200 text-slate-700 ring-1 ring-slate-300/60 dark:bg-white/10 dark:text-slate-200 dark:ring-white/10'
+                            ].join(' ')}
+                          >
+                            {esCombo ? 'Combo' : 'Normal'}
+                          </span>
+                        </div>
+
+                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                          {esCombo ? (
+                            <span>
+                              Tarjeta: {formatearPrecio(precioReferenciaCombo)}
+                            </span>
+                          ) : (
+                            <span>
+                              Real: {formatearPrecio(precioVisibleUnit)}
+                            </span>
+                          )}{' '}
+                          {esCombo && (
+                            <span>
+                              Combo: {formatearPrecio(precioComboUnit)}
+                            </span>
+                          )}
+                          {descuentoUnit > 0 && (
+                            <span className="text-orange-600 dark:text-orange-300">
+                              Desc.: {formatearPrecio(descuentoUnit)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 text-slate-700 dark:text-white/85">
+                        <button
+                          onClick={() =>
+                            cambiarCantidad(item.line_key || item.stock_id, -1)
+                          }
+                          className="p-1 hover:text-slate-900 dark:hover:text-white"
+                          title="Restar"
+                          type="button"
+                        >
+                          <FaMinus />
+                        </button>
+
+                        <span className="min-w-[18px] text-center text-slate-800 dark:text-white">
+                          {item.cantidad}
+                        </span>
+
+                        <button
+                          onClick={() =>
+                            cambiarCantidad(item.line_key || item.stock_id, 1)
+                          }
+                          className="p-1 hover:text-slate-900 dark:hover:text-white"
+                          title="Sumar"
+                          type="button"
+                        >
+                          <FaPlus />
+                        </button>
+                      </div>
+
+                      <div className="w-28 text-right shrink-0">
+                        <div className="text-emerald-700 dark:text-emerald-300 font-semibold">
+                          {formatearPrecio(precioVisibleUnit * item.cantidad)}
+                        </div>
+
+                        {descuentoUnit > 0 && (
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                            Ahorrás{' '}
+                            {formatearPrecio(descuentoUnit * item.cantidad)}
+                          </div>
                         )}
                       </div>
 
-                    <button
-                      onClick={() => quitarProducto(item.stock_id)}
-                      className="text-red-500 hover:text-red-600 shrink-0 dark:text-red-400 dark:hover:text-red-300"
-                      title="Quitar producto"
-                    >
-                      <FaTrash />
-                    </button>
-                  </div>
-                ))}
+                      <button
+                        onClick={() =>
+                          quitarProducto(item.line_key || item.stock_id)
+                        }
+                        className="text-red-500 hover:text-red-600 shrink-0 dark:text-red-400 dark:hover:text-red-300"
+                        title="Quitar producto"
+                        type="button"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -3872,7 +4365,7 @@ export default function PuntoVenta() {
                   ].join(' ')}
                 >
                   <div className="text-[12px] font-bold uppercase tracking-wide">
-                    Contado - Tarjeta 
+                    Contado - Tarjeta
                   </div>
                   <div
                     className={`mt-1 text-[11px] leading-relaxed ${

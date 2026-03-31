@@ -5,7 +5,8 @@ import {
   FaBoxOpen,
   FaFolderOpen,
   FaTrashAlt,
-  FaPlusCircle
+  FaPlusCircle,
+  FaEdit
 } from 'react-icons/fa';
 import ButtonBack from '../../../Components/ButtonBack';
 import ParticlesBackground from '../../../Components/ParticlesBackground';
@@ -69,6 +70,60 @@ const getErrMsg = (err, fallback) =>
   err?.response?.data?.message ||
   err?.message ||
   fallback;
+
+/*
+ * Benjamin Orellana - 31 / 03 / 2026 - Helpers numéricos y monetarios
+ * para mostrar referencias de precio, base efectivo y subtotal del combo.
+ */
+const toNum = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const round2 = (value) =>
+  Math.round((toNum(value) + Number.EPSILON) * 100) / 100;
+
+const formatARS = (value) =>
+  new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(toNum(value));
+
+const escapeHtml = (value = '') =>
+  String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+
+const getPrecioTarjetaActual = (producto) => {
+  const precioTarjeta = toNum(producto?.precio_tarjeta);
+  if (precioTarjeta > 0) return round2(precioTarjeta);
+
+  const precio = toNum(producto?.precio);
+  const recargo = toNum(producto?.recargo_tarjeta_pct);
+  return round2(precio * (1 + recargo / 100));
+};
+
+const getBaseEfectivoDesdeTarjeta = (producto) => {
+  const precioTarjeta = toNum(producto?.precio_tarjeta);
+  const recargo = toNum(producto?.recargo_tarjeta_pct);
+
+  if (precioTarjeta > 0 && recargo >= 0) {
+    return round2(precioTarjeta / (1 + recargo / 100));
+  }
+
+  return round2(toNum(producto?.precio));
+};
+
+const getSubtotalAsignado = (item) =>
+  round2(
+    toNum(item?.cantidad_inicial_carrito || 1) *
+      toNum(item?.precio_unitario_combo || 0)
+  );
 
 const ComboEditarPermitidos = () => {
   const { id } = useParams();
@@ -138,11 +193,6 @@ const ComboEditarPermitidos = () => {
           productosP
         ]);
 
-      // const productosJson = productosRes?.data;
-      // const productosList = Array.isArray(productosJson)
-      //   ? productosJson
-      //   : (productosJson?.data ?? []);
-
       const categoriasList = Array.isArray(categoriasRes?.data)
         ? categoriasRes.data
         : [];
@@ -170,6 +220,348 @@ const ComboEditarPermitidos = () => {
     fetchDatos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  /*
+   * Benjamin Orellana - 31 / 03 / 2026 - Resumen del armado del combo
+   * para controlar cuánto del precio fijo ya fue distribuido entre sus ítems.
+   */
+  const precioFijoCombo = useMemo(() => round2(combo?.precio_fijo), [combo]);
+
+  const subtotalConfigurado = useMemo(() => {
+    return round2(
+      (Array.isArray(asignados) ? asignados : []).reduce(
+        (acc, item) => acc + getSubtotalAsignado(item),
+        0
+      )
+    );
+  }, [asignados]);
+
+  const diferenciaCombo = useMemo(() => {
+    return round2(precioFijoCombo - subtotalConfigurado);
+  }, [precioFijoCombo, subtotalConfigurado]);
+
+  const getSubtotalOtrosAsignados = (currentId = null) => {
+    return round2(
+      (Array.isArray(asignados) ? asignados : []).reduce((acc, item) => {
+        if (currentId && Number(item?.id) === Number(currentId)) return acc;
+        return acc + getSubtotalAsignado(item);
+      }, 0)
+    );
+  };
+
+  /*
+   * Benjamin Orellana - 31 / 03 / 2026 - Modal rica de configuración
+   * para alta/edición de asignaciones con referencias de tarjeta, efectivo
+   * y sugerencia dinámica de precio unitario dentro del combo.
+   */
+  const abrirModalConfiguracionAsignacion = async ({
+    modo = 'crear',
+    tipo = 'producto',
+    entidad = null,
+    asignacionActual = null
+  }) => {
+    const esProducto = tipo === 'producto';
+    const nombreEntidad = esProducto
+      ? entidad?.nombre || 'Producto'
+      : entidad?.nombre || 'Categoría';
+
+    const cantidadInicial = Number(
+      asignacionActual?.cantidad_inicial_carrito || 1
+    );
+    const ordenInicial = Number(asignacionActual?.orden || 1);
+    const subtotalOtros = getSubtotalOtrosAsignados(
+      asignacionActual?.id || null
+    );
+
+    const precioTarjetaActual = esProducto
+      ? getPrecioTarjetaActual(entidad)
+      : 0;
+    const baseEfectivoActual = esProducto
+      ? getBaseEfectivoDesdeTarjeta(entidad)
+      : 0;
+
+    const sugerenciaInicial = round2(
+      Math.max(
+        (precioFijoCombo - subtotalOtros) / Math.max(cantidadInicial, 1),
+        0
+      )
+    );
+
+    const precioInicial =
+      asignacionActual?.precio_unitario_combo !== undefined &&
+      asignacionActual?.precio_unitario_combo !== null
+        ? round2(asignacionActual?.precio_unitario_combo)
+        : esProducto
+          ? sugerenciaInicial
+          : 0;
+
+    const recargoPct = toNum(entidad?.recargo_tarjeta_pct || 40);
+
+    const result = await Swal.fire({
+      title:
+        modo === 'editar'
+          ? `Editar ${esProducto ? 'producto' : 'categoría'}`
+          : `Asignar ${esProducto ? 'producto' : 'categoría'}`,
+      width: 920,
+      showCancelButton: true,
+      confirmButtonText:
+        modo === 'editar' ? 'Guardar cambios' : 'Asignar al combo',
+      cancelButtonText: 'Cancelar',
+      focusConfirm: false,
+      reverseButtons: true,
+      html: `
+        <div style="text-align:left;">
+          <div style="border:1px solid rgba(148,163,184,.25); border-radius:18px; padding:16px; background:rgba(248,250,252,.8); margin-bottom:16px;">
+            <div style="font-size:14px; color:#64748b; margin-bottom:4px;">${
+              esProducto ? 'Producto seleccionado' : 'Categoría seleccionada'
+            }</div>
+            <div style="font-size:20px; font-weight:700; color:#0f172a;">${escapeHtml(
+              nombreEntidad
+            )}</div>
+            ${
+              esProducto
+                ? `
+                  <div style="font-size:13px; color:#475569; margin-top:6px;">
+                    Categoría: ${escapeHtml(entidad?.categoria?.nombre || 'Sin categoría')}
+                  </div>
+                `
+                : `
+                  <div style="font-size:13px; color:#475569; margin-top:6px;">
+                    La categoría puede usarse como comodín, pero si el combo es cerrado por producto te conviene asignar productos concretos.
+                  </div>
+                `
+            }
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:16px;">
+            ${
+              esProducto
+                ? `
+                  <div style="border:1px solid rgba(148,163,184,.25); border-radius:16px; padding:14px; background:#fff;">
+                    <div style="font-size:12px; color:#64748b;">Precio venta actual con tarjeta</div>
+                    <div style="font-size:20px; font-weight:700; color:#0f172a;">${formatARS(
+                      precioTarjetaActual
+                    )}</div>
+                    <div style="font-size:12px; color:#64748b; margin-top:4px;">
+                      Recargo actual: ${recargoPct.toFixed(2)}%
+                    </div>
+                  </div>
+
+                  <div style="border:1px solid rgba(148,163,184,.25); border-radius:16px; padding:14px; background:#fff;">
+                    <div style="font-size:12px; color:#64748b;">Base efectivo estimada</div>
+                    <div style="font-size:20px; font-weight:700; color:#0f172a;">${formatARS(
+                      baseEfectivoActual
+                    )}</div>
+                    <div style="font-size:12px; color:#64748b; margin-top:4px;">
+                      Calculada sacando el recargo desde tarjeta
+                    </div>
+                  </div>
+                `
+                : ''
+            }
+
+            <div style="border:1px solid rgba(148,163,184,.25); border-radius:16px; padding:14px; background:#fff;">
+              <div style="font-size:12px; color:#64748b;">Precio fijo del combo</div>
+              <div style="font-size:20px; font-weight:700; color:#0f172a;">${formatARS(
+                precioFijoCombo
+              )}</div>
+              <div style="font-size:12px; color:#64748b; margin-top:4px;">
+                Subtotal ya distribuido en otros ítems: ${formatARS(subtotalOtros)}
+              </div>
+            </div>
+
+            <div style="border:1px solid rgba(148,163,184,.25); border-radius:16px; padding:14px; background:#fff;">
+              <div style="font-size:12px; color:#64748b;">Sugerencia actual para combo</div>
+              <div id="swal-sugerencia-combo" style="font-size:20px; font-weight:700; color:#7c3aed;">${formatARS(
+                sugerenciaInicial
+              )}</div>
+              <div style="font-size:12px; color:#64748b; margin-top:4px;">
+                Se recalcula según cantidad y lo restante del combo
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:12px;">
+            <div>
+              <label style="display:block; font-size:13px; font-weight:600; color:#334155; margin-bottom:6px;">
+                Cantidad inicial carrito
+              </label>
+              <input
+                id="swal-cantidad-inicial"
+                type="number"
+                min="1"
+                step="1"
+                value="${cantidadInicial}"
+                style="width:100%; border:1px solid rgba(148,163,184,.45); border-radius:12px; padding:12px; font-size:15px;"
+              />
+            </div>
+
+            <div>
+              <label style="display:block; font-size:13px; font-weight:600; color:#334155; margin-bottom:6px;">
+                Precio unitario combo
+              </label>
+              <input
+                id="swal-precio-unitario-combo"
+                type="number"
+                min="0"
+                step="0.01"
+                value="${precioInicial}"
+                style="width:100%; border:1px solid rgba(148,163,184,.45); border-radius:12px; padding:12px; font-size:15px;"
+              />
+            </div>
+
+            <div>
+              <label style="display:block; font-size:13px; font-weight:600; color:#334155; margin-bottom:6px;">
+                Orden
+              </label>
+              <input
+                id="swal-orden-combo"
+                type="number"
+                min="1"
+                step="1"
+                value="${ordenInicial}"
+                style="width:100%; border:1px solid rgba(148,163,184,.45); border-radius:12px; padding:12px; font-size:15px;"
+              />
+            </div>
+          </div>
+
+          <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+            ${
+              esProducto
+                ? `
+                  <button type="button" id="swal-usar-tarjeta" style="border:none; border-radius:999px; padding:10px 14px; background:#0f172a; color:#fff; cursor:pointer; font-size:13px; font-weight:600;">
+                    Usar precio tarjeta
+                  </button>
+
+                  <button type="button" id="swal-usar-efectivo" style="border:none; border-radius:999px; padding:10px 14px; background:#2563eb; color:#fff; cursor:pointer; font-size:13px; font-weight:600;">
+                    Usar base efectivo
+                  </button>
+                `
+                : ''
+            }
+
+            <button type="button" id="swal-usar-sugerencia" style="border:none; border-radius:999px; padding:10px 14px; background:#7c3aed; color:#fff; cursor:pointer; font-size:13px; font-weight:600;">
+              Usar sugerencia combo
+            </button>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px;">
+            <div style="border:1px dashed rgba(148,163,184,.45); border-radius:16px; padding:14px; background:#fff;">
+              <div style="font-size:12px; color:#64748b;">Subtotal de este ítem en el combo</div>
+              <div id="swal-subtotal-item-combo" style="font-size:22px; font-weight:800; color:#0f172a; margin-top:4px;">
+                ${formatARS(round2(cantidadInicial * precioInicial))}
+              </div>
+            </div>
+
+            <div style="border:1px dashed rgba(148,163,184,.45); border-radius:16px; padding:14px; background:#fff;">
+              <div style="font-size:12px; color:#64748b;">Restante del combo antes de este ítem</div>
+              <div id="swal-restante-combo" style="font-size:22px; font-weight:800; color:#0f172a; margin-top:4px;">
+                ${formatARS(round2(precioFijoCombo - subtotalOtros))}
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+      didOpen: () => {
+        const popup = Swal.getPopup();
+        if (!popup) return;
+
+        const qtyInput = popup.querySelector('#swal-cantidad-inicial');
+        const precioInput = popup.querySelector('#swal-precio-unitario-combo');
+        const ordenInput = popup.querySelector('#swal-orden-combo');
+        const sugerenciaEl = popup.querySelector('#swal-sugerencia-combo');
+        const subtotalItemEl = popup.querySelector('#swal-subtotal-item-combo');
+        const restanteComboEl = popup.querySelector('#swal-restante-combo');
+        const usarTarjetaBtn = popup.querySelector('#swal-usar-tarjeta');
+        const usarEfectivoBtn = popup.querySelector('#swal-usar-efectivo');
+        const usarSugerenciaBtn = popup.querySelector('#swal-usar-sugerencia');
+
+        const calcSugerenciaDinamica = () => {
+          const qty = Math.max(1, parseInt(qtyInput?.value || '1', 10) || 1);
+          return round2(Math.max((precioFijoCombo - subtotalOtros) / qty, 0));
+        };
+
+        const refreshPreview = () => {
+          const qty = Math.max(1, parseInt(qtyInput?.value || '1', 10) || 1);
+          const precio = Math.max(0, toNum(precioInput?.value || 0));
+          const subtotal = round2(qty * precio);
+          const sugerencia = calcSugerenciaDinamica();
+
+          if (sugerenciaEl) sugerenciaEl.textContent = formatARS(sugerencia);
+          if (subtotalItemEl) subtotalItemEl.textContent = formatARS(subtotal);
+          if (restanteComboEl)
+            restanteComboEl.textContent = formatARS(
+              round2(precioFijoCombo - subtotalOtros)
+            );
+        };
+
+        qtyInput?.addEventListener('input', refreshPreview);
+        precioInput?.addEventListener('input', refreshPreview);
+        ordenInput?.addEventListener('input', refreshPreview);
+
+        usarTarjetaBtn?.addEventListener('click', () => {
+          if (!precioInput) return;
+          precioInput.value = String(precioTarjetaActual);
+          refreshPreview();
+        });
+
+        usarEfectivoBtn?.addEventListener('click', () => {
+          if (!precioInput) return;
+          precioInput.value = String(baseEfectivoActual);
+          refreshPreview();
+        });
+
+        usarSugerenciaBtn?.addEventListener('click', () => {
+          if (!precioInput) return;
+          precioInput.value = String(calcSugerenciaDinamica());
+          refreshPreview();
+        });
+
+        refreshPreview();
+      },
+      preConfirm: () => {
+        const popup = Swal.getPopup();
+        if (!popup) return false;
+
+        const cantidad = Number(
+          popup.querySelector('#swal-cantidad-inicial')?.value || 0
+        );
+        const precio = Number(
+          popup.querySelector('#swal-precio-unitario-combo')?.value || 0
+        );
+        const orden = Number(
+          popup.querySelector('#swal-orden-combo')?.value || 0
+        );
+
+        if (!Number.isInteger(cantidad) || cantidad <= 0) {
+          Swal.showValidationMessage(
+            'La cantidad inicial del carrito debe ser un entero mayor a 0'
+          );
+          return false;
+        }
+
+        if (!Number.isFinite(precio) || precio < 0) {
+          Swal.showValidationMessage(
+            'El precio unitario combo debe ser un número mayor o igual a 0'
+          );
+          return false;
+        }
+
+        if (!Number.isInteger(orden) || orden <= 0) {
+          Swal.showValidationMessage('El orden debe ser un entero mayor a 0');
+          return false;
+        }
+
+        return {
+          cantidad_inicial_carrito: cantidad,
+          precio_unitario_combo: round2(precio),
+          orden
+        };
+      }
+    });
+
+    return result.isConfirmed ? result.value : null;
+  };
 
   const eliminarAsignado = async (permId) => {
     const resp = await Swal.fire({
@@ -214,19 +606,26 @@ const ComboEditarPermitidos = () => {
     }
   };
 
-  // ahora SIN talles: agregamos el producto directo
-  const agregarProducto = async (producto_id) => {
-    const resp = await Swal.fire({
-      title: 'Asignar producto',
-      text: '¿Querés agregar este producto al combo?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Sí, agregar',
-      cancelButtonText: 'Cancelar',
-      reverseButtons: true
+  /*
+   * Benjamin Orellana - 31 / 03 / 2026 - Ahora la asignación de productos
+   * se realiza con modal de configuración para cargar cantidad, precio combo y orden.
+   */
+  const agregarProducto = async (producto) => {
+    const yaAsignado = (asignados || []).find(
+      (a) => Number(a?.producto?.id || a?.producto_id) === Number(producto?.id)
+    );
+
+    if (yaAsignado) {
+      return editarAsignado(yaAsignado);
+    }
+
+    const config = await abrirModalConfiguracionAsignacion({
+      modo: 'crear',
+      tipo: 'producto',
+      entidad: producto
     });
 
-    if (!resp.isConfirmed) return;
+    if (!config) return;
 
     try {
       // Benjamin Orellana - 29/01/2026 - Loader SweetAlert2 durante la asignación para evitar dobles clicks y dar feedback.
@@ -239,7 +638,10 @@ const ComboEditarPermitidos = () => {
 
       await axios.post(`${API_URL}/combo-productos-permitidos`, {
         combo_id: parseInt(id, 10),
-        producto_id
+        producto_id: producto.id,
+        cantidad_inicial_carrito: config.cantidad_inicial_carrito,
+        precio_unitario_combo: config.precio_unitario_combo,
+        orden: config.orden
       });
 
       await fetchDatos();
@@ -262,18 +664,27 @@ const ComboEditarPermitidos = () => {
     }
   };
 
-  const agregarCategoria = async (categoria_id) => {
-    const resp = await Swal.fire({
-      title: 'Asignar categoría',
-      text: '¿Querés agregar esta categoría al combo?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Sí, agregar',
-      cancelButtonText: 'Cancelar',
-      reverseButtons: true
+  /*
+   * Benjamin Orellana - 31 / 03 / 2026 - También se permite configurar
+   * cantidad, precio combo y orden al asignar una categoría.
+   */
+  const agregarCategoria = async (categoria) => {
+    const yaAsignada = (asignados || []).find(
+      (a) =>
+        Number(a?.categoria?.id || a?.categoria_id) === Number(categoria?.id)
+    );
+
+    if (yaAsignada) {
+      return editarAsignado(yaAsignada);
+    }
+
+    const config = await abrirModalConfiguracionAsignacion({
+      modo: 'crear',
+      tipo: 'categoria',
+      entidad: categoria
     });
 
-    if (!resp.isConfirmed) return;
+    if (!config) return;
 
     try {
       // Benjamin Orellana - 29/01/2026 - Loader SweetAlert2 durante la asignación para evitar dobles clicks y dar feedback.
@@ -286,7 +697,10 @@ const ComboEditarPermitidos = () => {
 
       await axios.post(`${API_URL}/combo-productos-permitidos`, {
         combo_id: parseInt(id, 10),
-        categoria_id
+        categoria_id: categoria.id,
+        cantidad_inicial_carrito: config.cantidad_inicial_carrito,
+        precio_unitario_combo: config.precio_unitario_combo,
+        orden: config.orden
       });
 
       await fetchDatos();
@@ -303,6 +717,59 @@ const ComboEditarPermitidos = () => {
       Swal.fire({
         title: 'No se pudo asignar',
         text: getErrMsg(err, 'Error al asignar categoría'),
+        icon: 'error',
+        confirmButtonText: 'Entendido'
+      });
+    }
+  };
+
+  /*
+   * Benjamin Orellana - 31 / 03 / 2026 - Edición directa de una asignación ya creada
+   * para ajustar cantidad inicial, precio unitario combo y orden sin eliminarla.
+   */
+  const editarAsignado = async (item) => {
+    const esProducto = Boolean(item?.producto);
+    const entidad = esProducto ? item.producto : item.categoria;
+
+    const config = await abrirModalConfiguracionAsignacion({
+      modo: 'editar',
+      tipo: esProducto ? 'producto' : 'categoria',
+      entidad,
+      asignacionActual: item
+    });
+
+    if (!config) return;
+
+    try {
+      Swal.fire({
+        title: 'Guardando...',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      await axios.put(`${API_URL}/combo-productos-permitidos/${item.id}`, {
+        producto_id: item?.producto?.id || item?.producto_id || null,
+        categoria_id: item?.categoria?.id || item?.categoria_id || null,
+        cantidad_inicial_carrito: config.cantidad_inicial_carrito,
+        precio_unitario_combo: config.precio_unitario_combo,
+        orden: config.orden
+      });
+
+      await fetchDatos();
+      Swal.close();
+
+      toast.fire({
+        icon: 'success',
+        title: 'Asignación actualizada'
+      });
+    } catch (err) {
+      Swal.close();
+      console.error('Error al editar asignación:', err);
+
+      Swal.fire({
+        title: 'No se pudo guardar',
+        text: getErrMsg(err, 'Error al editar la asignación'),
         icon: 'error',
         confirmButtonText: 'Entendido'
       });
@@ -381,13 +848,19 @@ const ComboEditarPermitidos = () => {
                 <p className="text-purple-700 dark:text-purple-300 font-bold text-lg">
                   {combo.nombre}
                 </p>
-                <div className="text-sm text-slate-600 dark:text-gray-300 flex gap-4 mt-1">
+                <div className="text-sm text-slate-600 dark:text-gray-300 flex flex-wrap gap-4 mt-1">
                   <span>
                     Requiere{' '}
                     <strong className="text-slate-900 dark:text-white">
                       {combo.cantidad_items}
                     </strong>{' '}
                     ítems
+                  </span>
+                  <span>
+                    Precio fijo:{' '}
+                    <strong className="text-slate-900 dark:text-white">
+                      {formatARS(combo.precio_fijo)}
+                    </strong>
                   </span>
                   <span>
                     Estado:{' '}
@@ -454,48 +927,172 @@ const ComboEditarPermitidos = () => {
 
           {!loading && tab === 'asignados' && (
             <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white/75 dark:bg-white/10 backdrop-blur-md p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                    Precio fijo del combo
+                  </p>
+                  <p className="mt-2 text-2xl font-extrabold text-slate-900 dark:text-white">
+                    {formatARS(precioFijoCombo)}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white/75 dark:bg-white/10 backdrop-blur-md p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                    Subtotal configurado
+                  </p>
+                  <p className="mt-2 text-2xl font-extrabold text-slate-900 dark:text-white">
+                    {formatARS(subtotalConfigurado)}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white/75 dark:bg-white/10 backdrop-blur-md p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                    Diferencia contra combo
+                  </p>
+                  <p
+                    className={`mt-2 text-2xl font-extrabold ${
+                      diferenciaCombo === 0
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : diferenciaCombo > 0
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-red-600 dark:text-red-400'
+                    }`}
+                  >
+                    {formatARS(diferenciaCombo)}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
+                    {diferenciaCombo === 0
+                      ? 'La distribución coincide con el precio fijo del combo.'
+                      : diferenciaCombo > 0
+                        ? 'Todavía falta distribuir este importe dentro del combo.'
+                        : 'La suma de ítems supera el precio fijo del combo.'}
+                  </p>
+                </div>
+              </div>
+
               {asignados.length === 0 ? (
                 <div className="bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl p-6 text-slate-600 dark:text-gray-300 backdrop-blur-md">
                   Aún no asignaste productos o categorías a este combo.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                  {asignados.map((item) => (
-                    <div
-                      key={item.id}
-                      className="bg-white/70 dark:bg-white/10 p-4 rounded-xl border border-black/10 dark:border-white/10 backdrop-blur-md"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="text-sm text-slate-900 dark:text-white">
-                          {item.producto ? (
-                            <>
-                              <FaBoxOpen className="inline-block mr-2 text-emerald-600 dark:text-green-400" />
-                              <span className="font-semibold">
-                                {item.producto.nombre}
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <FaFolderOpen className="inline-block mr-2 text-blue-600 dark:text-blue-400" />
-                              <span className="font-semibold">
-                                {item.categoria?.nombre}
-                              </span>
-                            </>
-                          )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
+                  {asignados.map((item) => {
+                    const subtotalItem = getSubtotalAsignado(item);
+                    const productoTarjeta = item?.producto
+                      ? getPrecioTarjetaActual(item.producto)
+                      : 0;
+                    const productoEfectivo = item?.producto
+                      ? getBaseEfectivoDesdeTarjeta(item.producto)
+                      : 0;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="bg-white/70 dark:bg-white/10 p-4 rounded-xl border border-black/10 dark:border-white/10 backdrop-blur-md"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="text-sm text-slate-900 dark:text-white">
+                            {item.producto ? (
+                              <>
+                                <FaBoxOpen className="inline-block mr-2 text-emerald-600 dark:text-green-400" />
+                                <span className="font-semibold">
+                                  {item.producto.nombre}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <FaFolderOpen className="inline-block mr-2 text-blue-600 dark:text-blue-400" />
+                                <span className="font-semibold">
+                                  {item.categoria?.nombre}
+                                </span>
+                              </>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <button
+                              className="text-slate-600 hover:text-slate-900 dark:text-gray-300 dark:hover:text-white"
+                              onClick={() => editarAsignado(item)}
+                              title="Editar"
+                              type="button"
+                            >
+                              <FaEdit />
+                            </button>
+
+                            <button
+                              className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                              onClick={() => eliminarAsignado(item.id)}
+                              title="Eliminar"
+                              type="button"
+                            >
+                              <FaTrashAlt />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                            onClick={() => eliminarAsignado(item.id)}
-                            title="Eliminar"
-                            type="button"
-                          >
-                            <FaTrashAlt />
-                          </button>
+
+                        <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                          <div className="rounded-xl bg-slate-50 dark:bg-white/5 border border-black/5 dark:border-white/10 p-3">
+                            <p className="text-slate-500 dark:text-gray-400">
+                              Cantidad inicial
+                            </p>
+                            <p className="mt-1 text-base font-bold text-slate-900 dark:text-white">
+                              {item.cantidad_inicial_carrito || 1}
+                            </p>
+                          </div>
+
+                          <div className="rounded-xl bg-slate-50 dark:bg-white/5 border border-black/5 dark:border-white/10 p-3">
+                            <p className="text-slate-500 dark:text-gray-400">
+                              Orden
+                            </p>
+                            <p className="mt-1 text-base font-bold text-slate-900 dark:text-white">
+                              {item.orden || 1}
+                            </p>
+                          </div>
+
+                          <div className="rounded-xl bg-slate-50 dark:bg-white/5 border border-black/5 dark:border-white/10 p-3">
+                            <p className="text-slate-500 dark:text-gray-400">
+                              Precio unitario combo
+                            </p>
+                            <p className="mt-1 text-base font-bold text-purple-700 dark:text-purple-300">
+                              {formatARS(item.precio_unitario_combo)}
+                            </p>
+                          </div>
+
+                          <div className="rounded-xl bg-slate-50 dark:bg-white/5 border border-black/5 dark:border-white/10 p-3">
+                            <p className="text-slate-500 dark:text-gray-400">
+                              Subtotal ítem combo
+                            </p>
+                            <p className="mt-1 text-base font-bold text-slate-900 dark:text-white">
+                              {formatARS(subtotalItem)}
+                            </p>
+                          </div>
                         </div>
+
+                        {item.producto && (
+                          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div className="rounded-xl bg-emerald-50/70 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 p-3">
+                              <p className="text-emerald-700 dark:text-emerald-300">
+                                Precio tarjeta actual
+                              </p>
+                              <p className="mt-1 text-base font-bold text-emerald-800 dark:text-emerald-200">
+                                {formatARS(productoTarjeta)}
+                              </p>
+                            </div>
+
+                            <div className="rounded-xl bg-blue-50/70 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 p-3">
+                              <p className="text-blue-700 dark:text-blue-300">
+                                Base efectivo actual
+                              </p>
+                              <p className="mt-1 text-base font-bold text-blue-800 dark:text-blue-200">
+                                {formatARS(productoEfectivo)}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </>
@@ -553,24 +1150,69 @@ const ComboEditarPermitidos = () => {
               ) : (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {pageItemsProd.map((p) => (
-                      <div
-                        key={p.id}
-                        className="bg-white/80 dark:bg-white/10 p-3 rounded-xl flex justify-between items-center border border-black/10 dark:border-white/10"
-                      >
-                        <span className="text-sm text-slate-900 dark:text-white">
-                          {p.nombre}
-                        </span>
-                        <button
-                          onClick={() => agregarProducto(p.id)}
-                          className="text-emerald-600 hover:text-emerald-700 dark:text-green-400 dark:hover:text-green-300"
-                          title="Agregar producto al combo"
-                          type="button"
+                    {pageItemsProd.map((p) => {
+                      const precioTarjeta = getPrecioTarjetaActual(p);
+                      const baseEfectivo = getBaseEfectivoDesdeTarjeta(p);
+                      const yaAsignado = (asignados || []).some(
+                        (a) =>
+                          Number(a?.producto?.id || a?.producto_id) ===
+                          Number(p.id)
+                      );
+
+                      return (
+                        <div
+                          key={p.id}
+                          className="bg-white/80 dark:bg-white/10 p-4 rounded-xl border border-black/10 dark:border-white/10 flex flex-col gap-3"
                         >
-                          <FaPlusCircle />
-                        </button>
-                      </div>
-                    ))}
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white leading-snug">
+                              {p.nombre}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
+                              {p?.categoria?.nombre || 'Sin categoría'}
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="rounded-lg border border-black/5 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-2">
+                              <p className="text-slate-500 dark:text-gray-400">
+                                Tarjeta actual
+                              </p>
+                              <p className="font-bold text-slate-900 dark:text-white mt-1">
+                                {formatARS(precioTarjeta)}
+                              </p>
+                            </div>
+
+                            <div className="rounded-lg border border-black/5 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-2">
+                              <p className="text-slate-500 dark:text-gray-400">
+                                Base efectivo
+                              </p>
+                              <p className="font-bold text-slate-900 dark:text-white mt-1">
+                                {formatARS(baseEfectivo)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => agregarProducto(p)}
+                            className={`mt-auto inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                              yaAsignado
+                                ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                            }`}
+                            title={
+                              yaAsignado
+                                ? 'Ya asignado. Se abrirá la edición.'
+                                : 'Agregar producto al combo'
+                            }
+                            type="button"
+                          >
+                            <FaPlusCircle />
+                            {yaAsignado ? 'Editar asignación' : 'Asignar'}
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <PageSelector
@@ -624,7 +1266,7 @@ const ComboEditarPermitidos = () => {
                           {c.nombre}
                         </span>
                         <button
-                          onClick={() => agregarCategoria(c.id)}
+                          onClick={() => agregarCategoria(c)}
                           className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                           title="Agregar categoría al combo"
                           type="button"
