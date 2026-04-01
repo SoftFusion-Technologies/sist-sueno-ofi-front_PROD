@@ -1118,7 +1118,17 @@ export default function PuntoVenta() {
           recargo_tarjeta_pct_referencia: toNum(
             item?.recargo_tarjeta_pct_referencia,
             recargoTarjetaPct
-          )
+          ),
+          cantidad_base_combo: isComboItem
+            ? Math.max(
+                1,
+                toNum(
+                  linea?.cantidad_base_combo,
+                  item?.cantidad_inicial_combo,
+                  nuevaCant
+                )
+              )
+            : 0
         };
 
         const copia = prev.slice();
@@ -1196,7 +1206,10 @@ export default function PuntoVenta() {
         recargo_tarjeta_pct_referencia: toNum(
           item?.recargo_tarjeta_pct_referencia,
           recargoTarjetaPct
-        )
+        ),
+        cantidad_base_combo: isComboItem
+          ? Math.max(1, toNum(item?.cantidad_inicial_combo, cantInicial))
+          : 0
       };
 
       return [...prev, nuevaLinea];
@@ -1350,7 +1363,9 @@ export default function PuntoVenta() {
   /*
    * Benjamin Orellana - 31 / 03 / 2026 - Si el usuario incrementa una línea
    * de combo, el excedente se crea o acumula como línea NORMAL al precio tarjeta,
-   * manteniendo intacta la cantidad incluida del combo.
+   * manteniendo intacta la cantidad incluida del combo. Si decrementa una línea
+   * de combo, primero descuenta extras normales del mismo stock y nunca permite
+   * bajar por debajo de la cantidad base incluida en el combo.
    */
   const cambiarCantidad = (lineId, delta) =>
     setCarrito((prev) => {
@@ -1367,20 +1382,25 @@ export default function PuntoVenta() {
         !!linea?.combo_id;
 
       const deltaNum = toNum(delta, 0);
+      const baseComboQty = esCombo
+        ? Math.max(1, toNum(linea?.cantidad_base_combo, 1))
+        : 0;
 
-      // Caso especial: sumar sobre línea combo => crear/incrementar línea normal
+      const normalLineKey = buildCartLineKey({
+        stock_id: linea?.stock_id,
+        combo_id: null,
+        combo_perm_id: null,
+        origen_precio: 'NORMAL'
+      });
+
+      const idxNormal = prev.findIndex(
+        (it) => (it.line_key || it.stock_id) === normalLineKey
+      );
+
+      // =========================================================
+      // SUMAR SOBRE LÍNEA COMBO => CREA / AUMENTA LÍNEA NORMAL
+      // =========================================================
       if (esCombo && deltaNum > 0) {
-        const normalLineKey = buildCartLineKey({
-          stock_id: linea?.stock_id,
-          combo_id: null,
-          combo_perm_id: null,
-          origen_precio: 'NORMAL'
-        });
-
-        const idxNormal = prev.findIndex(
-          (it) => (it.line_key || it.stock_id) === normalLineKey
-        );
-
         const cantidadConsumidaPorOtrasLineas = prev.reduce(
           (acc, it, index) => {
             if (index === idx) return acc;
@@ -1433,7 +1453,63 @@ export default function PuntoVenta() {
         );
       }
 
-      // Flujo estándar para líneas normales o decrementos
+      // =========================================================
+      // RESTAR SOBRE LÍNEA COMBO
+      // 1) Si hay extras normales del mismo stock, descuenta primero ahí
+      // 2) Si no hay extras, NO permite bajar del mínimo del combo
+      // =========================================================
+      if (esCombo && deltaNum < 0) {
+        const copia = prev.slice();
+
+        if (idxNormal !== -1) {
+          const normalLine = copia[idxNormal];
+          const nuevaCantNormal = Math.max(
+            0,
+            toNum(normalLine?.cantidad, 0) + deltaNum
+          );
+
+          if (nuevaCantNormal > 0) {
+            copia[idxNormal] = {
+              ...normalLine,
+              cantidad: nuevaCantNormal,
+              subtotal_real_referencia: round2(
+                toNum(normalLine?.precio_unitario_real, 0) * nuevaCantNormal
+              )
+            };
+          } else {
+            copia.splice(idxNormal, 1);
+          }
+
+          return copia.filter((it) => toNum(it?.cantidad, 0) > 0);
+        }
+
+        // Sin extras normales: no romper la cantidad base del combo
+        if (toNum(linea?.cantidad, 0) <= baseComboQty) {
+          return prev;
+        }
+
+        const nuevaCantCombo = Math.max(
+          baseComboQty,
+          toNum(linea?.cantidad, 0) + deltaNum
+        );
+
+        copia[idx] = {
+          ...linea,
+          cantidad: nuevaCantCombo,
+          subtotal_real_referencia: round2(
+            toNum(linea?.precio_unitario_real, 0) * nuevaCantCombo
+          ),
+          subtotal_combo_referencia: round2(
+            toNum(linea?.precio_unitario_combo, 0) * nuevaCantCombo
+          )
+        };
+
+        return copia.filter((it) => toNum(it?.cantidad, 0) > 0);
+      }
+
+      // =========================================================
+      // FLUJO NORMAL PARA LÍNEAS NO COMBO
+      // =========================================================
       return prev
         .map((it) =>
           (it.line_key || it.stock_id) === lineId
@@ -1452,10 +1528,56 @@ export default function PuntoVenta() {
         .filter((it) => toNum(it.cantidad, 0) > 0);
     });
 
-  const quitarProducto = (lineId) =>
+  /*
+   * Benjamin Orellana - 31 / 03 / 2026 - Si se quita una línea de combo,
+   * se elimina el combo completo del carrito y también su registro en
+   * combosSeleccionados para no dejar combos incompletos que rompan el cálculo.
+   * Las líneas normales extra se conservan.
+   */
+  const quitarProducto = (lineId) => {
+    const linea = carrito.find((i) => (i.line_key || i.stock_id) === lineId);
+    if (!linea) return;
+
+    const esCombo =
+      String(linea?.origen_precio || '').toUpperCase() === 'COMBO' ||
+      !!linea?.is_combo_item ||
+      !!linea?.combo_id;
+
+    if (!esCombo) {
+      setCarrito((prev) =>
+        prev.filter((i) => (i.line_key || i.stock_id) !== lineId)
+      );
+      return;
+    }
+
+    const comboIdToRemove = Number(linea?.combo_id || 0) || null;
+    if (!comboIdToRemove) {
+      setCarrito((prev) =>
+        prev.filter((i) => (i.line_key || i.stock_id) !== lineId)
+      );
+      return;
+    }
+
     setCarrito((prev) =>
-      prev.filter((i) => (i.line_key || i.stock_id) !== lineId)
+      prev.filter((i) => {
+        const isComboLine =
+          String(i?.origen_precio || '').toUpperCase() === 'COMBO' ||
+          !!i?.is_combo_item ||
+          !!i?.combo_id;
+
+        // solo elimina las líneas base del combo
+        if (isComboLine && Number(i?.combo_id || 0) === comboIdToRemove) {
+          return false;
+        }
+
+        return true;
+      })
     );
+
+    setCombosSeleccionados((prev) =>
+      prev.filter((c) => Number(c?.combo_id ?? c?.id ?? 0) !== comboIdToRemove)
+    );
+  };
 
   const total = carrito.reduce((sum, i) => sum + i.precio * i.cantidad, 0);
 
@@ -2132,7 +2254,8 @@ export default function PuntoVenta() {
       let payload = {
         carrito: carritoNormalizado,
         medio_pago_id: medioPago,
-        cuotas: cuotasSeleccionadas
+        cuotas: cuotasSeleccionadas,
+        combos: []
       };
 
       const parsePct = (v) => {
