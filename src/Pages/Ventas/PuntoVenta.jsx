@@ -3512,1373 +3512,1474 @@ export default function PuntoVenta() {
     // Benjamin Orellana - 2026-02-17 - Fondo y color base compatibles con light/dark sin romper el estilo del POS
     <>
       <NavbarStaff></NavbarStaff>
+
+      {/* Benjamin Orellana - 2026-04-01 - Reorganiza el Punto de Venta en tres zonas operativas claras: cabecera comercial, área de búsqueda/resultados y panel lateral de cierre, sin alterar la lógica existente. */}
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 sm:p-6 text-slate-900 dark:from-gray-900 dark:to-gray-800 dark:text-white">
         <ParticlesBackground />
-        {/* <ButtonBack /> */}
 
-        {/* Benjamin Orellana - 2026-02-17 - Título legible en light y conserva acento emerald en dark */}
-        <h1 className="text-3xl font-bold mb-6 titulo uppercase flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
-          <FaCashRegister /> Punto de Venta
-        </h1>
-
-        <div className="mb-4 w-full max-w-2xl">
-          {/* Benjamin Orellana - 2026-02-17 - Label con contraste correcto en light/dark */}
-          <label className="block text-xl font-bold mb-1 text-slate-700 dark:text-gray-200">
-            Cliente
-          </label>
-
-          <div className="relative w-full max-w-3xl mb-6 flex items-center gap-2">
-            {/* Input + icono */}
-            <div className="relative flex-grow">
-              <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400 text-lg" />
-
-              {/* Benjamin Orellana - 2026-02-17 - Input tema-aware: claro (bg blanco + texto oscuro), oscuro (bg dark + texto claro) */}
-              <input
-                type="text"
-                placeholder="Buscar cliente por nombre, DNI o teléfono…"
-                value={busquedaCliente}
-                onChange={handleBusquedaCliente}
-                onKeyDown={handleBusquedaKeyDown}
-                onBlur={handleBlurCliente}
-                onFocus={handleFocusCliente}
-                className="
-              pl-10 pr-10 py-3 w-full rounded-xl shadow
-              bg-white text-slate-900 placeholder-slate-400
-              ring-1 ring-black/10
-              focus:outline-none focus:ring-2 focus:ring-emerald-500
-              dark:bg-[#232323] dark:text-slate-100 dark:placeholder-slate-400
-              dark:ring-white/10
-            "
-                autoComplete="off"
-              />
-
-              {/* Loading pill */}
-              {isSearchingCliente && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] px-2 py-1 rounded-full bg-emerald-600/10 text-emerald-700 ring-1 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-400/20">
-                  Buscando…
-                </div>
-              )}
-
-              {/* Cliente seleccionado */}
-              {clienteSeleccionado?.id && (
-                <div className="mt-2 rounded-xl bg-emerald-600/10 ring-1 ring-emerald-600/20 px-3 py-2 text-emerald-800 text-sm flex items-center justify-between gap-3 dark:bg-emerald-500/10 dark:ring-emerald-500/20 dark:text-emerald-200">
-                  <div className="truncate">
-                    <span className="font-bold">Seleccionado:</span>{' '}
-                    <span className="text-emerald-800/90 dark:text-emerald-100/90">
-                      {labelCliente(clienteSeleccionado)}
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setClienteSeleccionado(null);
-                      setBusquedaCliente('');
-                      setSugerencias([]);
-                    }}
-                    // Benjamin Orellana - 2026-02-17 - Botón "Quitar" visible en light y consistente en dark
-                    className="text-xs font-bold px-3 py-1 rounded-lg bg-slate-900/5 hover:bg-slate-900/10 ring-1 ring-black/10 text-slate-700 dark:bg-white/10 dark:hover:bg-white/15 dark:ring-white/10 dark:text-white/90"
-                  >
-                    Quitar
-                  </button>
-                </div>
-              )}
-
-              {/* SUGERENCIAS PRO */}
-              {sugerencias.length > 0 && (
-                // Benjamin Orellana - 2026-02-17 - Dropdown tema-aware para mantener legibilidad (light) y look pro (dark)
-                <div className="absolute z-20 left-0 right-0 mt-2 rounded-2xl overflow-hidden border border-emerald-600/20 bg-white/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.18)] dark:border-emerald-500/25 dark:bg-[#101010]/95 dark:shadow-[0_18px_60px_rgba(0,0,0,0.55)]">
-                  <div className="px-3 py-2 text-xs text-slate-500 flex items-center justify-between dark:text-white/55">
-                    <span>Resultados ({sugerencias.length})</span>
-                    <span className="text-slate-400 dark:text-white/35">
-                      Click para seleccionar
-                    </span>
-                  </div>
-
-                  <ul className="max-h-72 overflow-auto">
-                    {sugerencias.map((cli) => {
-                      const dni = cli?.dni ? onlyDigits(cli.dni) : '';
-                      const tel = cli?.telefono ? onlyDigits(cli.telefono) : '';
-                      const badge = dni
-                        ? `DNI ${dni}`
-                        : tel
-                          ? `Tel ${tel}`
-                          : 'Sin doc/tel';
-
-                      return (
-                        <li
-                          key={cli.id}
-                          onMouseDown={() => seleccionarCliente(cli)} // evita que blur cierre antes del click
-                          className="group px-4 py-3 cursor-pointer border-t border-black/5 hover:bg-emerald-600/10 transition dark:border-white/5 dark:hover:bg-emerald-500/10"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="text-slate-900 font-semibold truncate dark:text-gray-100">
-                                {cli.nombre}
-                              </div>
-                              <div className="text-xs text-slate-500 truncate dark:text-white/45">
-                                {cli.email || cli.direccion || '—'}
-                              </div>
-                            </div>
-
-                            <span className="shrink-0 text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-600/10 text-emerald-700 ring-1 ring-emerald-600/20 group-hover:bg-emerald-600/15 dark:bg-emerald-500/12 dark:text-emerald-200 dark:ring-emerald-400/20 dark:group-hover:bg-emerald-500/18">
-                              {badge}
-                            </span>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* Botón "Nuevo" alineado a la derecha */}
-            <button
-              type="button"
-              onClick={abrirModalNuevoCliente}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold shadow transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-              title="Agregar nuevo cliente"
-            >
-              <FaUserPlus /> Nuevo Cliente
-            </button>
-
-            {/* Indicador interno: verde=fiscal, rojo=modo interno */}
-            <div className="mt-2 flex items-center gap-2">
-              <span
-                className={[
-                  'inline-block h-3 w-3 rounded-full ring-1',
-                  cbteTipoSolicitado == null
-                    ? 'bg-red-500 ring-red-300/40'
-                    : 'bg-emerald-500 ring-emerald-300/40'
-                ].join(' ')}
-              />
-            </div>
-          </div>
-
-          <div className="mt-2">
-            {clienteSeleccionado ? (
-              <div className="flex items-center gap-3 text-emerald-700 dark:text-emerald-400">
-                <FaCheckCircle className="text-emerald-600 dark:text-emerald-500" />
-                <span className="text-slate-800 dark:text-white/90">
-                  {clienteSeleccionado.nombre} ({clienteSeleccionado.dni})
-                </span>
-                <button
-                  className="ml-4 text-xs text-emerald-700 underline hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
-                  onClick={() => setClienteSeleccionado(null)}
-                >
-                  Cambiar
-                </button>
-              </div>
-            ) : esVentaCtaCte ? (
-              // Benjamin Orellana - 16-03-2026 - En cuenta corriente el cliente deja de ser opcional y se comunica visualmente.
-              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-300">
-                <FaUserAlt />
-                <span>Cuenta corriente requiere un cliente seleccionado.</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-slate-500 dark:text-gray-400">
-                <FaUserAlt />
-                <span>
-                  Cliente no seleccionado (
-                  <b className="text-emerald-600 dark:text-emerald-400">
-                    Consumidor Final
-                  </b>
-                  )
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* lector de codigo de barras invicible */}
-        <div>
-          <input
-            ref={inputRef}
-            type="text"
-            style={{
-              opacity: 0,
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              width: 1,
-              height: 1,
-              pointerEvents: 'none'
-            }}
-            onBlur={() => setModoEscaner(false)}
-            onKeyDown={handleKeyDown}
-          />
-        </div>
-
-        {/* Buscador por fuera*/}
-        <div className="w-full max-w-3xl mb-6 sm:mx-0 mx-auto">
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-            <div className="relative flex-grow">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-emerald-600 dark:text-emerald-500 text-lg" />
-              {/* Benjamin Orellana - 2026-02-17 - Buscador tema-aware: no queda “demasiado blanco” en dark */}
-              <input
-                ref={buscadorRef}
-                type="text"
-                placeholder="Buscar por nombre, SKU o ID..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                className="
-              pl-10 pr-4 py-3 w-full rounded-xl shadow-md
-              bg-white/90 text-gray-900 placeholder-gray-500
-              focus:outline-none focus:ring-2 focus:ring-emerald-500
-              dark:bg-white/10 dark:text-white dark:placeholder-white/45
-              dark:ring-1 dark:ring-white/10
-              dark:focus:ring-emerald-400
-            "
-                onFocus={() => setModoEscaner(false)}
-              />
-            </div>
-
-            {/* Benjamin Orellana - 2026-02-17 - Refuerza compatibilidad visual (fallback de background + evita flex gap) para que el texto no se pierda en navegadores viejos. */}
-
-            {/* Botón principal */}
-            <button
-              onClick={abrirModalVerProductos}
-              className="
-    w-full sm:w-auto px-3 py-2 rounded-xl font-bold text-white
-    min-h-[44px]
-    bg-emerald-600 bg-gradient-to-br from-emerald-500 to-emerald-600
-    shadow-md transition
-    hover:bg-emerald-700 hover:from-emerald-600 hover:to-emerald-700
-    hover:scale-105
-    focus:ring-2 focus:ring-emerald-400 focus:outline-none
-  "
-              type="button"
-            >
-              <span className="inline-flex items-center space-x-1">
-                <FaBoxOpen className="shrink-0 -ml-1" />
-                <span className="whitespace-nowrap">Ver Productos</span>
-              </span>
-            </button>
-
-            <button
-              onClick={abrirModalVerCombos}
-              className="
-    w-full sm:w-auto px-3 py-2 rounded-xl font-bold text-white
-    min-h-[44px]
-    bg-purple-600 bg-gradient-to-br from-purple-500 to-purple-600
-    shadow-md transition
-    hover:bg-purple-700 hover:from-purple-600 hover:to-purple-700
-    hover:scale-105
-    focus:ring-2 focus:ring-purple-400 focus:outline-none
-  "
-              type="button"
-            >
-              <span className="inline-flex items-center space-x-1">
-                <FaCubes className="shrink-0 -ml-1" />
-                <span className="whitespace-nowrap">Ver Combos</span>
-              </span>
-            </button>
-
-            <button
-              onClick={() => setModalStockOpen(true)}
-              className="
-    w-full sm:w-auto px-3 py-2 rounded-xl font-bold text-white
-    min-h-[44px]
-    bg-sky-600 bg-gradient-to-br from-sky-500 to-sky-600
-    shadow-md transition
-    hover:bg-sky-700 hover:from-sky-600 hover:to-sky-700
-    hover:scale-105
-    focus:ring-2 focus:ring-sky-400 focus:outline-none
-  "
-              type="button"
-              title="Consultar stock"
-            >
-              <span className="inline-flex items-center space-x-1">
-                <FaWarehouse className="shrink-0 -ml-1" />
-                <span className="whitespace-nowrap">Consultar Stock</span>
-              </span>
-            </button>
-
-            <button
-              onClick={() => setModalCBUsOpen(true)}
-              className="
-    w-full sm:w-auto px-3 py-2 rounded-xl font-bold text-white
-    min-h-[44px]
-    bg-amber-600 bg-gradient-to-br from-amber-500 to-amber-600
-    shadow-md transition
-    hover:bg-amber-700 hover:from-amber-600 hover:to-amber-700
-    hover:scale-105
-    focus:ring-2 focus:ring-amber-400 focus:outline-none
-  "
-              type="button"
-              title="Consultar CBUs"
-            >
-              <span className="inline-flex items-center space-x-1">
-                <FaMoneyCheckAlt className="shrink-0 -ml-1" />
-                <span className="whitespace-nowrap">Consultar CBUs</span>
-              </span>
-            </button>
-
-            {/* Botón escanear */}
-            <button
-              onClick={() => setModoEscaner(true)}
-              className={`
-    inline-flex items-center space-x-1 w-full sm:w-auto
-    px-4 py-2 rounded-xl border-2 font-semibold shadow-sm transition
-    min-h-[44px]
-    ${
-      modoEscaner
-        ? 'border-emerald-500 ring-2 ring-emerald-300 bg-emerald-50 text-emerald-800 scale-105 dark:bg-emerald-500/15 dark:ring-emerald-400/20 dark:text-emerald-200'
-        : 'border-gray-200 bg-white text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 dark:border-white/10 dark:bg-white/10 dark:text-emerald-200 dark:hover:bg-white/15'
-    }
-  `}
-              type="button"
-            >
-              <FaBarcode className="shrink-0" />
-              <span className="whitespace-nowrap">Escanear</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Productos y Carrito */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            {/* Header */}
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold titulo uppercase tracking-wide text-slate-900 dark:text-white">
-                  Productos
-                </h2>
-
-                {/* Benjamin Orellana - 2026-02-17 - Ajusta contraste del helper de resultados para light/dark */}
-                <div className="text-[12px] text-slate-500 dark:text-slate-300/70">
-                  {productos.length > 0
-                    ? `${productos.length} resultado${productos.length === 1 ? '' : 's'}`
-                    : 'Sin resultados'}
-                </div>
-              </div>
-
-              <div className="hidden sm:flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-300/70">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-black/10 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-white/5">
-                  <span className="h-2 w-2 rounded-full bg-rose-500/90 dark:bg-rose-400" />
-                  Desarrollado por SOFTFUSION +54 9 3815 43-0503
-                </span>
-              </div>
-            </div>
-
-            {/* Benjamin Orellana - 21-03-2026 - Resultados de búsqueda de productos en formato tabular operativo para selección exacta en POS, con soporte completo light/dark y lectura rápida por códigos, ubicación, stock y precio. */}
-            <div className="relative">
-              <DragScrollX
-                className="max-h-[128vh]"
-                innerClassName="min-w-[1320px]"
-              >
-                <table className="w-full min-w-[1320px] border-separate border-spacing-0 text-sm text-slate-900 dark:text-slate-100">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800/95">
-                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
-                        Producto
-                      </th>
-
-                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
-                        Códigos
-                      </th>
-
-                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
-                        Ubicación
-                      </th>
-
-                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
-                        Stock
-                      </th>
-
-                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
-                        Precio
-                      </th>
-
-                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
-                        Descuento
-                      </th>
-
-                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-right text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
-                        Acción
-                      </th>
-                      <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
-                        Otros locales
-                      </th>
-                      <th className="sticky top-0 z-30 border-b border-slate-200 bg-slate-50 px-4 py-3 text-center text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
-                        Agregar rápido
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {productos.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={9}
-                          className="border-b border-slate-100 px-4 py-8 text-center text-slate-500 dark:border-white/10 dark:text-slate-400"
-                        >
-                          Sin resultados…
-                        </td>
-                      </tr>
-                    )}
-
-                    {productos.map((producto, idx) => {
-                      const tieneDescuento =
-                        Number(producto.descuento_porcentaje || 0) > 0 &&
-                        Number(producto.precio_con_descuento || 0) <
-                          Number(
-                            producto.precio_tarjeta || producto.precio || 0
-                          );
-
-                      const usarDescuento =
-                        usarDescuentoPorProducto[producto.producto_id] ?? true;
-
-                      const canSeePrices = userLevel !== 'vendedor';
-
-                      const coincidenciaBadgeClass =
-                        producto.tipo_coincidencia === 'CB'
-                          ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-400/40 dark:bg-sky-500/15 dark:text-sky-300'
-                          : producto.tipo_coincidencia === 'CI'
-                            ? 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-300'
-                            : producto.tipo_coincidencia === 'SKU'
-                              ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300'
-                              : 'border-slate-200 bg-slate-100 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200';
-
-                      const cantidadNum =
-                        Number(producto.cantidad_disponible ?? 0) || 0;
-
-                      const cantidadFormateada = Number.isInteger(cantidadNum)
-                        ? cantidadNum.toLocaleString('es-AR', {
-                            maximumFractionDigits: 0
-                          })
-                        : cantidadNum.toLocaleString('es-AR', {
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 2
-                          });
-
-                      const sinStock = cantidadNum <= 0;
-                      const stickyRowBg =
-                        idx % 2 === 0
-                          ? 'bg-white dark:bg-slate-900/95'
-                          : 'bg-slate-50 dark:bg-slate-800/95';
-                      return (
-                        <tr
-                          key={producto.stock_id}
-                          className={[
-                            'align-top transition-colors',
-                            idx % 2 === 0
-                              ? 'bg-white dark:bg-slate-900/50'
-                              : 'bg-slate-50/60 dark:bg-slate-800/35',
-                            'hover:bg-emerald-50/50 dark:hover:bg-emerald-500/10'
-                          ].join(' ')}
-                        >
-                          {/* PRODUCTO */}
-                          <td className="min-w-[280px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
-                            <div className="space-y-1">
-                              <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                                {producto.nombre}
-                              </div>
-
-                              <div className="flex flex-wrap gap-2">
-                                <span
-                                  className={`inline-flex rounded-full border px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-wide ${coincidenciaBadgeClass}`}
-                                >
-                                  {producto.tipo_coincidencia || 'GENERAL'}
-                                </span>
-
-                                {producto.coincidencia_label ? (
-                                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[0.68rem] text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
-                                    {producto.coincidencia_label}
-                                  </span>
-                                ) : null}
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* CODIGOS */}
-                          <td className="min-w-[290px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
-                            <div className="space-y-1 text-xs">
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-slate-600 dark:text-slate-400">
-                                  Cód. Interno:
-                                </span>
-                                <span className="font-mono text-slate-900 dark:text-slate-100">
-                                  {producto.codigo_interno ?? '—'}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-slate-600 dark:text-slate-400">
-                                  Cód. Barra:
-                                </span>
-                                <span className="font-mono text-slate-900 dark:text-slate-100 break-all">
-                                  {producto.codigo_barra || '—'}
-                                </span>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* UBICACION */}
-                          <td className="min-w-[230px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
-                            <div className="space-y-1 text-xs">
-                              <div>
-                                <span className="font-semibold text-slate-600 dark:text-slate-400">
-                                  Local:
-                                </span>{' '}
-                                <span className="text-slate-900 dark:text-slate-100">
-                                  {producto.local_nombre || '—'}
-                                </span>
-                              </div>
-
-                              <div>
-                                <span className="font-semibold text-slate-600 dark:text-slate-400">
-                                  Lugar:
-                                </span>{' '}
-                                <span className="text-slate-900 dark:text-slate-100">
-                                  {producto.lugar_nombre || '—'}
-                                </span>
-                              </div>
-
-                              <div>
-                                <span className="font-semibold text-slate-600 dark:text-slate-400">
-                                  Estado:
-                                </span>{' '}
-                                <span className="text-slate-900 dark:text-slate-100">
-                                  {producto.estado_nombre || '—'}
-                                </span>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* STOCK */}
-                          <td className="min-w-[160px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
-                            <div className="space-y-2">
-                              <div
-                                className={
-                                  sinStock
-                                    ? 'text-sm font-bold text-red-700 dark:text-red-300'
-                                    : 'text-sm font-bold text-emerald-700 dark:text-emerald-300'
-                                }
-                              >
-                                {cantidadFormateada}{' '}
-                              </div>
-
-                              <span
-                                className={[
-                                  'inline-flex rounded-full border px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-wide',
-                                  sinStock
-                                    ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-400/40 dark:bg-red-500/15 dark:text-red-300'
-                                    : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300'
-                                ].join(' ')}
-                              >
-                                {sinStock ? 'Sin stock' : 'Disponible'}
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* PRECIO */}
-                          <td className="min-w-[240px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
-                            {canSeePrices ? (
-                              <div className="space-y-1 text-xs">
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="text-slate-500 dark:text-slate-400">
-                                    Tarjeta:
-                                  </span>
-                                  <span className="font-semibold text-slate-900 dark:text-slate-100">
-                                    {formatearPrecio(
-                                      getPrecioVentaBaseProducto(producto)
-                                    )}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="text-slate-500 dark:text-slate-400">
-                                    Contado:
-                                  </span>
-                                  <span className="font-bold text-emerald-700 dark:text-emerald-300">
-                                    {formatearPrecio(
-                                      Number(
-                                        producto?.precio_con_descuento ?? 0
-                                      ) || 0
-                                    )}
-                                  </span>
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-slate-400 dark:text-slate-500">
-                                Oculto para vendedor
-                              </span>
-                            )}
-                          </td>
-
-                          {/* DESCUENTO */}
-                          <td className="min-w-[180px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
-                            {tieneDescuento ? (
-                              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
-                                <div className="min-w-0">
-                                  <div className="font-semibold">
-                                    -
-                                    {Number(
-                                      producto.descuento_porcentaje
-                                    ).toFixed(2)}
-                                    %
-                                  </div>
-                                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                    Aplicar descuento
-                                  </div>
-                                </div>
-
-                                <input
-                                  type="checkbox"
-                                  checked={usarDescuento}
-                                  onChange={() =>
-                                    toggleDescuento(producto.producto_id)
-                                  }
-                                  className="h-4 w-4 accent-emerald-600 dark:accent-emerald-400"
-                                />
-                              </label>
-                            ) : (
-                              <span className="text-xs text-slate-400 dark:text-slate-500">
-                                No aplica
-                              </span>
-                            )}
-                          </td>
-
-                          {/* ACCION */}
-                          <td className="min-w-[140px] border-b border-slate-100 px-4 py-3 text-right dark:border-white/10">
-                            <button
-                              onClick={() =>
-                                manejarAgregarProducto(producto, usarDescuento)
-                              }
-                              className={[
-                                'inline-flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold',
-                                'border border-emerald-600/20 bg-emerald-600/10 text-emerald-700',
-                                'dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-200',
-                                'transition',
-                                sinStock
-                                  ? 'cursor-not-allowed opacity-40'
-                                  : 'hover:bg-emerald-600/15 hover:text-emerald-900 dark:hover:bg-emerald-500/25 dark:hover:text-white'
-                              ].join(' ')}
-                              title={
-                                sinStock ? 'Sin stock' : 'Agregar al carrito'
-                              }
-                              disabled={sinStock}
-                              aria-label="Agregar al carrito"
-                            >
-                              <FaPlus />
-                              Agregar
-                            </button>
-                          </td>
-                          {/* OTROS LOCALES */}
-                          <td className="min-w-[280px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
-                            {Array.isArray(producto.otros_locales_resumen) &&
-                            producto.otros_locales_resumen.length > 0 ? (
-                              <div className="space-y-2">
-                                {producto.otros_locales_resumen
-                                  .slice(0, 4)
-                                  .map((item) => (
-                                    <div
-                                      key={`${producto.stock_id}-${item.local_id}`}
-                                      className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-white/10 dark:bg-white/5"
-                                    >
-                                      <div className="flex items-center justify-between gap-3">
-                                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">
-                                          {item.local_nombre}
-                                        </span>
-
-                                        <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[0.68rem] font-bold text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">
-                                          {Number(
-                                            item.cantidad_disponible || 0
-                                          ).toLocaleString('es-AR', {
-                                            maximumFractionDigits: 0
-                                          })}{' '}
-                                          u
-                                        </span>
-                                      </div>
-
-                                      <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                                        Tarjeta:{' '}
-                                        <span className="font-semibold text-slate-700 dark:text-slate-200">
-                                          {formatearPrecio(
-                                            Number(item.precio_tarjeta || 0)
-                                          )}
-                                        </span>
-                                      </div>
-
-                                      {Number(item.precio_con_descuento || 0) >
-                                        0 && (
-                                        <div className="mt-0.5 text-[11px] text-emerald-700 dark:text-emerald-300">
-                                          Contado:{' '}
-                                          {formatearPrecio(
-                                            Number(
-                                              item.precio_con_descuento || 0
-                                            )
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-
-                                {producto.otros_locales_resumen.length > 4 && (
-                                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                    +{producto.otros_locales_resumen.length - 4}{' '}
-                                    locales más
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-xs text-slate-400 dark:text-slate-500">
-                                No disponible en otros locales
-                              </span>
-                            )}
-                          </td>
-                          {/* AGREGAR RAPIDO */}
-                          <td className="sticky right-0 z-10 min-w-[150px] border-b border-slate-100 bg-transparent px-3 py-3 text-center shadow-none dark:border-white/10">
-                            <div className="flex items-center justify-center">
-                              <button
-                                onClick={() =>
-                                  manejarAgregarProducto(
-                                    producto,
-                                    usarDescuento
-                                  )
-                                }
-                                className={[
-                                  'inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold',
-                                  'border border-emerald-500/40 bg-transparent text-emerald-700',
-                                  'dark:border-emerald-400/40 dark:bg-transparent dark:text-emerald-300',
-                                  'transition',
-                                  sinStock
-                                    ? 'cursor-not-allowed opacity-40'
-                                    : 'hover:scale-[1.02] hover:border-emerald-600 hover:bg-transparent hover:text-emerald-800 dark:hover:border-emerald-300 dark:hover:bg-transparent dark:hover:text-emerald-200'
-                                ].join(' ')}
-                                title={
-                                  sinStock ? 'Sin stock' : 'Agregar al carrito'
-                                }
-                                disabled={sinStock}
-                                aria-label="Agregar rápido al carrito"
-                              >
-                                <FaPlus />
-                                Agregar
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </DragScrollX>
-            </div>
-          </div>
-
-          {/* Carrito */}
-          <div className="bg-white/80 ring-1 ring-black/10 p-4 rounded-xl sticky top-24 h-fit space-y-4 text-slate-900 dark:bg-white/10 dark:ring-white/10 dark:text-white">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-xl font-semibold flex items-center gap-2 m-0 titulo uppercase">
-                <FaShoppingCart /> Carrito del cliente
-              </h2>
-
-              {/* Tuerca para abrir el modal */}
-              <button
-                className="p-2 rounded-full hover:bg-slate-900/5 text-xl shrink-0 dark:hover:bg-white/10"
-                title="Gestionar medios de pago"
-                onClick={() => setShowModal(true)}
-              >
-                <FaCog />
-              </button>
-            </div>
-
-            {hayComboEnCarrito && resumenComboCarrito && (
-              <div className="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-50 to-orange-50 p-4 ring-1 ring-amber-200/60 dark:from-amber-500/10 dark:to-orange-500/10 dark:border-amber-400/20 dark:ring-amber-400/10">
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <h3 className="text-sm font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
-                    Resumen del combo aplicado
-                  </h3>
-                  <span className="rounded-full px-3 py-1 text-xs font-semibold bg-amber-200/70 text-amber-900 dark:bg-amber-400/15 dark:text-amber-200">
-                    {carritoComboItems.length} líneas combo
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10">
-                    <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Precio real
-                    </p>
-                    <p className="mt-1 text-base font-extrabold text-slate-900 dark:text-white">
-                      {formatearPrecio(resumenComboCarrito.precioRealTotal)}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10">
-                    <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Precio combo
-                    </p>
-                    <p className="mt-1 text-base font-extrabold text-emerald-700 dark:text-emerald-300">
-                      {formatearPrecio(resumenComboCarrito.precioComboTotal)}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10">
-                    <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Descuento del combo
-                    </p>
-                    <p className="mt-1 text-base font-extrabold text-orange-700 dark:text-orange-300">
-                      {formatearPrecio(resumenComboCarrito.descuentoTotal)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {carrito.length === 0 ? (
-              <p className="text-slate-500 dark:text-gray-400">
-                Aún no hay artículos - ítems {carrito.length}
+        <div className="mx-auto max-w-[1800px] space-y-6">
+          {/* Benjamin Orellana - 2026-04-01 - Encabezado más limpio con título, contexto y accesos rápidos visuales para reducir la sensación de pantalla apretada. */}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-1">
+              <h1 className="text-3xl sm:text-4xl font-bold titulo uppercase flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
+                <FaCashRegister /> Punto de Venta
+              </h1>
+              <p className="text-sm text-slate-600 dark:text-slate-300/70">
+                Buscá, seleccioná, cobr&aacute; y finaliz&aacute; la venta desde
+                una vista m&aacute;s clara.
               </p>
-            ) : (
-              <div className="max-h-64 overflow-y-auto pr-1 space-y-3">
-                <p className="text-slate-500 dark:text-gray-400">
-                  Ítems: {carrito.length}
-                </p>
+            </div>
 
-                {carrito.map((item) => {
-                  const esCombo =
-                    String(item?.origen_precio || '').toUpperCase() === 'COMBO';
-                  const precioReferenciaCombo = toNum(
-                    item?.precio_tarjeta_referencia,
-                    item?.precio_tarjeta,
-                    item?.precio_unitario_real,
-                    item?.precio_lista,
-                    0
-                  );
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white/80 px-3 py-2 text-xs font-medium text-slate-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white/80">
+                <span
+                  className={[
+                    'inline-block h-2.5 w-2.5 rounded-full',
+                    cbteTipoSolicitado == null ? 'bg-red-500' : 'bg-emerald-500'
+                  ].join(' ')}
+                />
+                {cbteTipoSolicitado == null ? 'Modo interno' : 'Modo fiscal'}
+              </span>
 
-                  const precioComboUnit = toNum(
-                    item?.precio_unitario_combo,
-                    item?.precio,
-                    0
-                  );
-                  const precioVisibleUnit = esCombo
-                    ? precioComboUnit
-                    : getPrecioVentaBaseItem(item);
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white/80 px-3 py-2 text-xs font-medium text-slate-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white/80">
+                {esVentaCtaCte ? 'Cuenta corriente' : 'Cobro inmediato'}
+              </span>
 
-                  const descuentoUnit = esCombo
-                    ? Math.max(0, precioReferenciaCombo - precioComboUnit)
-                    : Math.max(0, precioVisibleUnit - precioVisibleUnit);
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white/80 px-3 py-2 text-xs font-medium text-slate-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white/80">
+                {carrito.length} ítem{carrito.length === 1 ? '' : 's'} en
+                carrito
+              </span>
+            </div>
+          </div>
 
-                  return (
-                    <div
-                      key={item.line_key || item.stock_id}
-                      className="flex justify-between items-center bg-slate-900/5 ring-1 ring-black/10 px-3 py-3 rounded-lg text-sm gap-3 dark:bg-white/5 dark:ring-white/10"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-slate-900 dark:text-white font-medium leading-snug break-words">
-                            {item.nombre}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            <div className="xl:col-span-8 space-y-6">
+              <div className="grid grid-cols-1 2xl:grid-cols-12 gap-6">
+                {/* Cliente */}
+                <div className="2xl:col-span-8 rounded-3xl border border-black/10 bg-white/85 p-5 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5">
+                  {/* Benjamin Orellana - 2026-04-01 - Card del cliente con mejor separación interna y estado visible del cliente seleccionado o consumidor final. */}
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-white/55">
+                        Cliente
+                      </label>
+                      <p className="text-sm text-slate-600 dark:text-slate-300/70">
+                        Buscá por nombre, DNI o teléfono y definí el cliente de
+                        la operación.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col xl:flex-row xl:items-start gap-3">
+                      <div className="relative flex-1">
+                        <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400 text-lg" />
+
+                        <input
+                          type="text"
+                          placeholder="Buscar cliente por nombre, DNI o teléfono…"
+                          value={busquedaCliente}
+                          onChange={handleBusquedaCliente}
+                          onKeyDown={handleBusquedaKeyDown}
+                          onBlur={handleBlurCliente}
+                          onFocus={handleFocusCliente}
+                          className="
+                        pl-10 pr-10 py-3.5 w-full rounded-2xl shadow-sm
+                        bg-white text-slate-900 placeholder-slate-400
+                        ring-1 ring-black/10
+                        focus:outline-none focus:ring-2 focus:ring-emerald-500
+                        dark:bg-[#232323] dark:text-slate-100 dark:placeholder-slate-400
+                        dark:ring-white/10
+                      "
+                          autoComplete="off"
+                        />
+
+                        {isSearchingCliente && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] px-2 py-1 rounded-full bg-emerald-600/10 text-emerald-700 ring-1 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-400/20">
+                            Buscando…
                           </div>
+                        )}
 
-                          <span
-                            className={[
-                              'inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide',
-                              esCombo
-                                ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-300/60 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20'
-                                : 'bg-slate-200 text-slate-700 ring-1 ring-slate-300/60 dark:bg-white/10 dark:text-slate-200 dark:ring-white/10'
-                            ].join(' ')}
-                          >
-                            {esCombo ? 'Combo' : 'Normal'}
-                          </span>
-                        </div>
+                        {clienteSeleccionado?.id && (
+                          <div className="mt-3 rounded-2xl bg-emerald-600/10 ring-1 ring-emerald-600/20 px-3 py-2.5 text-emerald-800 text-sm flex items-center justify-between gap-3 dark:bg-emerald-500/10 dark:ring-emerald-500/20 dark:text-emerald-200">
+                            <div className="truncate">
+                              <span className="font-bold">Seleccionado:</span>{' '}
+                              <span className="text-emerald-800/90 dark:text-emerald-100/90">
+                                {labelCliente(clienteSeleccionado)}
+                              </span>
+                            </div>
 
-                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                          {esCombo ? (
-                            <span>
-                              Tarjeta: {formatearPrecio(precioReferenciaCombo)}
-                            </span>
-                          ) : (
-                            <span>
-                              Real: {formatearPrecio(precioVisibleUnit)}
-                            </span>
-                          )}{' '}
-                          {esCombo && (
-                            <span>
-                              Combo: {formatearPrecio(precioComboUnit)}
-                            </span>
-                          )}
-                          {descuentoUnit > 0 && (
-                            <span className="text-orange-600 dark:text-orange-300">
-                              Desc.: {formatearPrecio(descuentoUnit)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setClienteSeleccionado(null);
+                                setBusquedaCliente('');
+                                setSugerencias([]);
+                              }}
+                              className="text-xs font-bold px-3 py-1 rounded-lg bg-slate-900/5 hover:bg-slate-900/10 ring-1 ring-black/10 text-slate-700 dark:bg-white/10 dark:hover:bg-white/15 dark:ring-white/10 dark:text-white/90"
+                            >
+                              Quitar
+                            </button>
+                          </div>
+                        )}
 
-                      <div className="flex items-center gap-2 shrink-0 text-slate-700 dark:text-white/85">
-                        <button
-                          onClick={() =>
-                            cambiarCantidad(item.line_key || item.stock_id, -1)
-                          }
-                          className="p-1 hover:text-slate-900 dark:hover:text-white"
-                          title="Restar"
-                          type="button"
-                        >
-                          <FaMinus />
-                        </button>
+                        {sugerencias.length > 0 && (
+                          <div className="absolute z-20 left-0 right-0 mt-2 rounded-2xl overflow-hidden border border-emerald-600/20 bg-white/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.18)] dark:border-emerald-500/25 dark:bg-[#101010]/95 dark:shadow-[0_18px_60px_rgba(0,0,0,0.55)]">
+                            <div className="px-3 py-2 text-xs text-slate-500 flex items-center justify-between dark:text-white/55">
+                              <span>Resultados ({sugerencias.length})</span>
+                              <span className="text-slate-400 dark:text-white/35">
+                                Click para seleccionar
+                              </span>
+                            </div>
 
-                        <span className="min-w-[18px] text-center text-slate-800 dark:text-white">
-                          {item.cantidad}
-                        </span>
+                            <ul className="max-h-72 overflow-auto">
+                              {sugerencias.map((cli) => {
+                                const dni = cli?.dni ? onlyDigits(cli.dni) : '';
+                                const tel = cli?.telefono
+                                  ? onlyDigits(cli.telefono)
+                                  : '';
+                                const badge = dni
+                                  ? `DNI ${dni}`
+                                  : tel
+                                    ? `Tel ${tel}`
+                                    : 'Sin doc/tel';
 
-                        <button
-                          onClick={() =>
-                            cambiarCantidad(item.line_key || item.stock_id, 1)
-                          }
-                          className="p-1 hover:text-slate-900 dark:hover:text-white"
-                          title="Sumar"
-                          type="button"
-                        >
-                          <FaPlus />
-                        </button>
-                      </div>
+                                return (
+                                  <li
+                                    key={cli.id}
+                                    onMouseDown={() => seleccionarCliente(cli)}
+                                    className="group px-4 py-3 cursor-pointer border-t border-black/5 hover:bg-emerald-600/10 transition dark:border-white/5 dark:hover:bg-emerald-500/10"
+                                  >
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <div className="text-slate-900 font-semibold truncate dark:text-gray-100">
+                                          {cli.nombre}
+                                        </div>
+                                        <div className="text-xs text-slate-500 truncate dark:text-white/45">
+                                          {cli.email || cli.direccion || '—'}
+                                        </div>
+                                      </div>
 
-                      <div className="w-28 text-right shrink-0">
-                        <div className="text-emerald-700 dark:text-emerald-300 font-semibold">
-                          {formatearPrecio(precioVisibleUnit * item.cantidad)}
-                        </div>
-
-                        {descuentoUnit > 0 && (
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                            Ahorrás{' '}
-                            {formatearPrecio(descuentoUnit * item.cantidad)}
+                                      <span className="shrink-0 text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-600/10 text-emerald-700 ring-1 ring-emerald-600/20 group-hover:bg-emerald-600/15 dark:bg-emerald-500/12 dark:text-emerald-200 dark:ring-emerald-400/20 dark:group-hover:bg-emerald-500/18">
+                                        {badge}
+                                      </span>
+                                    </div>
+                                  </li>
+                                );
+                              })}
+                            </ul>
                           </div>
                         )}
                       </div>
 
                       <button
-                        onClick={() =>
-                          quitarProducto(item.line_key || item.stock_id)
-                        }
-                        className="text-red-500 hover:text-red-600 shrink-0 dark:text-red-400 dark:hover:text-red-300"
-                        title="Quitar producto"
                         type="button"
+                        onClick={abrirModalNuevoCliente}
+                        className="w-full xl:w-auto min-h-[52px] bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3 rounded-2xl font-semibold shadow transition flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                        title="Agregar nuevo cliente"
                       >
-                        <FaTrash />
+                        <FaUserPlus /> Nuevo Cliente
                       </button>
                     </div>
-                  );
-                })}
-              </div>
-            )}
 
-            {/* Benjamin Orellana - 16-03-2026 - Selector integrado de condición de venta para alternar entre cobro inmediato y cuenta corriente. */}
-            <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 space-y-3 dark:bg-white/5 dark:ring-white/10">
-              <div>
-                <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
-                  Condición de venta
-                </div>
-                <div className="text-[11px] text-slate-500 mt-0.5 dark:text-white/55">
-                  Definí si la venta se cobra ahora o si queda registrada en
-                  cuenta corriente.
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCondicionVenta(CONDICION_VENTA.CONTADO)}
-                  className={[
-                    'rounded-2xl px-3 py-3 text-left ring-1 transition',
-                    esVentaContado
-                      ? 'bg-emerald-600 text-white ring-emerald-500/30 shadow-sm'
-                      : 'bg-slate-900/5 text-slate-800 hover:bg-slate-900/10 ring-black/10 hover:ring-black/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20'
-                  ].join(' ')}
-                >
-                  <div className="text-[12px] font-bold uppercase tracking-wide">
-                    Contado - Tarjeta
-                  </div>
-                  <div
-                    className={`mt-1 text-[11px] leading-relaxed ${
-                      esVentaContado
-                        ? 'text-white/85'
-                        : 'text-slate-500 dark:text-white/55'
-                    }`}
-                  >
-                    Medio de pago obligatorio.
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setCondicionVenta(CONDICION_VENTA.CTA_CTE)}
-                  className={[
-                    'rounded-2xl px-3 py-3 text-left ring-1 transition',
-                    esVentaCtaCte
-                      ? 'bg-sky-600 text-white ring-sky-500/30 shadow-sm'
-                      : 'bg-slate-900/5 text-slate-800 hover:bg-slate-900/10 ring-black/10 hover:ring-black/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20'
-                  ].join(' ')}
-                >
-                  <div className="text-[12px] font-bold uppercase tracking-wide">
-                    Cuenta Corriente
-                  </div>
-                  <div
-                    className={`mt-1 text-[11px] leading-relaxed ${
-                      esVentaCtaCte
-                        ? 'text-white/85'
-                        : 'text-slate-500 dark:text-white/55'
-                    }`}
-                  >
-                    Cliente obligatorio. Sin cobro inmediato ni medio de pago.
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Total */}
-            {/* Total */}
-            {carrito.length > 0 &&
-              totalCalculado &&
-              totalCalculado.total >= 0 &&
-              (esVentaContado ? (
-                <TotalConOpciones
-                  totalCalculado={totalCalculado}
-                  formatearPrecio={formatearPrecio}
-                  aplicarDescuento={aplicarDescuento}
-                  setAplicarDescuento={setAplicarDescuento}
-                  descuentoPersonalizado={descuentoPersonalizado}
-                  setDescuentoPersonalizado={setDescuentoPersonalizado}
-                  mostrarValorTicket={mostrarValorTicket}
-                  setMostrarValorTicket={setMostrarValorTicket}
-                  mediosPago={mediosPago}
-                  setMedioPago={setMedioPago}
-                  medioPago={medioPago}
-                  userLevel={userLevel}
-                  // Benjamin Orellana - 25-03-2026 - Se pasan props para seleccionar explícitamente la estrategia de precio desde las sugerencias.
-                  pricingSource={pricingSource}
-                  setPricingSource={setPricingSource}
-                  // Benjamin Orellana - 25-03-2026 - Props para manejar el redondeo comercial del total final dentro de una tolerancia máxima de ±100 pesos.
-                  modoRedondeoComercial={modoRedondeoComercial}
-                  setModoRedondeoComercial={setModoRedondeoComercial}
-                />
-              ) : (
-                // Benjamin Orellana - 16-03-2026 - Resumen específico para CTA_CTE sin UI de cobro inmediato.
-                <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-4 space-y-4 dark:bg-white/5 dark:ring-white/10">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
-                        Resumen cuenta corriente
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5 dark:text-white/55">
-                        El importe se registra como saldo pendiente. No se cobra
-                        ahora.
-                      </div>
-                    </div>
-
-                    <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold border border-sky-600/20 bg-sky-600/10 text-sky-700 dark:border-sky-400/20 dark:bg-sky-500/10 dark:text-sky-200">
-                      CTA_CTE
-                    </span>
-                  </div>
-
-                  <label className="flex items-center justify-between gap-3 rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-[12px] text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200/80">
-                    <span className="font-semibold">
-                      Aplicar descuento manual
-                    </span>
-
-                    <input
-                      type="checkbox"
-                      checked={aplicarDescuento}
-                      onChange={(e) => setAplicarDescuento(e.target.checked)}
-                      className="h-4 w-4 accent-emerald-600 dark:accent-emerald-400"
-                    />
-                  </label>
-
-                  {aplicarDescuento && (
-                    <div className="space-y-2">
-                      <label className="block text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
-                        Descuento manual (%)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={descuentoPersonalizado}
-                        onChange={(e) =>
-                          setDescuentoPersonalizado(e.target.value)
-                        }
-                        placeholder="0.00"
-                        className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-black/20 dark:text-white"
-                      />
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-black/10 bg-white/70 px-3 py-3 dark:border-white/10 dark:bg-white/5">
-                      <div className="text-[11px] uppercase tracking-widest text-slate-500 dark:text-slate-300/60">
-                        Base
-                      </div>
-                      <div className="mt-1 text-[18px] font-extrabold text-slate-900 dark:text-white">
-                        {formatearPrecio(
-                          Number(totalCalculado?.precio_base ?? 0)
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-sky-600/20 bg-sky-600/10 px-3 py-3 dark:border-sky-400/20 dark:bg-sky-500/10">
-                      <div className="text-[11px] uppercase tracking-widest text-sky-700 dark:text-sky-200/80">
-                        Saldo a registrar
-                      </div>
-                      <div className="mt-1 text-[18px] font-extrabold text-sky-800 dark:text-sky-100">
-                        {formatearPrecio(Number(totalCalculado?.total ?? 0))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {!clienteSeleccionado && (
-                    <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2.5 text-[12px] leading-relaxed text-rose-700 dark:text-rose-200">
-                      Seleccioná un cliente antes de registrar una venta en
-                      cuenta corriente.
-                    </div>
-                  )}
-                </div>
-              ))}
-
-            {/* Comprobante + Medios de pago + Cuotas (layout compacto) */}
-            <div className="space-y-3">
-              {/* Comprobante */}
-              <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 dark:bg-white/5 dark:ring-white/10">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
-                      Comprobante
-                    </div>
-
-                    <div className="mt-0.5 text-[14px] font-semibold text-slate-900 truncate dark:text-white">
-                      {cbteMeta.title}
-                      {cbteMeta.subtitle ? ` – ${cbteMeta.subtitle}` : ''}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => openCbteSelectorRef.current?.()}
-                    className="shrink-0 rounded-xl bg-slate-900/5 hover:bg-slate-900/10 ring-1 ring-black/10 hover:ring-black/15 px-3 py-1.5 text-[11px] text-slate-700 transition dark:bg-white/5 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20 dark:text-white/85"
-                    title="F11"
-                  >
-                    F11 · Cambiar
-                  </button>
-                </div>
-              </div>
-
-              {/* Medios + Cuotas */}
-              {/* Benjamin Orellana - 16-03-2026 - El bloque de cobro inmediato solo se muestra en contado; CTA_CTE usa campos propios de vencimiento y observaciones. */}
-              {esVentaContado ? (
-                <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 space-y-3 dark:bg-white/5 dark:ring-white/10">
-                  <div className="space-y-3">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
-                          Medio de pago
-                        </div>
-
-                        <div className="text-[11px] text-slate-500 mt-0.5 dark:text-white/55">
-                          Seleccioná cómo se va a cobrar esta venta
-                        </div>
-                      </div>
-
-                      {cuotasDisponibles.length > 0 && (
-                        <div className="flex items-center justify-between sm:justify-end gap-2 rounded-xl bg-slate-900/5 ring-1 ring-black/10 px-3 py-2 dark:bg-white/5 dark:ring-white/10">
-                          <span className="text-[12px] font-medium text-slate-600 dark:text-white/80">
-                            Cuotas
+                    <div className="rounded-2xl border border-black/10 bg-slate-50/80 px-4 py-3 text-sm dark:border-white/10 dark:bg-white/5">
+                      {clienteSeleccionado ? (
+                        <div className="flex flex-wrap items-center gap-3 text-emerald-700 dark:text-emerald-400">
+                          <FaCheckCircle className="text-emerald-600 dark:text-emerald-500" />
+                          <span className="text-slate-800 dark:text-white/90">
+                            {clienteSeleccionado.nombre} (
+                            {clienteSeleccionado.dni})
                           </span>
-
-                          <select
-                            id="cuotas"
-                            value={cuotasSeleccionadas}
-                            onChange={(e) =>
-                              setCuotasSeleccionadas(Number(e.target.value))
-                            }
-                            className="bg-white border border-black/10 text-slate-900 rounded-lg px-2.5 py-1.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:bg-black/20 dark:border-white/15 dark:text-white dark:focus:ring-emerald-400/40"
+                          <button
+                            className="text-xs text-emerald-700 underline hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
+                            onClick={() => setClienteSeleccionado(null)}
                           >
-                            {cuotasUnicas.map((num) => (
-                              <option
-                                key={num}
-                                value={num}
-                                className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white"
-                              >
-                                {num} cuota{num > 1 ? 's' : ''}
-                              </option>
-                            ))}
-                          </select>
+                            Cambiar
+                          </button>
+                        </div>
+                      ) : esVentaCtaCte ? (
+                        <div className="flex items-center gap-2 text-rose-600 dark:text-rose-300">
+                          <FaUserAlt />
+                          <span>
+                            Cuenta corriente requiere un cliente seleccionado.
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-slate-500 dark:text-gray-400">
+                          <FaUserAlt />
+                          <span>
+                            Cliente no seleccionado (
+                            <b className="text-emerald-600 dark:text-emerald-400">
+                              Consumidor Final
+                            </b>
+                            )
+                          </span>
                         </div>
                       )}
                     </div>
+                  </div>
+                </div>
 
-                    {requiereAutorizacionPOS && (
-                      <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2.5 text-[12px] leading-relaxed text-amber-700 dark:text-amber-200">
-                        Este medio de pago requiere número de autorización de la
-                        tarjeta al finalizar la venta.
+                {/* Acciones rápidas */}
+                <div className="2xl:col-span-4 rounded-3xl border border-black/10 bg-white/85 p-5 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5">
+                  {/* Benjamin Orellana - 2026-04-01 - Agrupa acciones rápidas y estados operativos para que no compitan visualmente con el cliente ni con la tabla de productos. */}
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-white/55">
+                        Acciones rápidas
                       </div>
-                    )}
+                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300/70">
+                        Accesos auxiliares del punto de venta.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-1 gap-3">
+                      <button
+                        onClick={abrirModalVerProductos}
+                        className="w-full px-4 py-3 rounded-2xl font-bold text-white bg-emerald-600 bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-md transition hover:bg-emerald-700 hover:from-emerald-600 hover:to-emerald-700 focus:ring-2 focus:ring-emerald-400 focus:outline-none flex items-center justify-center gap-2"
+                        type="button"
+                      >
+                        <FaBoxOpen />
+                        <span>Ver Productos</span>
+                      </button>
+
+                      <button
+                        onClick={abrirModalVerCombos}
+                        className="w-full px-4 py-3 rounded-2xl font-bold text-white bg-purple-600 bg-gradient-to-br from-purple-500 to-purple-600 shadow-md transition hover:bg-purple-700 hover:from-purple-600 hover:to-purple-700 focus:ring-2 focus:ring-purple-400 focus:outline-none flex items-center justify-center gap-2"
+                        type="button"
+                      >
+                        <FaCubes />
+                        <span>Ver Combos</span>
+                      </button>
+
+                      <button
+                        onClick={() => setModalStockOpen(true)}
+                        className="w-full px-4 py-3 rounded-2xl font-bold text-white bg-sky-600 bg-gradient-to-br from-sky-500 to-sky-600 shadow-md transition hover:bg-sky-700 hover:from-sky-600 hover:to-sky-700 focus:ring-2 focus:ring-sky-400 focus:outline-none flex items-center justify-center gap-2"
+                        type="button"
+                        title="Consultar stock"
+                      >
+                        <FaWarehouse />
+                        <span>Consultar Stock</span>
+                      </button>
+
+                      <button
+                        onClick={() => setModalCBUsOpen(true)}
+                        className="w-full px-4 py-3 rounded-2xl font-bold text-white bg-amber-600 bg-gradient-to-br from-amber-500 to-amber-600 shadow-md transition hover:bg-amber-700 hover:from-amber-600 hover:to-amber-700 focus:ring-2 focus:ring-amber-400 focus:outline-none flex items-center justify-center gap-2"
+                        type="button"
+                        title="Consultar CBUs"
+                      >
+                        <FaMoneyCheckAlt />
+                        <span>Consultar CBUs</span>
+                      </button>
+
+                      <button
+                        onClick={() => setModoEscaner(true)}
+                        className={[
+                          'w-full px-4 py-3 rounded-2xl border-2 font-semibold shadow-sm transition flex items-center justify-center gap-2',
+                          modoEscaner
+                            ? 'border-emerald-500 ring-2 ring-emerald-300 bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:ring-emerald-400/20 dark:text-emerald-200'
+                            : 'border-gray-200 bg-white text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 dark:border-white/10 dark:bg-white/10 dark:text-emerald-200 dark:hover:bg-white/15'
+                        ].join(' ')}
+                        type="button"
+                      >
+                        <FaBarcode />
+                        <span>
+                          {modoEscaner ? 'Escáner activo' : 'Escanear'}
+                        </span>
+                      </button>
+                    </div>
+
+                    <div className="rounded-2xl border border-black/10 bg-slate-50/80 px-4 py-3 text-xs text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/65">
+                      F2 finaliza la venta y F11 cambia el comprobante.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* lector de codigo de barras invicible */}
+              <div>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  style={{
+                    opacity: 0,
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    width: 1,
+                    height: 1,
+                    pointerEvents: 'none'
+                  }}
+                  onBlur={() => setModoEscaner(false)}
+                  onKeyDown={handleKeyDown}
+                />
+              </div>
+
+              {/* Búsqueda general */}
+              <div className="rounded-3xl border border-black/10 bg-white/85 p-5 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5">
+                {/* Benjamin Orellana - 2026-04-01 - El buscador general y sus acciones quedan encapsulados en una barra operativa única con mejor lectura horizontal y vertical. */}
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-1">
+                    <div className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-white/55">
+                      Búsqueda de productos
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-300/70">
+                      Buscá por nombre, SKU o ID y agregá más rápido al carrito.
+                    </p>
                   </div>
 
-                  {loadingMediosPago ? (
-                    <div className="text-slate-600 text-sm dark:text-gray-300">
-                      Cargando...
+                  <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-center">
+                    <div className="relative flex-1">
+                      <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-emerald-600 dark:text-emerald-500 text-lg" />
+                      <input
+                        ref={buscadorRef}
+                        type="text"
+                        placeholder="Buscar por nombre, SKU o ID..."
+                        value={busqueda}
+                        onChange={(e) => setBusqueda(e.target.value)}
+                        className="
+                      pl-10 pr-4 py-3.5 w-full rounded-2xl shadow-sm
+                      bg-white/90 text-gray-900 placeholder-gray-500
+                      focus:outline-none focus:ring-2 focus:ring-emerald-500
+                      dark:bg-white/10 dark:text-white dark:placeholder-white/45
+                      dark:ring-1 dark:ring-white/10
+                      dark:focus:ring-emerald-400
+                    "
+                        onFocus={() => setModoEscaner(false)}
+                      />
                     </div>
-                  ) : (
-                    <div
-                      className="grid gap-2"
-                      style={{
-                        gridTemplateColumns:
-                          'repeat(auto-fit, minmax(170px, 1fr))'
-                      }}
-                    >
-                      {mediosPago
-                        .filter((m) => m.activo)
-                        .sort((a, b) => a.orden - b.orden)
-                        .map((m) => {
-                          const selected = medioPago === m.id;
 
-                          // Benjamin Orellana - 2026-01-28 - Chip de porcentaje con color semántico (+ recargo / 0 neutro / - descuento) para lectura rápida.
-                          const p =
-                            parseFloat(
-                              String(m?.ajuste_porcentual ?? '0').replace(
-                                ',',
-                                '.'
-                              )
-                            ) || 0;
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 2xl:w-auto">
+                      <button
+                        onClick={abrirModalVerProductos}
+                        className="w-full sm:w-auto px-3 py-3 rounded-2xl font-bold text-white bg-emerald-600 bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-md transition hover:bg-emerald-700 hover:from-emerald-600 hover:to-emerald-700 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+                        type="button"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <FaBoxOpen className="shrink-0" />
+                          <span className="whitespace-nowrap">
+                            Ver Productos
+                          </span>
+                        </span>
+                      </button>
 
-                          // Benjamin Orellana - 2026-02-17 - Chip tema-aware (en light usa textos oscuros, en dark conserva el estilo actual)
-                          const chipClass = selected
-                            ? 'bg-white/15 text-white ring-white/20'
-                            : p > 0
-                              ? 'bg-orange-500/15 text-orange-700 ring-orange-600/20 dark:bg-orange-500/15 dark:text-orange-200 dark:ring-orange-400/20'
-                              : p < 0
-                                ? 'bg-emerald-600/15 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20'
-                                : 'bg-slate-900/5 text-slate-600 ring-black/10 dark:bg-white/5 dark:text-white/70 dark:ring-white/10';
+                      <button
+                        onClick={abrirModalVerCombos}
+                        className="w-full sm:w-auto px-3 py-3 rounded-2xl font-bold text-white bg-purple-600 bg-gradient-to-br from-purple-500 to-purple-600 shadow-md transition hover:bg-purple-700 hover:from-purple-600 hover:to-purple-700 focus:ring-2 focus:ring-purple-400 focus:outline-none"
+                        type="button"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <FaCubes className="shrink-0" />
+                          <span className="whitespace-nowrap">Ver Combos</span>
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => setModoEscaner(true)}
+                        className={[
+                          'w-full sm:w-auto px-3 py-3 rounded-2xl border-2 font-semibold shadow-sm transition',
+                          modoEscaner
+                            ? 'border-emerald-500 ring-2 ring-emerald-300 bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:ring-emerald-400/20 dark:text-emerald-200'
+                            : 'border-gray-200 bg-white text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 dark:border-white/10 dark:bg-white/10 dark:text-emerald-200 dark:hover:bg-white/15'
+                        ].join(' ')}
+                        type="button"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <FaBarcode className="shrink-0" />
+                          <span className="whitespace-nowrap">Escanear</span>
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabla de productos */}
+              <div className="rounded-3xl border border-black/10 bg-white/85 p-5 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5">
+                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-4">
+                  <div>
+                    <h2 className="text-xl font-semibold titulo uppercase tracking-wide text-slate-900 dark:text-white">
+                      Productos
+                    </h2>
+                    <div className="text-[12px] text-slate-500 dark:text-slate-300/70">
+                      {productos.length > 0
+                        ? `${productos.length} resultado${productos.length === 1 ? '' : 's'}`
+                        : 'Sin resultados'}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-500 dark:text-slate-300/70">
+                    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-black/10 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-white/5">
+                      <span className="h-2 w-2 rounded-full bg-rose-500/90 dark:bg-rose-400" />
+                      Desarrollado por SOFTFUSION +54 9 3815 43-0503
+                    </span>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <DragScrollX
+                    className="max-h-[110vh]"
+                    innerClassName="min-w-[1320px]"
+                  >
+                    <table className="w-full min-w-[1320px] border-separate border-spacing-0 text-sm text-slate-900 dark:text-slate-100">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800/95">
+                          <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                            Producto
+                          </th>
+                          <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                            Códigos
+                          </th>
+                          <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                            Ubicación
+                          </th>
+                          <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                            Stock
+                          </th>
+                          <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                            Precio
+                          </th>
+                          <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                            Descuento
+                          </th>
+                          <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-right text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                            Acción
+                          </th>
+                          <th className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                            Otros locales
+                          </th>
+                          <th className="sticky top-0 z-30 border-b border-slate-200 bg-slate-50 px-4 py-3 text-center text-[0.72rem] font-bold uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-slate-800/95 dark:text-slate-300">
+                            Agregar rápido
+                          </th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {productos.length === 0 && (
+                          <tr>
+                            <td
+                              colSpan={9}
+                              className="border-b border-slate-100 px-4 py-8 text-center text-slate-500 dark:border-white/10 dark:text-slate-400"
+                            >
+                              Sin resultados…
+                            </td>
+                          </tr>
+                        )}
+
+                        {productos.map((producto, idx) => {
+                          const tieneDescuento =
+                            Number(producto.descuento_porcentaje || 0) > 0 &&
+                            Number(producto.precio_con_descuento || 0) <
+                              Number(
+                                producto.precio_tarjeta || producto.precio || 0
+                              );
+
+                          const usarDescuento =
+                            usarDescuentoPorProducto[producto.producto_id] ??
+                            true;
+
+                          const canSeePrices = userLevel !== 'vendedor';
+
+                          const coincidenciaBadgeClass =
+                            producto.tipo_coincidencia === 'CB'
+                              ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-400/40 dark:bg-sky-500/15 dark:text-sky-300'
+                              : producto.tipo_coincidencia === 'CI'
+                                ? 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-300'
+                                : producto.tipo_coincidencia === 'SKU'
+                                  ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300'
+                                  : 'border-slate-200 bg-slate-100 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200';
+
+                          const cantidadNum =
+                            Number(producto.cantidad_disponible ?? 0) || 0;
+
+                          const cantidadFormateada = Number.isInteger(
+                            cantidadNum
+                          )
+                            ? cantidadNum.toLocaleString('es-AR', {
+                                maximumFractionDigits: 0
+                              })
+                            : cantidadNum.toLocaleString('es-AR', {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 2
+                              });
+
+                          const sinStock = cantidadNum <= 0;
 
                           return (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => {
-                                // Benjamin Orellana - 25-03-2026 - Si el usuario selecciona manualmente un medio de pago desde la grilla, se abandona cualquier estrategia previa de descuento propio del producto y se vuelve al cálculo normal por medio.
-                                setMedioPago(m.id);
-                                setPricingSource?.('MEDIO_PAGO');
-                                setModoRedondeoComercial?.('exacto');
-                              }}
+                            <tr
+                              key={producto.stock_id}
                               className={[
-                                'w-full min-h-[68px] rounded-2xl px-3 py-3 transition ring-1 text-left',
-                                selected
-                                  ? 'bg-emerald-600 text-white ring-emerald-500/30 shadow-sm'
-                                  : 'bg-slate-900/5 text-slate-800 hover:bg-slate-900/10 ring-black/10 hover:ring-black/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20'
+                                'align-top transition-colors',
+                                idx % 2 === 0
+                                  ? 'bg-white dark:bg-slate-900/50'
+                                  : 'bg-slate-50/60 dark:bg-slate-800/35',
+                                'hover:bg-emerald-50/50 dark:hover:bg-emerald-500/10'
                               ].join(' ')}
-                              title={m.nombre}
                             >
-                              <div className="flex items-start gap-3">
-                                <div className="text-[16px] shrink-0 mt-0.5">
-                                  {dynamicIcon(m.icono)}
-                                </div>
-
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-[12px] font-semibold leading-snug whitespace-normal break-words">
-                                    {m.nombre}
+                              <td className="min-w-[280px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                                <div className="space-y-1">
+                                  <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                                    {producto.nombre}
                                   </div>
 
-                                  {typeof m.ajuste_porcentual !==
-                                    'undefined' && (
-                                    <div className="mt-2">
-                                      <span
-                                        className={`inline-flex items-center text-[10px] px-2 py-1 rounded-full ring-1 whitespace-nowrap ${chipClass}`}
-                                        title={`${p > 0 ? '+' : ''}${p.toFixed(2)}%`}
-                                      >
-                                        {p > 0
-                                          ? `+${p.toFixed(2)}%`
-                                          : `${p.toFixed(2)}%`}
+                                  <div className="flex flex-wrap gap-2">
+                                    <span
+                                      className={`inline-flex rounded-full border px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-wide ${coincidenciaBadgeClass}`}
+                                    >
+                                      {producto.tipo_coincidencia || 'GENERAL'}
+                                    </span>
+
+                                    {producto.coincidencia_label ? (
+                                      <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[0.68rem] text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+                                        {producto.coincidencia_label}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="min-w-[290px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                                <div className="space-y-1 text-xs">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                      Cód. Interno:
+                                    </span>
+                                    <span className="font-mono text-slate-900 dark:text-slate-100">
+                                      {producto.codigo_interno ?? '—'}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                      Cód. Barra:
+                                    </span>
+                                    <span className="font-mono text-slate-900 dark:text-slate-100 break-all">
+                                      {producto.codigo_barra || '—'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="min-w-[230px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                                <div className="space-y-1 text-xs">
+                                  <div>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                      Local:
+                                    </span>{' '}
+                                    <span className="text-slate-900 dark:text-slate-100">
+                                      {producto.local_nombre || '—'}
+                                    </span>
+                                  </div>
+
+                                  <div>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                      Lugar:
+                                    </span>{' '}
+                                    <span className="text-slate-900 dark:text-slate-100">
+                                      {producto.lugar_nombre || '—'}
+                                    </span>
+                                  </div>
+
+                                  <div>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                      Estado:
+                                    </span>{' '}
+                                    <span className="text-slate-900 dark:text-slate-100">
+                                      {producto.estado_nombre || '—'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="min-w-[160px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                                <div className="space-y-2">
+                                  <div
+                                    className={
+                                      sinStock
+                                        ? 'text-sm font-bold text-red-700 dark:text-red-300'
+                                        : 'text-sm font-bold text-emerald-700 dark:text-emerald-300'
+                                    }
+                                  >
+                                    {cantidadFormateada}
+                                  </div>
+
+                                  <span
+                                    className={[
+                                      'inline-flex rounded-full border px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-wide',
+                                      sinStock
+                                        ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-400/40 dark:bg-red-500/15 dark:text-red-300'
+                                        : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300'
+                                    ].join(' ')}
+                                  >
+                                    {sinStock ? 'Sin stock' : 'Disponible'}
+                                  </span>
+                                </div>
+                              </td>
+
+                              <td className="min-w-[240px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                                {canSeePrices ? (
+                                  <div className="space-y-1 text-xs">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <span className="text-slate-500 dark:text-slate-400">
+                                        Tarjeta:
+                                      </span>
+                                      <span className="font-semibold text-slate-900 dark:text-slate-100">
+                                        {formatearPrecio(
+                                          getPrecioVentaBaseProducto(producto)
+                                        )}
                                       </span>
                                     </div>
+
+                                    <div className="flex items-center justify-between gap-3">
+                                      <span className="text-slate-500 dark:text-slate-400">
+                                        Contado:
+                                      </span>
+                                      <span className="font-bold text-emerald-700 dark:text-emerald-300">
+                                        {formatearPrecio(
+                                          Number(
+                                            producto?.precio_con_descuento ?? 0
+                                          ) || 0
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                                    Oculto para vendedor
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="min-w-[180px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                                {tieneDescuento ? (
+                                  <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+                                    <div className="min-w-0">
+                                      <div className="font-semibold">
+                                        -
+                                        {Number(
+                                          producto.descuento_porcentaje
+                                        ).toFixed(2)}
+                                        %
+                                      </div>
+                                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                        Aplicar descuento
+                                      </div>
+                                    </div>
+
+                                    <input
+                                      type="checkbox"
+                                      checked={usarDescuento}
+                                      onChange={() =>
+                                        toggleDescuento(producto.producto_id)
+                                      }
+                                      className="h-4 w-4 accent-emerald-600 dark:accent-emerald-400"
+                                    />
+                                  </label>
+                                ) : (
+                                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                                    No aplica
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="min-w-[140px] border-b border-slate-100 px-4 py-3 text-right dark:border-white/10">
+                                <button
+                                  onClick={() =>
+                                    manejarAgregarProducto(
+                                      producto,
+                                      usarDescuento
+                                    )
+                                  }
+                                  className={[
+                                    'inline-flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold',
+                                    'border border-emerald-600/20 bg-emerald-600/10 text-emerald-700',
+                                    'dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-200',
+                                    'transition',
+                                    sinStock
+                                      ? 'cursor-not-allowed opacity-40'
+                                      : 'hover:bg-emerald-600/15 hover:text-emerald-900 dark:hover:bg-emerald-500/25 dark:hover:text-white'
+                                  ].join(' ')}
+                                  title={
+                                    sinStock
+                                      ? 'Sin stock'
+                                      : 'Agregar al carrito'
+                                  }
+                                  disabled={sinStock}
+                                  aria-label="Agregar al carrito"
+                                >
+                                  <FaPlus />
+                                  Agregar
+                                </button>
+                              </td>
+
+                              <td className="min-w-[280px] border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                                {Array.isArray(
+                                  producto.otros_locales_resumen
+                                ) &&
+                                producto.otros_locales_resumen.length > 0 ? (
+                                  <div className="space-y-2">
+                                    {producto.otros_locales_resumen
+                                      .slice(0, 4)
+                                      .map((item) => (
+                                        <div
+                                          key={`${producto.stock_id}-${item.local_id}`}
+                                          className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-white/10 dark:bg-white/5"
+                                        >
+                                          <div className="flex items-center justify-between gap-3">
+                                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                                              {item.local_nombre}
+                                            </span>
+
+                                            <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[0.68rem] font-bold text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">
+                                              {Number(
+                                                item.cantidad_disponible || 0
+                                              ).toLocaleString('es-AR', {
+                                                maximumFractionDigits: 0
+                                              })}{' '}
+                                              u
+                                            </span>
+                                          </div>
+
+                                          <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                            Tarjeta:{' '}
+                                            <span className="font-semibold text-slate-700 dark:text-slate-200">
+                                              {formatearPrecio(
+                                                Number(item.precio_tarjeta || 0)
+                                              )}
+                                            </span>
+                                          </div>
+
+                                          {Number(
+                                            item.precio_con_descuento || 0
+                                          ) > 0 && (
+                                            <div className="mt-0.5 text-[11px] text-emerald-700 dark:text-emerald-300">
+                                              Contado:{' '}
+                                              {formatearPrecio(
+                                                Number(
+                                                  item.precio_con_descuento || 0
+                                                )
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+
+                                    {producto.otros_locales_resumen.length >
+                                      4 && (
+                                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                        +
+                                        {producto.otros_locales_resumen.length -
+                                          4}{' '}
+                                        locales más
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                                    No disponible en otros locales
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="sticky right-0 z-10 min-w-[150px] border-b border-slate-100 bg-transparent px-3 py-3 text-center shadow-none dark:border-white/10">
+                                <div className="flex items-center justify-center">
+                                  <button
+                                    onClick={() =>
+                                      manejarAgregarProducto(
+                                        producto,
+                                        usarDescuento
+                                      )
+                                    }
+                                    className={[
+                                      'inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold',
+                                      'border border-emerald-500/40 bg-transparent text-emerald-700',
+                                      'dark:border-emerald-400/40 dark:bg-transparent dark:text-emerald-300',
+                                      'transition',
+                                      sinStock
+                                        ? 'cursor-not-allowed opacity-40'
+                                        : 'hover:scale-[1.02] hover:border-emerald-600 hover:bg-transparent hover:text-emerald-800 dark:hover:border-emerald-300 dark:hover:bg-transparent dark:hover:text-emerald-200'
+                                    ].join(' ')}
+                                    title={
+                                      sinStock
+                                        ? 'Sin stock'
+                                        : 'Agregar al carrito'
+                                    }
+                                    disabled={sinStock}
+                                    aria-label="Agregar rápido al carrito"
+                                  >
+                                    <FaPlus />
+                                    Agregar
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </DragScrollX>
+                </div>
+              </div>
+            </div>
+
+            {/* Panel lateral */}
+            <div className="xl:col-span-4">
+              {/* Benjamin Orellana - 2026-04-01 - Panel lateral sticky que separa claramente carrito, condición de venta, cobro y acción final para mejorar lectura y uso continuo del POS. */}
+              <div className="sticky top-24 rounded-3xl border border-black/10 bg-white/85 p-5 shadow-sm backdrop-blur-sm space-y-4 dark:border-white/10 dark:bg-white/5 dark:text-white">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-xl font-semibold flex items-center gap-2 m-0 titulo uppercase">
+                      <FaShoppingCart /> Carrito del cliente
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-white/55">
+                      Revisá ítems, condición, cobro y cierre.
+                    </p>
+                  </div>
+
+                  <button
+                    className="p-2 rounded-full hover:bg-slate-900/5 text-xl shrink-0 dark:hover:bg-white/10"
+                    title="Gestionar medios de pago"
+                    onClick={() => setShowModal(true)}
+                  >
+                    <FaCog />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-2xl border border-black/10 bg-slate-50/80 px-3 py-2 dark:border-white/10 dark:bg-white/5">
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-white/50">
+                      Ítems
+                    </div>
+                    <div className="mt-1 text-base font-extrabold text-slate-900 dark:text-white">
+                      {carrito.length}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-black/10 bg-slate-50/80 px-3 py-2 dark:border-white/10 dark:bg-white/5">
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-white/50">
+                      Venta
+                    </div>
+                    <div className="mt-1 text-sm font-bold text-slate-900 dark:text-white">
+                      {esVentaCtaCte ? 'CTA_CTE' : 'CONTADO'}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-black/10 bg-slate-50/80 px-3 py-2 dark:border-white/10 dark:bg-white/5">
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-white/50">
+                      Cbte.
+                    </div>
+                    <div className="mt-1 text-sm font-bold truncate text-slate-900 dark:text-white">
+                      {cbteMeta.title}
+                    </div>
+                  </div>
+                </div>
+
+                {hayComboEnCarrito && resumenComboCarrito && (
+                  <div className="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-50 to-orange-50 p-4 ring-1 ring-amber-200/60 dark:from-amber-500/10 dark:to-orange-500/10 dark:border-amber-400/20 dark:ring-amber-400/10">
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <h3 className="text-sm font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                        Resumen del combo aplicado
+                      </h3>
+                      <span className="rounded-full px-3 py-1 text-xs font-semibold bg-amber-200/70 text-amber-900 dark:bg-amber-400/15 dark:text-amber-200">
+                        {carritoComboItems.length} líneas combo
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10">
+                        <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          Precio real
+                        </p>
+                        <p className="mt-1 text-base font-extrabold text-slate-900 dark:text-white">
+                          {formatearPrecio(resumenComboCarrito.precioRealTotal)}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10">
+                        <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          Precio combo
+                        </p>
+                        <p className="mt-1 text-base font-extrabold text-emerald-700 dark:text-emerald-300">
+                          {formatearPrecio(
+                            resumenComboCarrito.precioComboTotal
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10">
+                        <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          Descuento del combo
+                        </p>
+                        <p className="mt-1 text-base font-extrabold text-orange-700 dark:text-orange-300">
+                          {formatearPrecio(resumenComboCarrito.descuentoTotal)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {carrito.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-8 text-center text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400">
+                    Aún no hay artículos - ítems {carrito.length}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-slate-500 dark:text-gray-400">
+                      Ítems: {carrito.length}
+                    </p>
+
+                    <div className="max-h-72 overflow-y-auto pr-1 space-y-3">
+                      {carrito.map((item) => {
+                        const esCombo =
+                          String(item?.origen_precio || '').toUpperCase() ===
+                          'COMBO';
+                        const precioReferenciaCombo = toNum(
+                          item?.precio_tarjeta_referencia,
+                          item?.precio_tarjeta,
+                          item?.precio_unitario_real,
+                          item?.precio_lista,
+                          0
+                        );
+
+                        const precioComboUnit = toNum(
+                          item?.precio_unitario_combo,
+                          item?.precio,
+                          0
+                        );
+                        const precioVisibleUnit = esCombo
+                          ? precioComboUnit
+                          : getPrecioVentaBaseItem(item);
+
+                        const descuentoUnit = esCombo
+                          ? Math.max(0, precioReferenciaCombo - precioComboUnit)
+                          : Math.max(0, precioVisibleUnit - precioVisibleUnit);
+
+                        return (
+                          <div
+                            key={item.line_key || item.stock_id}
+                            className="rounded-2xl bg-slate-900/5 ring-1 ring-black/10 px-3 py-3 text-sm dark:bg-white/5 dark:ring-white/10"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <div className="text-slate-900 dark:text-white font-medium leading-snug break-words">
+                                    {item.nombre}
+                                  </div>
+
+                                  <span
+                                    className={[
+                                      'inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide',
+                                      esCombo
+                                        ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-300/60 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20'
+                                        : 'bg-slate-200 text-slate-700 ring-1 ring-slate-300/60 dark:bg-white/10 dark:text-slate-200 dark:ring-white/10'
+                                    ].join(' ')}
+                                  >
+                                    {esCombo ? 'Combo' : 'Normal'}
+                                  </span>
+                                </div>
+
+                                <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                                  {esCombo ? (
+                                    <span>
+                                      Tarjeta:{' '}
+                                      {formatearPrecio(precioReferenciaCombo)}
+                                    </span>
+                                  ) : (
+                                    <span>
+                                      Real: {formatearPrecio(precioVisibleUnit)}
+                                    </span>
+                                  )}{' '}
+                                  {esCombo && (
+                                    <span>
+                                      Combo: {formatearPrecio(precioComboUnit)}
+                                    </span>
+                                  )}
+                                  {descuentoUnit > 0 && (
+                                    <span className="text-orange-600 dark:text-orange-300">
+                                      Desc.: {formatearPrecio(descuentoUnit)}
+                                    </span>
                                   )}
                                 </div>
                               </div>
-                            </button>
-                          );
-                        })}
+
+                              <button
+                                onClick={() =>
+                                  quitarProducto(item.line_key || item.stock_id)
+                                }
+                                className="text-red-500 hover:text-red-600 shrink-0 dark:text-red-400 dark:hover:text-red-300"
+                                title="Quitar producto"
+                                type="button"
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
+
+                            <div className="mt-3 flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 shrink-0 text-slate-700 dark:text-white/85">
+                                <button
+                                  onClick={() =>
+                                    cambiarCantidad(
+                                      item.line_key || item.stock_id,
+                                      -1
+                                    )
+                                  }
+                                  className="h-8 w-8 rounded-xl border border-black/10 hover:bg-slate-900/5 dark:border-white/10 dark:hover:bg-white/10"
+                                  title="Restar"
+                                  type="button"
+                                >
+                                  <FaMinus className="mx-auto" />
+                                </button>
+
+                                <span className="min-w-[26px] text-center text-slate-800 dark:text-white font-semibold">
+                                  {item.cantidad}
+                                </span>
+
+                                <button
+                                  onClick={() =>
+                                    cambiarCantidad(
+                                      item.line_key || item.stock_id,
+                                      1
+                                    )
+                                  }
+                                  className="h-8 w-8 rounded-xl border border-black/10 hover:bg-slate-900/5 dark:border-white/10 dark:hover:bg-white/10"
+                                  title="Sumar"
+                                  type="button"
+                                >
+                                  <FaPlus className="mx-auto" />
+                                </button>
+                              </div>
+
+                              <div className="text-right shrink-0">
+                                <div className="text-emerald-700 dark:text-emerald-300 font-semibold">
+                                  {formatearPrecio(
+                                    precioVisibleUnit * item.cantidad
+                                  )}
+                                </div>
+
+                                {descuentoUnit > 0 && (
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Ahorrás{' '}
+                                    {formatearPrecio(
+                                      descuentoUnit * item.cantidad
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
-              ) : (
+                  </div>
+                )}
+
                 <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 space-y-3 dark:bg-white/5 dark:ring-white/10">
                   <div>
                     <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
-                      Datos cuenta corriente
+                      Condición de venta
                     </div>
-
                     <div className="text-[11px] text-slate-500 mt-0.5 dark:text-white/55">
-                      Configurá opcionalmente el vencimiento y una observación
-                      interna para esta venta.
+                      Definí si la venta se cobra ahora o si queda registrada en
+                      cuenta corriente.
                     </div>
                   </div>
 
-                  {!clienteSeleccionado && (
-                    <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2.5 text-[12px] leading-relaxed text-rose-700 dark:text-rose-200">
-                      Antes de vender en cuenta corriente debés seleccionar un
-                      cliente.
-                    </div>
-                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCondicionVenta(CONDICION_VENTA.CONTADO)}
+                      className={[
+                        'rounded-2xl px-3 py-3 text-left ring-1 transition',
+                        esVentaContado
+                          ? 'bg-emerald-600 text-white ring-emerald-500/30 shadow-sm'
+                          : 'bg-slate-900/5 text-slate-800 hover:bg-slate-900/10 ring-black/10 hover:ring-black/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20'
+                      ].join(' ')}
+                    >
+                      <div className="text-[12px] font-bold uppercase tracking-wide">
+                        Contado - Tarjeta
+                      </div>
+                      <div
+                        className={`mt-1 text-[11px] leading-relaxed ${
+                          esVentaContado
+                            ? 'text-white/85'
+                            : 'text-slate-500 dark:text-white/55'
+                        }`}
+                      >
+                        Medio de pago obligatorio.
+                      </div>
+                    </button>
 
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-[12px] font-semibold text-slate-600 uppercase mb-2 dark:text-white/80">
-                        Fecha de vencimiento
-                      </label>
-                      <input
-                        type="date"
-                        value={fechaVencimientoCtaCte}
-                        onChange={(e) =>
-                          setFechaVencimientoCtaCte(e.target.value)
-                        }
-                        className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-white/10 dark:bg-black/20 dark:text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[12px] font-semibold text-slate-600 uppercase mb-2 dark:text-white/80">
-                        Observaciones
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={observacionesCtaCte}
-                        onChange={(e) => setObservacionesCtaCte(e.target.value)}
-                        placeholder="Ej.: vence en 15 días, acordado con el cliente."
-                        className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-white/10 dark:bg-black/20 dark:text-white resize-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-sky-600/20 bg-sky-600/10 px-3 py-2.5 text-[12px] leading-relaxed text-sky-700 dark:text-sky-200">
-                    No se solicitará medio de pago, cuotas ni autorización POS.
-                    Se registrará la venta y generará automáticamente el
-                    documento de CxC.
+                    <button
+                      type="button"
+                      onClick={() => setCondicionVenta(CONDICION_VENTA.CTA_CTE)}
+                      className={[
+                        'rounded-2xl px-3 py-3 text-left ring-1 transition',
+                        esVentaCtaCte
+                          ? 'bg-sky-600 text-white ring-sky-500/30 shadow-sm'
+                          : 'bg-slate-900/5 text-slate-800 hover:bg-slate-900/10 ring-black/10 hover:ring-black/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20'
+                      ].join(' ')}
+                    >
+                      <div className="text-[12px] font-bold uppercase tracking-wide">
+                        Cuenta Corriente
+                      </div>
+                      <div
+                        className={`mt-1 text-[11px] leading-relaxed ${
+                          esVentaCtaCte
+                            ? 'text-white/85'
+                            : 'text-slate-500 dark:text-white/55'
+                        }`}
+                      >
+                        Cliente obligatorio. Sin cobro inmediato ni medio de
+                        pago.
+                      </div>
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
 
-            <button
-              onClick={finalizarVenta}
-              // Benjamin Orellana - 2026-01-28 - Se deshabilita si el carrito está vacío o si la venta ya está en curso (anti doble click/F2).
-              disabled={carrito.length === 0 || finalizandoVenta}
-              className={`w-full py-3 rounded-xl font-bold transition ${
-                carrito.length === 0 || finalizandoVenta
-                  ? 'bg-slate-300 text-slate-600 cursor-not-allowed dark:bg-gray-600 dark:text-white'
-                  : esVentaCtaCte
-                    ? 'bg-sky-600 hover:bg-sky-700 text-white'
-                    : 'bg-green-500 hover:bg-green-600 text-white'
-              }`}
-            >
-              {finalizandoVenta
-                ? 'Generando...'
-                : esVentaCtaCte
-                  ? 'Registrar en Cta. Cte. (F2)'
-                  : 'Finalizar Venta (F2)'}
-            </button>
+                {carrito.length > 0 &&
+                  totalCalculado &&
+                  totalCalculado.total >= 0 &&
+                  (esVentaContado ? (
+                    <TotalConOpciones
+                      totalCalculado={totalCalculado}
+                      formatearPrecio={formatearPrecio}
+                      aplicarDescuento={aplicarDescuento}
+                      setAplicarDescuento={setAplicarDescuento}
+                      descuentoPersonalizado={descuentoPersonalizado}
+                      setDescuentoPersonalizado={setDescuentoPersonalizado}
+                      mostrarValorTicket={mostrarValorTicket}
+                      setMostrarValorTicket={setMostrarValorTicket}
+                      mediosPago={mediosPago}
+                      setMedioPago={setMedioPago}
+                      medioPago={medioPago}
+                      userLevel={userLevel}
+                      pricingSource={pricingSource}
+                      setPricingSource={setPricingSource}
+                      modoRedondeoComercial={modoRedondeoComercial}
+                      setModoRedondeoComercial={setModoRedondeoComercial}
+                    />
+                  ) : (
+                    <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-4 space-y-4 dark:bg-white/5 dark:ring-white/10">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
+                            Resumen cuenta corriente
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5 dark:text-white/55">
+                            El importe se registra como saldo pendiente. No se
+                            cobra ahora.
+                          </div>
+                        </div>
+
+                        <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold border border-sky-600/20 bg-sky-600/10 text-sky-700 dark:border-sky-400/20 dark:bg-sky-500/10 dark:text-sky-200">
+                          CTA_CTE
+                        </span>
+                      </div>
+
+                      <label className="flex items-center justify-between gap-3 rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-[12px] text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200/80">
+                        <span className="font-semibold">
+                          Aplicar descuento manual
+                        </span>
+
+                        <input
+                          type="checkbox"
+                          checked={aplicarDescuento}
+                          onChange={(e) =>
+                            setAplicarDescuento(e.target.checked)
+                          }
+                          className="h-4 w-4 accent-emerald-600 dark:accent-emerald-400"
+                        />
+                      </label>
+
+                      {aplicarDescuento && (
+                        <div className="space-y-2">
+                          <label className="block text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
+                            Descuento manual (%)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={descuentoPersonalizado}
+                            onChange={(e) =>
+                              setDescuentoPersonalizado(e.target.value)
+                            }
+                            placeholder="0.00"
+                            className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-black/20 dark:text-white"
+                          />
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-black/10 bg-white/70 px-3 py-3 dark:border-white/10 dark:bg-white/5">
+                          <div className="text-[11px] uppercase tracking-widest text-slate-500 dark:text-slate-300/60">
+                            Base
+                          </div>
+                          <div className="mt-1 text-[18px] font-extrabold text-slate-900 dark:text-white">
+                            {formatearPrecio(
+                              Number(totalCalculado?.precio_base ?? 0)
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-sky-600/20 bg-sky-600/10 px-3 py-3 dark:border-sky-400/20 dark:bg-sky-500/10">
+                          <div className="text-[11px] uppercase tracking-widest text-sky-700 dark:text-sky-200/80">
+                            Saldo a registrar
+                          </div>
+                          <div className="mt-1 text-[18px] font-extrabold text-sky-800 dark:text-sky-100">
+                            {formatearPrecio(
+                              Number(totalCalculado?.total ?? 0)
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {!clienteSeleccionado && (
+                        <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2.5 text-[12px] leading-relaxed text-rose-700 dark:text-rose-200">
+                          Seleccioná un cliente antes de registrar una venta en
+                          cuenta corriente.
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                <div className="space-y-3">
+                  <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 dark:bg-white/5 dark:ring-white/10">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
+                          Comprobante
+                        </div>
+
+                        <div className="mt-0.5 text-[14px] font-semibold text-slate-900 truncate dark:text-white">
+                          {cbteMeta.title}
+                          {cbteMeta.subtitle ? ` – ${cbteMeta.subtitle}` : ''}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => openCbteSelectorRef.current?.()}
+                        className="shrink-0 rounded-xl bg-slate-900/5 hover:bg-slate-900/10 ring-1 ring-black/10 hover:ring-black/15 px-3 py-1.5 text-[11px] text-slate-700 transition dark:bg-white/5 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20 dark:text-white/85"
+                        title="F11"
+                      >
+                        F11 · Cambiar
+                      </button>
+                    </div>
+                  </div>
+
+                  {esVentaContado ? (
+                    <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 space-y-3 dark:bg-white/5 dark:ring-white/10">
+                      <div className="space-y-3">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
+                              Medio de pago
+                            </div>
+
+                            <div className="text-[11px] text-slate-500 mt-0.5 dark:text-white/55">
+                              Seleccioná cómo se va a cobrar esta venta
+                            </div>
+                          </div>
+
+                          {cuotasDisponibles.length > 0 && (
+                            <div className="flex items-center justify-between sm:justify-end gap-2 rounded-xl bg-slate-900/5 ring-1 ring-black/10 px-3 py-2 dark:bg-white/5 dark:ring-white/10">
+                              <span className="text-[12px] font-medium text-slate-600 dark:text-white/80">
+                                Cuotas
+                              </span>
+
+                              <select
+                                id="cuotas"
+                                value={cuotasSeleccionadas}
+                                onChange={(e) =>
+                                  setCuotasSeleccionadas(Number(e.target.value))
+                                }
+                                className="bg-white border border-black/10 text-slate-900 rounded-lg px-2.5 py-1.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:bg-black/20 dark:border-white/15 dark:text-white dark:focus:ring-emerald-400/40"
+                              >
+                                {cuotasUnicas.map((num) => (
+                                  <option
+                                    key={num}
+                                    value={num}
+                                    className="bg-white text-slate-900 dark:bg-slate-900 dark:text-white"
+                                  >
+                                    {num} cuota{num > 1 ? 's' : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+
+                        {requiereAutorizacionPOS && (
+                          <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2.5 text-[12px] leading-relaxed text-amber-700 dark:text-amber-200">
+                            Este medio de pago requiere número de autorización
+                            de la tarjeta al finalizar la venta.
+                          </div>
+                        )}
+                      </div>
+
+                      {loadingMediosPago ? (
+                        <div className="text-slate-600 text-sm dark:text-gray-300">
+                          Cargando...
+                        </div>
+                      ) : (
+                        <div
+                          className="grid gap-2"
+                          style={{
+                            gridTemplateColumns:
+                              'repeat(auto-fit, minmax(170px, 1fr))'
+                          }}
+                        >
+                          {mediosPago
+                            .filter((m) => m.activo)
+                            .sort((a, b) => a.orden - b.orden)
+                            .map((m) => {
+                              const selected = medioPago === m.id;
+
+                              const p =
+                                parseFloat(
+                                  String(m?.ajuste_porcentual ?? '0').replace(
+                                    ',',
+                                    '.'
+                                  )
+                                ) || 0;
+
+                              const chipClass = selected
+                                ? 'bg-white/15 text-white ring-white/20'
+                                : p > 0
+                                  ? 'bg-orange-500/15 text-orange-700 ring-orange-600/20 dark:bg-orange-500/15 dark:text-orange-200 dark:ring-orange-400/20'
+                                  : p < 0
+                                    ? 'bg-emerald-600/15 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20'
+                                    : 'bg-slate-900/5 text-slate-600 ring-black/10 dark:bg-white/5 dark:text-white/70 dark:ring-white/10';
+
+                              return (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setMedioPago(m.id);
+                                    setPricingSource?.('MEDIO_PAGO');
+                                    setModoRedondeoComercial?.('exacto');
+                                  }}
+                                  className={[
+                                    'w-full min-h-[68px] rounded-2xl px-3 py-3 transition ring-1 text-left',
+                                    selected
+                                      ? 'bg-emerald-600 text-white ring-emerald-500/30 shadow-sm'
+                                      : 'bg-slate-900/5 text-slate-800 hover:bg-slate-900/10 ring-black/10 hover:ring-black/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 dark:ring-white/10 dark:hover:ring-white/20'
+                                  ].join(' ')}
+                                  title={m.nombre}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className="text-[16px] shrink-0 mt-0.5">
+                                      {dynamicIcon(m.icono)}
+                                    </div>
+
+                                    <div className="min-w-0 flex-1">
+                                      <div className="text-[12px] font-semibold leading-snug whitespace-normal break-words">
+                                        {m.nombre}
+                                      </div>
+
+                                      {typeof m.ajuste_porcentual !==
+                                        'undefined' && (
+                                        <div className="mt-2">
+                                          <span
+                                            className={`inline-flex items-center text-[10px] px-2 py-1 rounded-full ring-1 whitespace-nowrap ${chipClass}`}
+                                            title={`${p > 0 ? '+' : ''}${p.toFixed(2)}%`}
+                                          >
+                                            {p > 0
+                                              ? `+${p.toFixed(2)}%`
+                                              : `${p.toFixed(2)}%`}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl bg-white/70 ring-1 ring-black/10 p-3 space-y-3 dark:bg-white/5 dark:ring-white/10">
+                      <div>
+                        <div className="text-[12px] font-semibold text-slate-600 uppercase dark:text-white/80">
+                          Datos cuenta corriente
+                        </div>
+
+                        <div className="text-[11px] text-slate-500 mt-0.5 dark:text-white/55">
+                          Configurá opcionalmente el vencimiento y una
+                          observación interna para esta venta.
+                        </div>
+                      </div>
+
+                      {!clienteSeleccionado && (
+                        <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2.5 text-[12px] leading-relaxed text-rose-700 dark:text-rose-200">
+                          Antes de vender en cuenta corriente debés seleccionar
+                          un cliente.
+                        </div>
+                      )}
+
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-[12px] font-semibold text-slate-600 uppercase mb-2 dark:text-white/80">
+                            Fecha de vencimiento
+                          </label>
+                          <input
+                            type="date"
+                            value={fechaVencimientoCtaCte}
+                            onChange={(e) =>
+                              setFechaVencimientoCtaCte(e.target.value)
+                            }
+                            className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-white/10 dark:bg-black/20 dark:text-white"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[12px] font-semibold text-slate-600 uppercase mb-2 dark:text-white/80">
+                            Observaciones
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={observacionesCtaCte}
+                            onChange={(e) =>
+                              setObservacionesCtaCte(e.target.value)
+                            }
+                            placeholder="Ej.: vence en 15 días, acordado con el cliente."
+                            className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-white/10 dark:bg-black/20 dark:text-white resize-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-sky-600/20 bg-sky-600/10 px-3 py-2.5 text-[12px] leading-relaxed text-sky-700 dark:text-sky-200">
+                        No se solicitará medio de pago, cuotas ni autorización
+                        POS. Se registrará la venta y generará automáticamente
+                        el documento de CxC.
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={finalizarVenta}
+                  disabled={carrito.length === 0 || finalizandoVenta}
+                  className={`w-full py-4 rounded-2xl font-bold text-base transition ${
+                    carrito.length === 0 || finalizandoVenta
+                      ? 'bg-slate-300 text-slate-600 cursor-not-allowed dark:bg-gray-600 dark:text-white'
+                      : esVentaCtaCte
+                        ? 'bg-sky-600 hover:bg-sky-700 text-white'
+                        : 'bg-green-500 hover:bg-green-600 text-white'
+                  }`}
+                >
+                  {finalizandoVenta
+                    ? 'Generando...'
+                    : esVentaCtaCte
+                      ? 'Registrar en Cta. Cte. (F2)'
+                      : 'Finalizar Venta (F2)'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-
         {modalVerProductosOpen && (
           <div
             role="dialog"

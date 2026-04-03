@@ -69,6 +69,13 @@ const ventasLinks = [
     icon: <FaHistory />,
     desc: 'Listado completo con filtros'
   },
+  // Benjamin Orellana - 03/04/2026 - Se agrega acceso directo al nuevo reporte mensual de ventas por rubro, producto y exportación Excel.
+  {
+    to: '/dashboard/ventas/reporte-mensual',
+    label: 'Reporte Mensual',
+    icon: <FaChartBar />,
+    desc: 'Reporte mensual por rubro, producto y exportación Excel'
+  },
   {
     to: '/dashboard/ventas/autorizaciones-pos',
     label: 'Autorizaciones POS',
@@ -94,6 +101,7 @@ const ventasLinks = [
     icon: <FaChartBar />,
     desc: 'Reportes y métricas'
   },
+
   {
     to: '/dashboard/ventas/vendidos',
     label: 'Más Vendidos',

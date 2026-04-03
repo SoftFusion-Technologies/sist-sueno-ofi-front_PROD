@@ -46,6 +46,7 @@ import ClientesGet from './Pages/MetodosGets/ClientesGet';
 import CajaPOS from './Pages/Ventas/CajaPos';
 import MovimientosGlobal from './Pages/Ventas/MovimientosGlobal';
 import VentasTimeline from './Pages/Ventas/VentasTimeline';
+import ReporteMensualVentas from './Pages/Ventas/ReporteMensualVentas';
 import EstadisticaVentasMes from './Pages/Ventas/EstadisticaVentasMes';
 import DevolucionesPage from './Pages/Ventas/DevolucionesGet';
 import HistorialCajasPorLocal from './Pages/Ventas/HistorialCajasPorLocal';
@@ -367,6 +368,14 @@ function AppContent() {
               <ProtectedRoute>
                 {' '}
                 <VentasTimeline />{' '}
+              </ProtectedRoute>
+            }
+          />
+          <Ruta
+            path="/dashboard/ventas/reporte-mensual"
+            element={
+              <ProtectedRoute>
+                <ReporteMensualVentas />
               </ProtectedRoute>
             }
           />

@@ -114,6 +114,71 @@ const estadoStyles = {
   }
 };
 
+const toSafeMoneyNumber = (...values) => {
+  for (const value of values) {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return 0;
+};
+
+// Benjamin Orellana - 2026/04/03 - Agrupa combos repetidos por combo_id dentro de una venta para evitar render duplicado en la timeline.
+const agruparCombosVenta = (combos = []) => {
+  const map = new Map();
+
+  for (const item of combos) {
+    const comboId = Number(item?.combo_id || item?.combo?.id || 0);
+    const nombre = item?.combo?.nombre || item?.nombre || 'Combo';
+    const key = `${comboId}-${nombre}`;
+
+    const cantidadActual = Number(item?.cantidad || 0);
+    const precioActual = toSafeMoneyNumber(
+      item?.precio_combo,
+      item?.combo?.precio_fijo,
+      0
+    );
+
+    if (!map.has(key)) {
+      map.set(key, {
+        ...item,
+        combo_id: comboId,
+        cantidad: cantidadActual,
+        precio_combo: precioActual,
+        combo: {
+          ...(item?.combo || {}),
+          id: comboId,
+          nombre,
+          precio_fijo: toSafeMoneyNumber(
+            item?.combo?.precio_fijo,
+            item?.precio_combo,
+            0
+          )
+        }
+      });
+      continue;
+    }
+
+    const existente = map.get(key);
+
+    map.set(key, {
+      ...existente,
+      cantidad: Number(existente.cantidad || 0) + cantidadActual,
+      precio_combo: toSafeMoneyNumber(
+        existente.precio_combo,
+        item?.precio_combo,
+        item?.combo?.precio_fijo,
+        0
+      ),
+      combo: {
+        ...(existente.combo || {}),
+        ...(item?.combo || {})
+      }
+    });
+  }
+
+  return Array.from(map.values());
+};
+
 function Toolbar({
   busqueda,
   setBusqueda,
@@ -274,6 +339,12 @@ function VentaTimelineItem({
         }`
       : style.text;
 
+  const combosAgrupados = useMemo(
+    () => agruparCombosVenta(venta.detalle_venta_combos || []),
+    [venta.detalle_venta_combos]
+  );
+
+  console.log(venta.detalle_venta_combos);
   return (
     <motion.li
       initial={{ x: 40, opacity: 0 }}
@@ -434,52 +505,98 @@ function VentaTimelineItem({
           </div>
 
           {/* Combos */}
-          {Array.isArray(venta.detalle_venta_combos) &&
-            venta.detalle_venta_combos.length > 0 && (
-              <div
-                className={clsx(
-                  'mt-4 rounded-2xl border p-3',
-                  'bg-violet-50/80 border-violet-200',
-                  'dark:bg-violet-400/5 dark:border-violet-300/10'
-                )}
-              >
-                <div className="text-xs font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300/80 mb-2">
+          {Array.isArray(combosAgrupados) && combosAgrupados.length > 0 && (
+            <div
+              className={clsx(
+                'mt-4 rounded-2xl border p-3',
+                'bg-violet-50/80 border-violet-200',
+                'dark:bg-violet-400/5 dark:border-violet-300/10'
+              )}
+            >
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <div className="text-xs font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300/80">
                   Combos utilizados
                 </div>
 
-                <div className="space-y-2">
-                  {venta.detalle_venta_combos.map((comboVenta, idx) => (
-                    <div
-                      key={idx}
-                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
-                    >
+                <span
+                  className={clsx(
+                    'inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-semibold',
+                    'bg-white border-violet-200 text-violet-700',
+                    'dark:bg-white/5 dark:border-violet-300/15 dark:text-violet-300'
+                  )}
+                >
+                  {combosAgrupados.length} combo
+                  {combosAgrupados.length === 1 ? '' : 's'}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {combosAgrupados.map((comboVenta) => (
+                  <div
+                    key={`${comboVenta.combo_id}-${comboVenta?.combo?.nombre || 'combo'}`}
+                    className={clsx(
+                      'rounded-2xl border px-3 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3',
+                      'bg-white border-violet-100',
+                      'dark:bg-white/[0.03] dark:border-violet-300/10'
+                    )}
+                  >
+                    <div className="min-w-0">
                       <p className="text-sm text-slate-700 dark:text-white/85">
                         <span className="font-semibold text-violet-700 dark:text-violet-300">
                           {comboVenta?.combo?.nombre || 'Combo'}
                         </span>{' '}
-                        × {comboVenta.cantidad}
+                        × {Number(comboVenta.cantidad || 0)}
                       </p>
 
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenComboDetalle(comboVenta);
-                        }}
-                        className={clsx(
-                          'inline-flex items-center gap-2 text-xs font-semibold rounded-xl px-3 py-1.5 border transition self-start sm:self-auto',
-                          'bg-white border-violet-200 text-violet-700 hover:bg-violet-50',
-                          'dark:bg-white/5 dark:border-violet-300/15 dark:text-violet-300 dark:hover:bg-violet-400/10'
+                      <div className="mt-1 flex flex-wrap gap-2 text-[11px]">
+                        <span
+                          className={clsx(
+                            'px-2 py-1 rounded-full border',
+                            'bg-violet-50 border-violet-200 text-violet-700',
+                            'dark:bg-violet-400/10 dark:border-violet-300/15 dark:text-violet-300'
+                          )}
+                        >
+                          Precio combo:{' '}
+                          {formatMoney(comboVenta.precio_combo || 0)}
+                        </span>
+
+                        {(comboVenta?.combo?.cantidad_items || 0) > 0 && (
+                          <span
+                            className={clsx(
+                              'px-2 py-1 rounded-full border',
+                              'bg-slate-50 border-slate-200 text-slate-600',
+                              'dark:bg-white/5 dark:border-white/10 dark:text-white/60'
+                            )}
+                          >
+                            {comboVenta.combo.cantidad_items} ítem
+                            {Number(comboVenta.combo.cantidad_items) === 1
+                              ? ''
+                              : 's'}
+                          </span>
                         )}
-                      >
-                        <FaEye className="text-[10px]" />
-                        Ver detalle combo
-                      </button>
+                      </div>
                     </div>
-                  ))}
-                </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenComboDetalle(comboVenta);
+                      }}
+                      className={clsx(
+                        'inline-flex items-center gap-2 text-xs font-semibold rounded-xl px-3 py-2 border transition self-start sm:self-auto',
+                        'bg-white border-violet-200 text-violet-700 hover:bg-violet-50',
+                        'dark:bg-white/5 dark:border-violet-300/15 dark:text-violet-300 dark:hover:bg-violet-400/10'
+                      )}
+                    >
+                      <FaEye className="text-[10px]" />
+                      Ver detalle combo
+                    </button>
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
           {/* CTA row */}
           <div className="mt-4 flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
